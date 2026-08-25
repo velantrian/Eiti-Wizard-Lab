@@ -2043,7 +2043,7 @@ main {
               <button onclick="eitiClearKey('openrouter-key','eiti_or_key')" title="Очистить" style="padding:0 12px;border-radius:12px;border:1px solid var(--border-color);background:var(--secondary-color);color:var(--text-color);font-size:18px;cursor:pointer;flex-shrink:0;">🗑</button>
             </div>
 
-            <button onclick="eitiConfirmORKey()"
+            <button onclick="eitiConfirmORKey()" data-i18n="btn_confirm_key"
                     style="margin-top:6px;padding:10px 16px;border-radius:12px;border:2px solid #FFD700;background:#FFD700;color:#000;font-weight:700;font-size:14px;cursor:pointer;width:100%;box-shadow:0 2px 8px rgba(255,215,0,0.3);">
               ✓ Подтвердить ключ
             </button>
@@ -2073,7 +2073,7 @@ main {
               <div id="or-model-label" style="font-size:11px;opacity:0.45;margin-top:5px;text-align:center;">Модель: openrouter/auto</div>
             </div>
 
-            <button onclick="eitiTestOpenRouter()"
+            <button onclick="eitiTestOpenRouter()" data-i18n="btn_test_openrouter"
                     style="margin-top:8px;padding:10px;border-radius:10px;border:1px solid var(--border-color);background:var(--secondary-color);color:var(--text-color);font-size:13px;font-weight:600;cursor:pointer;width:100%;">
               Проверить OpenRouter ключ
             </button>
@@ -8577,6 +8577,13 @@ const LANGS = {
     grok_key_hint:'Если не указан — используется основной API ключ из раздела Провайдер',
     grok_mute_hint:'🔇 Пишешь текстом → AI отвечает голосом. Удобно в шумном месте.',
     memory_commands_hint:'Команды: /запомни [текст] — сохранить факт. Спросите «что ты знаешь обо мне?» — AI ответит из памяти.',
+    hint_token_budget:'Gemini / DeepSeek / GPT-4.1 поддерживают 1M+ контекст. Бюджет ответа независим от контекстного окна.',
+    hint_web_search:'Автоматически включается при запросах типа «найди», «что сейчас», «последние новости».',
+    btn_search_google:'🔵 Google Search (через Gemini ключ — бесплатно)',
+    btn_search_tavily:'🔍 Tavily (1000 поисков/мес бесплатно)',
+    btn_search_off:'🚫 Отключить',
+    btn_confirm_key:'✓ Подтвердить ключ',
+    btn_test_openrouter:'Проверить OpenRouter ключ',
     // placeholders
     ph_search:'Поиск по сообщениям...',
     ph_chat_instr:'Например: Всегда отвечай кратко и по сути. Вставляй emoji в ответ. Говори только на русском.',
@@ -8824,6 +8831,13 @@ const LANGS = {
     grok_key_hint:'If not set — the main API key from the Provider section is used',
     grok_mute_hint:'🔇 Type text → AI responds with voice. Handy in noisy places.',
     memory_commands_hint:'Commands: /remember [text] — save a fact. Ask \"what do you know about me?\" — AI will reply from memory.',
+    hint_token_budget:'Gemini / DeepSeek / GPT-4.1 support 1M+ context. Response budget is independent of the context window.',
+    hint_web_search:'Activates automatically for queries like "find", "what\'s happening now", "latest news".',
+    btn_search_google:'🔵 Google Search (via Gemini key — free)',
+    btn_search_tavily:'🔍 Tavily (1000 searches/month free)',
+    btn_search_off:'🚫 Disable',
+    btn_confirm_key:'✓ Confirm key',
+    btn_test_openrouter:'Test OpenRouter key',
     ph_search:'Search messages...',
     ph_chat_instr:'Example: Always be brief and to the point. Insert emoji. Reply only in English.',
     ph_agent_instr:'Example: You are an experienced developer. Always explain your code. Suggest optimizations.',

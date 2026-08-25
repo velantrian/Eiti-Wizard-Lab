@@ -1,5 +1,5 @@
-// sw.js — Eiti Wizard Service Worker v1.7.7
-const CACHE_NAME = 'eiti-wizard-v1.7.7';
+// sw.js — Eiti Wizard Service Worker v1.8.4
+const CACHE_NAME = 'eiti-wizard-v1.8.4';
 const BASE_PATH = '/Eiti-Wizard';
 
 const STATIC_ASSETS = [
@@ -59,8 +59,9 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // index.html и корневой путь — network-first (чтобы обновления применялись сразу)
-  if (url.pathname === BASE_PATH + '/' || url.pathname === BASE_PATH + '/index.html') {
+  // index.html, корень и manifest.json — network-first (чтобы обновления применялись сразу)
+  if (url.pathname === BASE_PATH + '/' || url.pathname === BASE_PATH + '/index.html'
+      || url.pathname === BASE_PATH + '/manifest.json') {
     event.respondWith(
       fetch(request).then(response => {
         if (response && response.status === 200) {

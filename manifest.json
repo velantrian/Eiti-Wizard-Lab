@@ -1,6 +1,6 @@
 {
-  "name": "Eiti Wizard",
-  "short_name": "Eiti Wizard",
+  "name": "EITI WIZARD",
+  "short_name": "EITI WIZARD",
   "id": "/Eiti-Wizard/",
   "description": "Терминальный AI-клиент · DeepSeek · Claude · Gemini · Grok · Groq · Ollama · Агент · Офлайн",
   "start_url": "/Eiti-Wizard/",
@@ -74,22 +74,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Eiti Wizard — Mobile"
-    },
-    {
-      "src": "icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Eiti Wizard — Desktop"
     }
   ],
   "shortcuts": [

@@ -1,6 +1,6 @@
 // sw.js — Eiti Wizard Service Worker v1.8.4
-const CACHE_NAME = 'eiti-wizard-v1.8.4';
-const BASE_PATH = '/Eiti-Wizard';
+const CACHE_NAME = 'eiti-wizard-lab-v1.8.4';
+const BASE_PATH = '/Eiti-Wizard-Lab';
 
 const STATIC_ASSETS = [
   BASE_PATH + '/',
@@ -33,7 +33,7 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+        keys.filter(k => k.startsWith('eiti-wizard-lab-') && k !== CACHE_NAME).map(k => caches.delete(k))
       )
     ).then(() => self.clients.claim())
   );

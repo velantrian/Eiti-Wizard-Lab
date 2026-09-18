@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>EITI WIZARD</title>
+  <title>EITI WIZARD LAB</title>
 
   <!-- PWA Meta -->
   <meta name="theme-color" content="#f0f8ff">
@@ -11,7 +11,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="EITI WIZARD">
+  <meta name="apple-mobile-web-app-title" content="EITI WIZARD LAB">
   <meta name="application-name" content="EITI WIZARD">
   <meta name="msapplication-TileColor" content="#2d1b4e">
 
@@ -1950,7 +1950,7 @@ main {
             </label>
             <input type="range" id="cfgMaxTokens" min="1000" max="40000" step="1000" value="8000"
               style="width:100%;accent-color:var(--gold);margin:8px 0"
-              oninput="(function(v){document.getElementById('token-budget-val').textContent=Number(v).toLocaleString('ru');localStorage.setItem('wiz_max_tokens',v);})(this.value)">
+              oninput="(function(v){document.getElementById('token-budget-val').textContent=Number(v).toLocaleString('ru');localStorage.setItem('wiz_lab_max_tokens',v);})(this.value)">
             <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-top:2px">
               <span>1 000</span>
               <span>8 000</span>
@@ -1988,8 +1988,8 @@ main {
               <div style="display:flex;gap:6px">
                 <input type="password" id="esp-tavily-key-input" placeholder="tvly-xxxxxxxx"
                   style="flex:1;padding:9px 10px;border-radius:10px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:14px"
-                  oninput="(function(v){if(v)localStorage.setItem('wiz_tavily_key',_obfKey(v));else localStorage.removeItem('wiz_tavily_key');var s=document.getElementById('esp-tavily-status');if(s){s.style.display='none';s.textContent=''}})(this.value)">
-                <button onclick="(function(){document.getElementById('esp-tavily-key-input').value='';localStorage.removeItem('wiz_tavily_key');var s=document.getElementById('esp-tavily-status');if(s)s.style.display='none';showToast('Tavily ключ удалён');})()"
+                  oninput="(function(v){if(v)localStorage.setItem('wiz_lab_tavily_key',_obfKey(v));else localStorage.removeItem('wiz_lab_tavily_key');var s=document.getElementById('esp-tavily-status');if(s){s.style.display='none';s.textContent=''}})(this.value)">
+                <button onclick="(function(){document.getElementById('esp-tavily-key-input').value='';localStorage.removeItem('wiz_lab_tavily_key');var s=document.getElementById('esp-tavily-status');if(s)s.style.display='none';showToast('Tavily ключ удалён');})()"
                   style="padding:0 12px;border-radius:10px;border:1px solid var(--gold-dim);background:transparent;color:var(--text-dim);font-size:17px;cursor:pointer">🗑</button>
               </div>
               <button onclick="eitiVerifyTavilyKey()" data-i18n="btn_confirm_key"
@@ -2001,9 +2001,9 @@ main {
             <div id="esp-status-label" style="font-size:11px;opacity:.45;margin-top:5px;text-align:center">Активен: 🚫 Выключен</div>
           </div>
           <div class="field">
-            <label for="cfgApiKey">API Key</label>
+            <label for="wiz_lab_cfgApiKey">API Key</label>
             <div class="input-with-btn">
-              <input type="password" id="cfgApiKey" placeholder="sk-...">
+              <input type="password" id="wiz_lab_cfgApiKey" placeholder="sk-...">
               <button id="activateApiKey" class="btn-small" data-i18n="btn_activate">✓ Активировать</button>
               <button id="clearApiKey" class="btn-small" data-i18n-title="ttl_clear_api" title="Очистить API ключ">🗑</button>
             </div>
@@ -2040,7 +2040,7 @@ main {
             <div style="display:flex;gap:6px;align-items:stretch;margin-bottom:8px;">
               <input type="password" id="openrouter-key" placeholder="sk-or-v1-xxxxxxxxxxxx"
                      style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--border-color);background:var(--panel-bg);color:var(--text-color);font-size:15px;-webkit-appearance:none;">
-              <button onclick="eitiClearKey('openrouter-key','eiti_or_key')" title="Очистить" style="padding:0 12px;border-radius:12px;border:1px solid var(--border-color);background:var(--secondary-color);color:var(--text-color);font-size:18px;cursor:pointer;flex-shrink:0;">🗑</button>
+              <button onclick="eitiClearKey('openrouter-key','eiti_lab_or_key')" title="Очистить" style="padding:0 12px;border-radius:12px;border:1px solid var(--border-color);background:var(--secondary-color);color:var(--text-color);font-size:18px;cursor:pointer;flex-shrink:0;">🗑</button>
             </div>
 
             <button onclick="eitiConfirmORKey()" data-i18n="btn_confirm_key"
@@ -2158,7 +2158,7 @@ main {
               <div class="toggle-sub" data-i18n="tog_tooluse_sub">Нативные function calls (DeepSeek / Gemini): чтение и запись заметок, файлов, памяти, задач в цикле до 10 шагов</div>
             </div>
             <label class="toggle">
-              <input type="checkbox" id="cfgAgentToolUse" checked onchange="localStorage.setItem('wiz_agent_tooluse', this.checked ? '1' : '0')">
+              <input type="checkbox" id="cfgAgentToolUse" checked onchange="localStorage.setItem('wiz_lab_agent_tooluse', this.checked ? '1' : '0')">
               <div class="toggle-track"></div>
             </label>
           </div>
@@ -2556,9 +2556,9 @@ main {
           <div id="tts-section-gemini-tts" class="tts-section">
             <div style="font-size:11px;opacity:.55;line-height:1.5">Gemini 2.5 Flash TTS · 24 kHz WAV. Ключ: <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--gold)">aistudio.google.com</a></div>
             <div class="tts-key-row">
-              <input type="password" id="tts-gemini-key" placeholder="AIza..." oninput="localStorage.setItem('wiz_tts_gemini_key',_obfKey(this.value))">
+              <input type="password" id="tts-gemini-key" placeholder="AIza..." oninput="localStorage.setItem('wiz_lab_tts_gemini_key',_obfKey(this.value))">
               <button class="tts-confirm-btn" onclick="confirmTTSKey('gemini-tts')">✓</button>
-              <button class="tts-clear-btn" onclick="clearTTSKey('tts-gemini-key','wiz_tts_gemini_key','gemini-tts')">🗑</button>
+              <button class="tts-clear-btn" onclick="clearTTSKey('tts-gemini-key','wiz_lab_tts_gemini_key','gemini-tts')">🗑</button>
             </div>
             <div class="tts-status" id="tts-key-status-gemini-tts"></div>
             <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px">Модель:</div>
@@ -2568,16 +2568,16 @@ main {
             </div>
             <div style="font-size:11px;color:var(--text-dim);margin:4px 0">Голос:</div>
             <div class="tts-vgrid" id="gemini-voice-grid"></div>
-            <input type="text" id="tts-gemini-style" placeholder="Стиль: спокойно, выразительно…" style="padding:8px 10px;border-radius:10px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.82rem;width:100%;box-sizing:border-box" oninput="localStorage.setItem('wiz_tts_gemini_style',this.value)">
+            <input type="text" id="tts-gemini-style" placeholder="Стиль: спокойно, выразительно…" style="padding:8px 10px;border-radius:10px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.82rem;width:100%;box-sizing:border-box" oninput="localStorage.setItem('wiz_lab_tts_gemini_style',this.value)">
           </div>
 
           <!-- OpenAI TTS -->
           <div id="tts-section-openai" class="tts-section">
             <div style="font-size:11px;opacity:.55;line-height:1.5">OpenAI tts-1 / tts-1-hd. Ключ: <a href="https://platform.openai.com/api-keys" target="_blank" style="color:var(--gold)">platform.openai.com</a></div>
             <div class="tts-key-row">
-              <input type="password" id="tts-openai-key" placeholder="sk-..." oninput="localStorage.setItem('wiz_tts_openai_key',_obfKey(this.value))">
+              <input type="password" id="tts-openai-key" placeholder="sk-..." oninput="localStorage.setItem('wiz_lab_tts_openai_key',_obfKey(this.value))">
               <button class="tts-confirm-btn" onclick="confirmTTSKey('openai')">✓</button>
-              <button class="tts-clear-btn" onclick="clearTTSKey('tts-openai-key','wiz_tts_openai_key','openai')">🗑</button>
+              <button class="tts-clear-btn" onclick="clearTTSKey('tts-openai-key','wiz_lab_tts_openai_key','openai')">🗑</button>
             </div>
             <div class="tts-status" id="tts-key-status-openai"></div>
             <div class="tts-vgrid">
@@ -2598,9 +2598,9 @@ main {
           <div id="tts-section-qwen-tts" class="tts-section">
             <div style="font-size:11px;opacity:.55;line-height:1.5">Alibaba CosyVoice v2. Ключ: <a href="https://dashscope.aliyuncs.com" target="_blank" style="color:var(--gold)">dashscope.aliyuncs.com</a></div>
             <div class="tts-key-row">
-              <input type="password" id="tts-qwen-key" placeholder="sk-..." oninput="localStorage.setItem('wiz_tts_qwen_key',_obfKey(this.value))">
+              <input type="password" id="tts-qwen-key" placeholder="sk-..." oninput="localStorage.setItem('wiz_lab_tts_qwen_key',_obfKey(this.value))">
               <button class="tts-confirm-btn" onclick="confirmTTSKey('qwen-tts')">✓</button>
-              <button class="tts-clear-btn" onclick="clearTTSKey('tts-qwen-key','wiz_tts_qwen_key','qwen-tts')">🗑</button>
+              <button class="tts-clear-btn" onclick="clearTTSKey('tts-qwen-key','wiz_lab_tts_qwen_key','qwen-tts')">🗑</button>
             </div>
             <div class="tts-status" id="tts-key-status-qwen-tts"></div>
             <div class="tts-vgrid" id="qwen-voice-grid"></div>
@@ -2738,7 +2738,7 @@ main {
 
 <script>
 // ── Config & State ───────────────────────────────────────────────────────
-const DB_NAME    = 'velan-eiti-db';
+const DB_NAME    = 'velan-eiti-lab-db';
 const DB_VERSION = 6;
 const STORES     = ['messages', 'config', 'memory', 'agent_backups', 'files', 'chats', 'agents', 'chunks', 'tasks'];
 
@@ -2834,10 +2834,22 @@ if ('serviceWorker' in navigator) {
   const _canRegisterSW = !_isFile && !_isPreviewSandbox && (location.protocol === 'https:' || _isLocalHost);
   if (_canRegisterSW) {
     // Unregister old caches on version bump (uses global APP_VERSION)
-    if (localStorage.getItem('wiz_app_version') !== APP_VERSION) {
-      navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
-      if (window.caches) caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
-      localStorage.setItem('wiz_app_version', APP_VERSION);
+    if (localStorage.getItem('wiz_lab_app_version') !== APP_VERSION) {
+      navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => {
+        try {
+          const scope = (r && r.scope) ? r.scope : '';
+          if ((() => {
+          try {
+            const path = new URL(scope).pathname.replace(/\/+$/, '') || '/';
+            return path === '/Eiti-Wizard-Lab';
+          } catch (_) { return false; }
+        })()) r.unregister();
+        } catch (_) {}
+      }));
+      if (window.caches) caches.keys().then(keys => keys.forEach(k => {
+        if (typeof k === 'string' && k.startsWith('eiti-wizard-lab-')) caches.delete(k);
+      }));
+      localStorage.setItem('wiz_lab_app_version', APP_VERSION);
     }
     navigator.serviceWorker.register('./sw.js').then(reg => {
       reg.update().catch(()=>{});
@@ -2847,7 +2859,17 @@ if ('serviceWorker' in navigator) {
     });
   } else {
     // На внешнем сервере — разрегистрировать все SW во избежание ошибок
-    navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())).catch(()=>{});
+    navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => {
+      try {
+        const scope = (r && r.scope) ? r.scope : '';
+        if ((() => {
+          try {
+            const path = new URL(scope).pathname.replace(/\/+$/, '') || '/';
+            return path === '/Eiti-Wizard-Lab';
+          } catch (_) { return false; }
+        })()) r.unregister();
+      } catch (_) {}
+    })).catch(()=>{});
   }
 }
 
@@ -3732,11 +3754,11 @@ const eitiCrypto = (function() {
 
   async function init(pin) {
     if (!_hasSubtle()) throw new Error('SubtleCrypto недоступен');
-    const saltB64 = localStorage.getItem('eiti_crypto_salt');
+    const saltB64 = localStorage.getItem('eiti_lab_crypto_salt');
     let salt;
     if (!saltB64) {
       salt = crypto.getRandomValues(new Uint8Array(16));
-      localStorage.setItem('eiti_crypto_salt', btoa(String.fromCharCode(...salt)));
+      localStorage.setItem('eiti_lab_crypto_salt', btoa(String.fromCharCode(...salt)));
     } else {
       salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
     }
@@ -3773,7 +3795,7 @@ const eitiCrypto = (function() {
 window.eitiCrypto = eitiCrypto;
 
 // Ключи хранящиеся в localStorage (TTS + поиск)
-const _EITI_LS_KEYS = ['wiz_tavily_key','wiz_tts_gemini_key','wiz_tts_openai_key','wiz_tts_qwen_key'];
+const _EITI_LS_KEYS = ['wiz_lab_tavily_key','wiz_lab_tts_gemini_key','wiz_lab_tts_openai_key','wiz_lab_tts_qwen_key'];
 
 // ── eitiCryptoUnlock(pin): init + прогрев RAM-кеша ───────────────────────────
 async function eitiCryptoUnlock(pin) {
@@ -3799,7 +3821,7 @@ window.eitiCryptoUnlock = eitiCryptoUnlock;
 
 // ── Миграция legacy XOR → enc2_ ───────────────────────────────────────────────
 async function eitiCryptoMigrateLegacy() {
-  if (localStorage.getItem('eiti_keys_migrated_v1') === '1') return;
+  if (localStorage.getItem('eiti_lab_keys_migrated_v1') === '1') return;
   if (!eitiCrypto.isReady()) return;
   let migrated = 0;
   for (const k of _EITI_LS_KEYS) {
@@ -3816,7 +3838,7 @@ async function eitiCryptoMigrateLegacy() {
     } catch(e) {}
   }
   if (migrated > 0) {
-    localStorage.setItem('eiti_keys_migrated_v1', '1');
+    localStorage.setItem('eiti_lab_keys_migrated_v1', '1');
     showToast('🔐 Ключи зашифрованы AES-GCM (' + migrated + ' шт.)', 2500);
   }
 }
@@ -3856,11 +3878,11 @@ const _ttsBlobCache = {};
 
 // ── Получить / установить провайдер ─────────────────────────────────────────
 function getTTSProvider() {
-  return localStorage.getItem('wiz_tts_provider') || 'webspeech';
+  return localStorage.getItem('wiz_lab_tts_provider') || 'webspeech';
 }
 function setTTSProvider(prov) {
   ttsStopAll();
-  localStorage.setItem('wiz_tts_provider', prov);
+  localStorage.setItem('wiz_lab_tts_provider', prov);
   TTS_PROVIDERS.forEach(p => {
     const btn = document.getElementById('tprov-'+p);
     const sec = document.getElementById('tts-section-'+p);
@@ -3883,17 +3905,17 @@ function initTTSProviderUI() {
   const gk = document.getElementById('tts-gemini-key');
   const ok = document.getElementById('tts-openai-key');
   const qk = document.getElementById('tts-qwen-key');
-  if (gk) gk.value = _deobfKey(localStorage.getItem('wiz_tts_gemini_key')||'');
-  if (ok) ok.value = _deobfKey(localStorage.getItem('wiz_tts_openai_key')||'');
-  if (qk) qk.value = _deobfKey(localStorage.getItem('wiz_tts_qwen_key')||'');
+  if (gk) gk.value = _deobfKey(localStorage.getItem('wiz_lab_tts_gemini_key')||'');
+  if (ok) ok.value = _deobfKey(localStorage.getItem('wiz_lab_tts_openai_key')||'');
+  if (qk) qk.value = _deobfKey(localStorage.getItem('wiz_lab_tts_qwen_key')||'');
   const gs = document.getElementById('tts-gemini-style');
-  if (gs) gs.value = localStorage.getItem('wiz_tts_gemini_style')||'';
-  setGeminiTTSModel(localStorage.getItem('wiz_tts_gemini_model')||'gemini-2.5-flash-preview-tts', true);
+  if (gs) gs.value = localStorage.getItem('wiz_lab_tts_gemini_style')||'';
+  setGeminiTTSModel(localStorage.getItem('wiz_lab_tts_gemini_model')||'gemini-2.5-flash-preview-tts', true);
   renderGeminiVoices();
-  setOpenAITTSModel(localStorage.getItem('wiz_tts_openai_model')||'tts-1', true);
-  setOpenAIVoice(localStorage.getItem('wiz_tts_openai_voice')||'alloy', true);
+  setOpenAITTSModel(localStorage.getItem('wiz_lab_tts_openai_model')||'tts-1', true);
+  setOpenAIVoice(localStorage.getItem('wiz_lab_tts_openai_voice')||'alloy', true);
   renderQwenVoices();
-  setWSLang(localStorage.getItem('wiz_tts_ws_lang')||'ru-RU', true);
+  setWSLang(localStorage.getItem('wiz_lab_tts_ws_lang')||'ru-RU', true);
   refreshBrowserVoices();
   ttsCacheRefreshStats();
 }
@@ -3901,19 +3923,19 @@ function initTTSProviderUI() {
 // ── Голоса Gemini ────────────────────────────────────────────────────────────
 function renderGeminiVoices() {
   const grid = document.getElementById('gemini-voice-grid'); if (!grid) return;
-  const cur = localStorage.getItem('wiz_tts_gemini_voice')||'Kore';
+  const cur = localStorage.getItem('wiz_lab_tts_gemini_voice')||'Kore';
   grid.innerHTML = TTS_GEMINI_VOICES.map(v =>
     `<button class="tts-vbtn${v===cur?' tts-vbtn-active':''}" onclick="setGeminiTTSVoice('${v}')">${v}</button>`
   ).join('');
 }
 function setGeminiTTSVoice(v) {
-  localStorage.setItem('wiz_tts_gemini_voice', v);
+  localStorage.setItem('wiz_lab_tts_gemini_voice', v);
   document.querySelectorAll('#gemini-voice-grid .tts-vbtn').forEach(b=>{
     b.classList.toggle('tts-vbtn-active', b.textContent===v);
   });
 }
 function setGeminiTTSModel(m, silent) {
-  localStorage.setItem('wiz_tts_gemini_model', m);
+  localStorage.setItem('wiz_lab_tts_gemini_model', m);
   ['tgm-flash','tgm-pro'].forEach(id=>{
     const b = document.getElementById(id); if(!b) return;
     const isFlash = id==='tgm-flash';
@@ -3924,7 +3946,7 @@ function setGeminiTTSModel(m, silent) {
 
 // ── Голоса OpenAI ────────────────────────────────────────────────────────────
 function setOpenAITTSModel(m, silent) {
-  localStorage.setItem('wiz_tts_openai_model', m);
+  localStorage.setItem('wiz_lab_tts_openai_model', m);
   ['tts1','tts1hd'].forEach(k=>{
     const b = document.getElementById('toam-'+k); if(!b) return;
     b.classList.toggle('tts-vbtn-active', (k==='tts1'?'tts-1':'tts-1-hd')===m);
@@ -3932,7 +3954,7 @@ function setOpenAITTSModel(m, silent) {
   if (!silent) showToast('🤖 OpenAI: '+m);
 }
 function setOpenAIVoice(v, silent) {
-  localStorage.setItem('wiz_tts_openai_voice', v);
+  localStorage.setItem('wiz_lab_tts_openai_voice', v);
   ['alloy','echo','fable','onyx','nova','shimmer'].forEach(vv=>{
     const b = document.getElementById('toav-'+vv); if(!b) return;
     b.classList.toggle('tts-vbtn-active', vv===v);
@@ -3943,13 +3965,13 @@ function setOpenAIVoice(v, silent) {
 // ── Голоса Qwen ──────────────────────────────────────────────────────────────
 function renderQwenVoices() {
   const grid = document.getElementById('qwen-voice-grid'); if (!grid) return;
-  const cur = localStorage.getItem('wiz_tts_qwen_voice')||'longxiaochun';
+  const cur = localStorage.getItem('wiz_lab_tts_qwen_voice')||'longxiaochun';
   grid.innerHTML = TTS_QWEN_VOICES.map(v =>
     `<button class="tts-vbtn${v.id===cur?' tts-vbtn-active':''}" onclick="setQwenVoice('${v.id}')">${v.label}</button>`
   ).join('');
 }
 function setQwenVoice(id) {
-  localStorage.setItem('wiz_tts_qwen_voice', id);
+  localStorage.setItem('wiz_lab_tts_qwen_voice', id);
   document.querySelectorAll('#qwen-voice-grid .tts-vbtn').forEach(b=>{
     b.classList.toggle('tts-vbtn-active', b.getAttribute('onclick').includes("'"+id+"'"));
   });
@@ -3957,7 +3979,7 @@ function setQwenVoice(id) {
 
 // ── Web Speech язык ──────────────────────────────────────────────────────────
 function setWSLang(lang, silent) {
-  localStorage.setItem('wiz_tts_ws_lang', lang);
+  localStorage.setItem('wiz_lab_tts_ws_lang', lang);
   const isRu = lang==='ru-RU';
   const br = document.getElementById('twslang-ru'), be = document.getElementById('twslang-en');
   if (br) br.classList.toggle('tts-vbtn-active', isRu);
@@ -3967,8 +3989,8 @@ function setWSLang(lang, silent) {
 function refreshBrowserVoices() {
   const list = document.getElementById('tts-browser-voices-list');
   if (!list || !('speechSynthesis' in window)) return;
-  const lang = localStorage.getItem('wiz_tts_ws_lang')||'ru-RU';
-  const saved = localStorage.getItem('wiz_tts_ws_voice_name')||'';
+  const lang = localStorage.getItem('wiz_lab_tts_ws_lang')||'ru-RU';
+  const saved = localStorage.getItem('wiz_lab_tts_ws_voice_name')||'';
   const voices = window.speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.startsWith(lang.slice(0,2)));
   if (!voices.length) { list.innerHTML='<div style="font-size:11px;opacity:0.5;padding:4px 0;">Голоса не найдены</div>'; return; }
   list.innerHTML = voices.map(v =>
@@ -3978,7 +4000,7 @@ function refreshBrowserVoices() {
   ).join('');
 }
 function selectBrowserVoice(name) {
-  localStorage.setItem('wiz_tts_ws_voice_name', name);
+  localStorage.setItem('wiz_lab_tts_ws_voice_name', name);
   refreshBrowserVoices();
   showToast('🖥️ Голос: '+name);
 }
@@ -3989,23 +4011,23 @@ function confirmTTSKey(provider) {
   const setS = (ok, msg) => { if(!stEl) return; stEl.textContent=(ok?'✅ ':'❌ ')+msg; stEl.style.color=ok?'#4caf50':'#f44336'; };
   if (stEl) { stEl.textContent='⏳ Проверка...'; stEl.style.color='rgba(201,149,42,0.8)'; }
   if (provider==='openai') {
-    const key = _deobfKey(localStorage.getItem('wiz_tts_openai_key')||'') || (document.getElementById('tts-openai-key')||{}).value||'';
+    const key = _deobfKey(localStorage.getItem('wiz_lab_tts_openai_key')||'') || (document.getElementById('tts-openai-key')||{}).value||'';
     if (!key) { setS(false,'Нет ключа'); return; }
     fetch('https://api.openai.com/v1/models',{headers:{'Authorization':'Bearer '+key}})
       .then(r=>r.ok?setS(true,'Подключено'):r.json().then(d=>setS(false,(d.error&&d.error.message)||r.status)))
       .catch(e=>setS(false,e.message));
   } else if (provider==='gemini-tts') {
-    const key = _deobfKey(localStorage.getItem('wiz_tts_gemini_key')||'') || (document.getElementById('tts-gemini-key')||{}).value||'';
+    const key = _deobfKey(localStorage.getItem('wiz_lab_tts_gemini_key')||'') || (document.getElementById('tts-gemini-key')||{}).value||'';
     if (!key) { setS(false,'Нет ключа'); return; }
-    const model = localStorage.getItem('wiz_tts_gemini_model')||'gemini-2.5-flash-preview-tts';
-    const voice = localStorage.getItem('wiz_tts_gemini_voice')||'Kore';
+    const model = localStorage.getItem('wiz_lab_tts_gemini_model')||'gemini-2.5-flash-preview-tts';
+    const voice = localStorage.getItem('wiz_lab_tts_gemini_voice')||'Kore';
     fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+key,{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({contents:[{parts:[{text:'+'}]}],generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voice}}}}})
     }).then(r=>r.ok?setS(true,model.replace('gemini-2.5-','').replace('-preview-tts','')+' · '+voice):r.json().then(d=>setS(false,(d.error&&d.error.message)||r.status)))
       .catch(e=>setS(false,e.message));
   } else if (provider==='qwen-tts') {
-    const key = _deobfKey(localStorage.getItem('wiz_tts_qwen_key')||'') || (document.getElementById('tts-qwen-key')||{}).value||'';
+    const key = _deobfKey(localStorage.getItem('wiz_lab_tts_qwen_key')||'') || (document.getElementById('tts-qwen-key')||{}).value||'';
     if (!key) { setS(false,'Нет ключа'); return; }
     fetch('https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text-2-speech/call',{
       method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json','X-DashScope-Async':'disable'},
@@ -4103,9 +4125,9 @@ function _webSpeakFrom(msgId, text, fromChar) {
   }
   const nextFrom = fromChar+chunkLen;
   const u = new SpeechSynthesisUtterance(slice);
-  const lang = localStorage.getItem('wiz_tts_ws_lang')||'ru-RU';
+  const lang = localStorage.getItem('wiz_lab_tts_ws_lang')||'ru-RU';
   u.lang=lang;
-  const voices=synth.getVoices(), savedName=localStorage.getItem('wiz_tts_ws_voice_name')||'';
+  const voices=synth.getVoices(), savedName=localStorage.getItem('wiz_lab_tts_ws_voice_name')||'';
   const pref=(savedName&&voices.find(v=>v.name===savedName))||voices.find(v=>/irina|svetlana|pavel/i.test(v.name)&&/ru/i.test(v.lang))||voices.find(v=>v.lang&&v.lang.startsWith(lang.slice(0,2)));
   if (pref) u.voice=pref;
   _ttsBoundaryFired=false; _ttsStartTime=Date.now();
@@ -4138,11 +4160,11 @@ function _webSpeakFrom(msgId, text, fromChar) {
 // ═══════════════════════════════════════════════════════════════════════════
 function _apiFetch(provider, text) {
   if (provider==='gemini-tts') {
-    const key=_deobfKey(localStorage.getItem('wiz_tts_gemini_key')||'');
+    const key=_deobfKey(localStorage.getItem('wiz_lab_tts_gemini_key')||'');
     if (!key) return Promise.reject(new Error('Нет Gemini TTS ключа'));
-    const model=localStorage.getItem('wiz_tts_gemini_model')||'gemini-2.5-flash-preview-tts';
-    const voice=localStorage.getItem('wiz_tts_gemini_voice')||'Kore';
-    const style=localStorage.getItem('wiz_tts_gemini_style')||'';
+    const model=localStorage.getItem('wiz_lab_tts_gemini_model')||'gemini-2.5-flash-preview-tts';
+    const voice=localStorage.getItem('wiz_lab_tts_gemini_voice')||'Kore';
+    const style=localStorage.getItem('wiz_lab_tts_gemini_style')||'';
     const inp=style?style+': '+text.slice(0,4000):text.slice(0,4000);
     return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+key,{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -4157,21 +4179,21 @@ function _apiFetch(provider, text) {
       });
   }
   if (provider==='openai') {
-    const key=_deobfKey(localStorage.getItem('wiz_tts_openai_key')||'');
+    const key=_deobfKey(localStorage.getItem('wiz_lab_tts_openai_key')||'');
     if (!key) return Promise.reject(new Error('Нет OpenAI TTS ключа'));
     return fetch('https://api.openai.com/v1/audio/speech',{
       method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
-      body:JSON.stringify({model:localStorage.getItem('wiz_tts_openai_model')||'tts-1',input:text.slice(0,4096),voice:localStorage.getItem('wiz_tts_openai_voice')||'alloy',response_format:'mp3'})
+      body:JSON.stringify({model:localStorage.getItem('wiz_lab_tts_openai_model')||'tts-1',input:text.slice(0,4096),voice:localStorage.getItem('wiz_lab_tts_openai_voice')||'alloy',response_format:'mp3'})
     }).then(r=>r.ok?r.blob():r.json().then(e=>{throw new Error(e.error&&e.error.message||r.status);}))
       .then(blob=>URL.createObjectURL(blob));
   }
   if (provider==='qwen-tts') {
-    const key=_deobfKey(localStorage.getItem('wiz_tts_qwen_key')||'');
+    const key=_deobfKey(localStorage.getItem('wiz_lab_tts_qwen_key')||'');
     if (!key) return Promise.reject(new Error('Нет Qwen TTS ключа'));
     return fetch('https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text-2-speech/call',{
       method:'POST',
       headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json','X-DashScope-Async':'disable'},
-      body:JSON.stringify({model:'cosyvoice-v2',input:{text:text.slice(0,3000),voice:localStorage.getItem('wiz_tts_qwen_voice')||'longxiaochun'},parameters:{text_type:'PlainText',format:'mp3',sample_rate:22050,speed:parseFloat(localStorage.getItem('wiz_tts_qwen_speed')||'1.0')}})
+      body:JSON.stringify({model:'cosyvoice-v2',input:{text:text.slice(0,3000),voice:localStorage.getItem('wiz_lab_tts_qwen_voice')||'longxiaochun'},parameters:{text_type:'PlainText',format:'mp3',sample_rate:22050,speed:parseFloat(localStorage.getItem('wiz_lab_tts_qwen_speed')||'1.0')}})
     }).then(r=>r.ok?r.blob():r.json().then(e=>{throw new Error(e.message||e.code||r.status);}))
       .then(blob=>URL.createObjectURL(blob));
   }
@@ -4673,7 +4695,7 @@ async function getFilesContext(panel, userQuery) {
   if (!files.length) return '';
 
   const provider = document.getElementById('cfgProvider')?.value || '';
-  const apiKey   = sessionStorage.getItem('cfgApiKey') || '';
+  const apiKey   = sessionStorage.getItem('wiz_lab_cfgApiKey') || '';
 
   // v1.7.7: server upload для больших файлов (>50 KB)
   // Сохраняем server-side refs для использования в API call
@@ -4948,7 +4970,7 @@ function _agentToolUseSupported(provider) {
   return provider === 'deepseek' || provider === 'gemini';
 }
 function _agentToolUseEnabled() {
-  return localStorage.getItem('wiz_agent_tooluse') !== '0';
+  return localStorage.getItem('wiz_lab_agent_tooluse') !== '0';
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -5111,7 +5133,7 @@ async function wizInitSQLite() {
   if (!window.initSqlJs) return null;
   try {
     const SQL = await initSqlJs({ locateFile: f => f });
-    const saved = await _wizIDBGet('wiz_sqlite_db');
+    const saved = await _wizIDBGet('wiz_lab_sqlite_db');
     window._wizDB = saved ? new SQL.Database(new Uint8Array(saved)) : new SQL.Database();
     _wizInitMemSchema();
     console.log('[WizMem] SQLite v1.8.0 готов');
@@ -5126,7 +5148,7 @@ function _wizSaveDB() {
   if (!window._wizDB) return;
   try {
     const buf = window._wizDB.export();
-    _wizIDBSet('wiz_sqlite_db', buf.buffer);
+    _wizIDBSet('wiz_lab_sqlite_db', buf.buffer);
   } catch(e) {}
 }
 
@@ -5134,7 +5156,7 @@ function _wizSaveDB() {
 function _wizIDBGet(key) {
   return new Promise(res => {
     try {
-      const req = indexedDB.open('wiz_mem_store', 1);
+      const req = indexedDB.open('wiz_lab_mem_store', 1);
       req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
       req.onsuccess = e => {
         const r = e.target.result.transaction('kv','readonly').objectStore('kv').get(key);
@@ -5147,7 +5169,7 @@ function _wizIDBGet(key) {
 }
 function _wizIDBSet(key, val) {
   try {
-    const req = indexedDB.open('wiz_mem_store', 1);
+    const req = indexedDB.open('wiz_lab_mem_store', 1);
     req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
     req.onsuccess = e => e.target.result.transaction('kv','readwrite').objectStore('kv').put(val, key);
   } catch(e) {}
@@ -6160,9 +6182,9 @@ async function sendMessage(inputEl, historyEl) {
   }
   // API key — приоритетно для конкретного провайдера. Legacy-слот используется
   // только если провайдер совпадает с текущим в Чат-дропдауне (иначе там чужой ключ).
-  const apiKey = sessionStorage.getItem('cfgApiKey_' + provider) ||
+  const apiKey = sessionStorage.getItem('wiz_lab_cfgApiKey_' + provider) ||
                  (provider === document.getElementById('cfgProvider')?.value
-                   ? (sessionStorage.getItem('cfgApiKey') || '')
+                   ? (sessionStorage.getItem('wiz_lab_cfgApiKey') || '')
                    : '');
 
   // Thinking mode detection — до typing, чтобы сразу показать анимацию
@@ -6235,9 +6257,9 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
   let messageWithFiles = text + filesContext + _pasteCtx;
 
   // ── Веб-поиск (Google Grounding / Tavily / Wikipedia / DDG) ─────────
-  const _wizSearchProv = localStorage.getItem('wiz_search_provider') || 'off';
+  const _wizSearchProv = localStorage.getItem('wiz_lab_search_provider') || 'off';
   const _wizSearchIntent = /найди|найдите|поищи|поиск|погода|новост|курс|что сейчас|сейчас|найти|search|find|latest|news|weather|сколько стоит/i.test(text);
-  if (_wizSearchProv !== 'off' || (_wizSearchIntent && (sessionStorage.getItem('duckDuckGoEnabled') === 'true'))) {
+  if (_wizSearchProv !== 'off' || (_wizSearchIntent && (sessionStorage.getItem('wiz_lab_duckDuckGoEnabled') === 'true'))) {
     const _searchResult = await wizWebSearch(text, _wizSearchProv);
     if (_searchResult) { messageWithFiles += '\n\n[Результаты веб-поиска]:\n' + _searchResult; _wizUsedWeb = true; }
   }
@@ -6295,7 +6317,7 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
   }
 
   // ── Инжект личной памяти в контекст ─────────────────────────────────
-  if (localStorage.getItem('wizardMemoryInject') !== 'false') {
+  if (localStorage.getItem('wiz_lab_wizardMemoryInject') !== 'false') {
     const memCtx = getMemoryContext();
     if (memCtx) messageWithFiles += memCtx;
   }
@@ -7074,7 +7096,7 @@ async function loadConfig() {
     populateAgentModels(agProv?.value || 'ollama', cfg.agentModel || null);
     // ключ агент-провайдера из sessionStorage
     const agKey = document.getElementById('cfgAgentApiKey');
-    if (agKey && agProv) agKey.value = sessionStorage.getItem('cfgApiKey_' + agProv.value) || '';
+    if (agKey && agProv) agKey.value = sessionStorage.getItem('wiz_lab_cfgApiKey_' + agProv.value) || '';
   }
   if (cfg.theme)    document.getElementById('cfgTheme').value    = cfg.theme;
   if (cfg.thinking !== undefined) document.getElementById('cfgThinking').checked = cfg.thinking;
@@ -7089,8 +7111,8 @@ async function loadConfig() {
   applyTheme(cfg.theme || 'azure');
 
   // API ключ из sessionStorage (безопаснее чем IndexedDB)
-  const apiKey = sessionStorage.getItem('cfgApiKey');
-  if (apiKey) document.getElementById('cfgApiKey').value = apiKey;
+  const apiKey = sessionStorage.getItem('wiz_lab_cfgApiKey');
+  if (apiKey) document.getElementById('wiz_lab_cfgApiKey').value = apiKey;
 }
 
 function applyTheme(theme) {
@@ -7101,7 +7123,7 @@ function applyTheme(theme) {
 // Проверка API подключения
 async function testApiConnection() {
   const provider = document.getElementById('cfgProvider').value;
-  const apiKey = sessionStorage.getItem('cfgApiKey');
+  const apiKey = sessionStorage.getItem('wiz_lab_cfgApiKey');
   const dot = document.getElementById('apiStatusDot');
   const text = document.getElementById('apiStatusText');
 
@@ -7192,10 +7214,10 @@ document.getElementById('testApi').addEventListener('click', testApiConnection);
 function saveConfigField(key, value) {
   // API ключ храним в sessionStorage, остальное в IndexedDB
   if (key === 'apikey' || key === 'apiKey') {
-    sessionStorage.setItem('cfgApiKey', value);
+    sessionStorage.setItem('wiz_lab_cfgApiKey', value);
     // v1.7.8: дублируем под текущий провайдер чтобы ключи разных провайдеров не затирали друг друга
     const _curProv = document.getElementById('cfgProvider')?.value;
-    if (_curProv) sessionStorage.setItem('cfgApiKey_' + _curProv, value);
+    if (_curProv) sessionStorage.setItem('wiz_lab_cfgApiKey_' + _curProv, value);
     return;
   }
   if (db) dbPut('config', { id: key, key, value });
@@ -7349,11 +7371,11 @@ function populateAgentModels(provider, savedModel) {
     populateModels(this.value, null);
     saveConfigField('model', modelSelect.value);
     // v1.7.8: подменить значение API key на сохранённое для нового провайдера
-    const _savedForNewProv = sessionStorage.getItem('cfgApiKey_' + this.value) || '';
-    const _keyEl = document.getElementById('cfgApiKey');
+    const _savedForNewProv = sessionStorage.getItem('wiz_lab_cfgApiKey_' + this.value) || '';
+    const _keyEl = document.getElementById('wiz_lab_cfgApiKey');
     if (_keyEl) {
       _keyEl.value = _savedForNewProv;
-      sessionStorage.setItem('cfgApiKey', _savedForNewProv);
+      sessionStorage.setItem('wiz_lab_cfgApiKey', _savedForNewProv);
     }
     // legacy: openrouter/auto special handling
     if (this.value === 'openrouter') {
@@ -7391,7 +7413,7 @@ function populateAgentModels(provider, savedModel) {
 
   function refreshAgentKeyField() {
     if (!agKey) return;
-    const saved = sessionStorage.getItem('cfgApiKey_' + agProv.value) || '';
+    const saved = sessionStorage.getItem('wiz_lab_cfgApiKey_' + agProv.value) || '';
     agKey.value = saved;
   }
 
@@ -7421,14 +7443,14 @@ function populateAgentModels(provider, savedModel) {
 
   if (agKey) {
     agKey.addEventListener('input', function() {
-      sessionStorage.setItem('cfgApiKey_' + agProv.value, this.value);
+      sessionStorage.setItem('wiz_lab_cfgApiKey_' + agProv.value, this.value);
     });
   }
   if (agKeyBtn) {
     agKeyBtn.addEventListener('click', function() {
       const k = (agKey?.value || '').trim();
       if (k) {
-        sessionStorage.setItem('cfgApiKey_' + agProv.value, k);
+        sessionStorage.setItem('wiz_lab_cfgApiKey_' + agProv.value, k);
         showToast('✅ API ключ агента активирован');
       }
     });
@@ -7436,7 +7458,7 @@ function populateAgentModels(provider, savedModel) {
   if (agKeyClear) {
     agKeyClear.addEventListener('click', function() {
       if (agKey) agKey.value = '';
-      sessionStorage.removeItem('cfgApiKey_' + agProv.value);
+      sessionStorage.removeItem('wiz_lab_cfgApiKey_' + agProv.value);
       showToast('🗑 Ключ агента очищен');
     });
   }
@@ -7455,7 +7477,7 @@ function populateAgentModels(provider, savedModel) {
 (function initAgentToolUseToggle(){
   const el = document.getElementById('cfgAgentToolUse');
   if (!el) return;
-  const v = localStorage.getItem('wiz_agent_tooluse');
+  const v = localStorage.getItem('wiz_lab_agent_tooluse');
   el.checked = v !== '0';
 })();
 
@@ -7473,9 +7495,9 @@ function _orUpdateBlockVisibility() {
   if (prov === 'deepseek') wizRenderDsModel();
 
   // Динамический плейсхолдер и подсказка под полем ключа
-  const keyInput = document.getElementById('cfgApiKey');
+  const keyInput = document.getElementById('wiz_lab_cfgApiKey');
   const keyHint  = document.getElementById('cfgApiKeyHint');
-  const keyLabel = document.querySelector('label[for="cfgApiKey"]');
+  const keyLabel = document.querySelector('label[for="wiz_lab_cfgApiKey"]');
   // v1.7.8 FIX: безопасный доступ к LANGS — может быть в TDZ при ранних вызовах
   let _ollamaPh = 'не нужен', _ollamaHint = '🖥 Локальный сервер — ключ не требуется';
   try {
@@ -7501,14 +7523,14 @@ function _orUpdateBlockVisibility() {
 
 // Restore OR key into the input on load
 function _orRestoreKey() {
-  const stored = sessionStorage.getItem('eiti_or_key');
+  const stored = sessionStorage.getItem('eiti_lab_or_key');
   const input = document.getElementById('openrouter-key');
   if (input && stored) input.value = stored;
 }
 
 // Restore active OR model button state
 function _orRestoreModel() {
-  const m = sessionStorage.getItem('eiti_or_model') || 'openrouter/auto';
+  const m = sessionStorage.getItem('eiti_lab_or_model') || 'openrouter/auto';
   const label = document.getElementById('or-model-label');
   if (label) label.textContent = 'Модель: ' + m;
   const ids = {
@@ -7531,7 +7553,7 @@ function eitiClearKey(inputId, storageKey) {
   const el = document.getElementById(inputId);
   if (el) el.value = '';
   sessionStorage.removeItem(storageKey);
-  if (storageKey === 'eiti_or_key') {
+  if (storageKey === 'eiti_lab_or_key') {
     const status = document.getElementById('or-key-status');
     if (status) status.textContent = '';
   }
@@ -7548,10 +7570,10 @@ function eitiConfirmORKey() {
     return;
   }
 
-  sessionStorage.setItem('eiti_or_key', key);
-  sessionStorage.setItem('cfgApiKey', key);
+  sessionStorage.setItem('eiti_lab_or_key', key);
+  sessionStorage.setItem('wiz_lab_cfgApiKey', key);
   // Mirror into the main API key field so existing chat logic picks it up
-  const mainKey = document.getElementById('cfgApiKey');
+  const mainKey = document.getElementById('wiz_lab_cfgApiKey');
   if (mainKey) mainKey.value = key;
 
   if (status) { status.textContent = '✅ Ключ сохранён'; status.style.color = '#4ade80'; }
@@ -7560,7 +7582,7 @@ function eitiConfirmORKey() {
 
 function eitiSetORModel(model) {
   if (!model) return;
-  sessionStorage.setItem('eiti_or_model', model);
+  sessionStorage.setItem('eiti_lab_or_model', model);
 
   // Update the main cfgModel dropdown and persist
   const modelSel = document.getElementById('cfgModel');
@@ -7602,7 +7624,7 @@ function eitiSetORModel(model) {
 
 async function eitiTestOpenRouter() {
   const statusEl = document.getElementById('eiti-or-status');
-  const key = sessionStorage.getItem('eiti_or_key') || sessionStorage.getItem('cfgApiKey');
+  const key = sessionStorage.getItem('eiti_lab_or_key') || sessionStorage.getItem('wiz_lab_cfgApiKey');
   if (!key) {
     if (statusEl) { statusEl.textContent = '⚠️ Ключ не установлен'; statusEl.style.color = '#f87171'; }
     return;
@@ -7643,13 +7665,13 @@ document.getElementById('saveInstructions').addEventListener('click', () => {
 });
 
 // API Key в sessionStorage
-const cfgApiKey = document.getElementById('cfgApiKey');
+const cfgApiKey = document.getElementById('wiz_lab_cfgApiKey');
 const activateApiKey = document.getElementById('activateApiKey');
 // v1.7.8: вспомогалка — сохранить ключ и в legacy-слот, и в слот для текущего провайдера
 function _saveApiKeyForCurrentProvider(value) {
-  sessionStorage.setItem('cfgApiKey', value);
+  sessionStorage.setItem('wiz_lab_cfgApiKey', value);
   const p = document.getElementById('cfgProvider')?.value;
-  if (p) sessionStorage.setItem('cfgApiKey_' + p, value);
+  if (p) sessionStorage.setItem('wiz_lab_cfgApiKey_' + p, value);
 }
 if (cfgApiKey) {
   cfgApiKey.addEventListener('input', e => {
@@ -7681,7 +7703,7 @@ const clearApiKeyBtn = document.getElementById('clearApiKey');
 if (clearApiKeyBtn) {
   clearApiKeyBtn.addEventListener('click', () => {
     if (cfgApiKey) cfgApiKey.value = '';
-    sessionStorage.removeItem('cfgApiKey');
+    sessionStorage.removeItem('wiz_lab_cfgApiKey');
     showToast('🗑 API ключ очищен');
   });
 }
@@ -7732,15 +7754,15 @@ document.querySelectorAll('.mode-tab').forEach(tab => {
 
 
 function eitiSetSearchProvider(provider) {
-  localStorage.setItem('wiz_search_provider', provider);
-  localStorage.setItem('eiti_ddg_on', provider !== 'off' ? '1' : '0');
+  localStorage.setItem('wiz_lab_search_provider', provider);
+  localStorage.setItem('eiti_lab_ddg_on', provider !== 'off' ? '1' : '0');
   _eitiUpdateSearchProviderUI(provider);
   const labels = { 'gemini-grounding':'🔵 Google Search', 'tavily':'🔍 Tavily', 'off':'🚫 Выключен' };
   showToast('🌐 Поиск: ' + (labels[provider] || provider));
 }
 
 function _eitiUpdateSearchProviderUI(provider) {
-  const prov = provider || localStorage.getItem('wiz_search_provider') || 'off';
+  const prov = provider || localStorage.getItem('wiz_lab_search_provider') || 'off';
   const btnMap = { 'gemini-grounding':'esp-btn-gemini', 'tavily':'esp-btn-tavily', 'off':'esp-btn-off' };
   Object.keys(btnMap).forEach(p => {
     const btn = document.getElementById(btnMap[p]);
@@ -7753,7 +7775,7 @@ function _eitiUpdateSearchProviderUI(provider) {
   if (tavilyWrap) tavilyWrap.style.display = prov === 'tavily' ? 'block' : 'none';
   if (prov === 'tavily') {
     const ti = document.getElementById('esp-tavily-key-input');
-    if (ti && !ti.value) { const s = localStorage.getItem('wiz_tavily_key'); if (s) ti.value = _deobfKey(s); }
+    if (ti && !ti.value) { const s = localStorage.getItem('wiz_lab_tavily_key'); if (s) ti.value = _deobfKey(s); }
   }
   const lbl = document.getElementById('esp-status-label');
   // v1.7.8 FIX: безопасный доступ к LANGS — может быть в TDZ при ранних вызовах
@@ -7764,7 +7786,7 @@ function _eitiUpdateSearchProviderUI(provider) {
 }
 
 function eitiVerifyTavilyKey() {
-  const k = _deobfKey(localStorage.getItem('wiz_tavily_key') || '');
+  const k = _deobfKey(localStorage.getItem('wiz_lab_tavily_key') || '');
   const stEl = document.getElementById('esp-tavily-status');
   const setS = (ok, msg) => { if (!stEl) return; stEl.style.display='block'; stEl.textContent=(ok?'✅ ':'❌ ')+msg; stEl.style.background=ok?'rgba(74,222,128,.12)':'rgba(255,80,80,.12)'; stEl.style.color=ok?'#4ade80':'#ff6b6b'; };
   if (!k) { setS(false,'Введи ключ Tavily'); return; }
@@ -7783,10 +7805,10 @@ _eitiUpdateSearchProviderUI();
 async function wizWebSearch(query, provider) {
   // Google Grounding через Gemini API
   async function tryGeminiGrounding(onFail) {
-    const key = sessionStorage.getItem('cfgApiKey');
+    const key = sessionStorage.getItem('wiz_lab_cfgApiKey');
     const prov = document.getElementById('cfgProvider')?.value;
     // Только если провайдер Gemini и ключ есть
-    const gemKey = prov === 'gemini' ? key : _deobfKey(localStorage.getItem('wiz_tts_gemini_key') || '');
+    const gemKey = prov === 'gemini' ? key : _deobfKey(localStorage.getItem('wiz_lab_tts_gemini_key') || '');
     if (!gemKey) { onFail(); return; }
     const model = document.getElementById('cfgModel')?.value || 'gemini-2.5-flash';
     try {
@@ -7824,7 +7846,7 @@ async function wizWebSearch(query, provider) {
 
   // Tavily
   async function tryTavily(onFail) {
-    const k = _deobfKey(localStorage.getItem('wiz_tavily_key') || '');
+    const k = _deobfKey(localStorage.getItem('wiz_lab_tavily_key') || '');
     if (!k) { onFail(); return; }
     try {
       const r = await fetch('https://api.tavily.com/search', {
@@ -7907,11 +7929,11 @@ function applyDiaryState(enabled) {
 }
 
 if (toggleDiary) {
-  const diaryEnabled = sessionStorage.getItem('diaryEnabled') === 'true';
+  const diaryEnabled = sessionStorage.getItem('wiz_lab_diaryEnabled') === 'true';
   applyDiaryState(diaryEnabled);
   toggleDiary.addEventListener('change', () => {
     const enabled = toggleDiary.checked;
-    sessionStorage.setItem('diaryEnabled', String(enabled));
+    sessionStorage.setItem('wiz_lab_diaryEnabled', String(enabled));
     applyDiaryState(enabled);
     showToast(enabled ? '📔 Дневник включен' : '📔 Дневник выключен');
   });
@@ -8072,44 +8094,44 @@ let grokMuted = false;
 
   // Restore saved values
   if (tog) {
-    applyGrokVoice(localStorage.getItem('wizardGrokVoice') === 'true');
+    applyGrokVoice(localStorage.getItem('wiz_lab_wizardGrokVoice') === 'true');
     tog.addEventListener('change', () => {
-      localStorage.setItem('wizardGrokVoice', tog.checked);
+      localStorage.setItem('wiz_lab_wizardGrokVoice', tog.checked);
       applyGrokVoice(tog.checked);
       showToast(tog.checked ? '🎙 Grok Voice включён' : '🎙 Grok Voice выключен');
     });
   }
   if (apiKeyIn) {
-    apiKeyIn.value = localStorage.getItem('wizardGrokApiKey') || '';
+    apiKeyIn.value = localStorage.getItem('wiz_lab_wizardGrokApiKey') || '';
   }
   if (apiKeyBtn) {
     apiKeyBtn.addEventListener('click', () => {
       const val = apiKeyIn?.value.trim();
-      if (val) { localStorage.setItem('wizardGrokApiKey', val); showToast('✓ xAI API ключ сохранён'); }
-      else { localStorage.removeItem('wizardGrokApiKey'); showToast('🗑 ключ удалён'); }
+      if (val) { localStorage.setItem('wiz_lab_wizardGrokApiKey', val); showToast('✓ xAI API ключ сохранён'); }
+      else { localStorage.removeItem('wiz_lab_wizardGrokApiKey'); showToast('🗑 ключ удалён'); }
     });
   }
   if (voiceSel) {
-    voiceSel.value = localStorage.getItem('wizardGrokVoiceId') || 'eve';
-    voiceSel.addEventListener('change', () => localStorage.setItem('wizardGrokVoiceId', voiceSel.value));
+    voiceSel.value = localStorage.getItem('wiz_lab_wizardGrokVoiceId') || 'eve';
+    voiceSel.addEventListener('change', () => localStorage.setItem('wiz_lab_wizardGrokVoiceId', voiceSel.value));
   }
   if (thinkTog) {
-    thinkTog.checked = localStorage.getItem('wizardGrokVoiceThink') === 'true';
-    thinkTog.addEventListener('change', () => localStorage.setItem('wizardGrokVoiceThink', thinkTog.checked));
+    thinkTog.checked = localStorage.getItem('wiz_lab_wizardGrokVoiceThink') === 'true';
+    thinkTog.addEventListener('change', () => localStorage.setItem('wiz_lab_wizardGrokVoiceThink', thinkTog.checked));
   }
   if (instrTA) {
-    instrTA.value = localStorage.getItem('wizardGrokVoiceInstr') || '';
-    instrTA.addEventListener('input', () => localStorage.setItem('wizardGrokVoiceInstr', instrTA.value.trim()));
+    instrTA.value = localStorage.getItem('wiz_lab_wizardGrokVoiceInstr') || '';
+    instrTA.addEventListener('input', () => localStorage.setItem('wiz_lab_wizardGrokVoiceInstr', instrTA.value.trim()));
   }
   if (muteTog) {
-    grokMuted = localStorage.getItem('wizardGrokMute') === 'true';
+    grokMuted = localStorage.getItem('wiz_lab_wizardGrokMute') === 'true';
     muteTog.checked = grokMuted;
     if (muteStatus) muteStatus.textContent = grokMuted
       ? 'Вкл — пишешь текстом, AI отвечает голосом'
       : 'Выкл — микрофон активен';
     muteTog.addEventListener('change', () => {
       grokMuted = muteTog.checked;
-      localStorage.setItem('wizardGrokMute', grokMuted);
+      localStorage.setItem('wiz_lab_wizardGrokMute', grokMuted);
       if (muteStatus) muteStatus.textContent = grokMuted
         ? 'Вкл — пишешь текстом, AI отвечает голосом'
         : 'Выкл — микрофон активен';
@@ -8131,7 +8153,7 @@ let grokMuted = false;
         // unmute
         grokMuted = false;
         if (muteTog) muteTog.checked = false;
-        localStorage.setItem('wizardGrokMute', 'false');
+        localStorage.setItem('wiz_lab_wizardGrokMute', 'false');
         if (grokMediaStream) grokMediaStream.getAudioTracks().forEach(t => { t.enabled = true; });
         const micBtn = document.getElementById('voiceMicBtn');
         if (micBtn) micBtn.textContent = '🔴';
@@ -8155,12 +8177,12 @@ async function openGrokVoiceSession() {
   if (grokRecording) { stopGrokVoice(); return; }
 
   // Use dedicated xAI key if set, else fallback to main API key
-  const apiKey = localStorage.getItem('wizardGrokApiKey') || sessionStorage.getItem('cfgApiKey');
+  const apiKey = localStorage.getItem('wiz_lab_wizardGrokApiKey') || sessionStorage.getItem('wiz_lab_cfgApiKey');
   if (!apiKey) { showToast('⚠️ Добавьте xAI API Key в Настройки → Grok Voice'); return; }
 
-  const voiceId  = localStorage.getItem('wizardGrokVoiceId') || 'eve';
-  const useThink = localStorage.getItem('wizardGrokVoiceThink') === 'true';
-  const instr    = localStorage.getItem('wizardGrokVoiceInstr')
+  const voiceId  = localStorage.getItem('wiz_lab_wizardGrokVoiceId') || 'eve';
+  const useThink = localStorage.getItem('wiz_lab_wizardGrokVoiceThink') === 'true';
+  const instr    = localStorage.getItem('wiz_lab_wizardGrokVoiceInstr')
     || 'You are a helpful assistant. Respond in the same language as the user. Be concise.';
 
   const micBtn = document.getElementById('voiceMicBtn');
@@ -8294,7 +8316,7 @@ openDB().then(() => {
   cleanupOldMessages(); // Очистка старых сообщений
   setTimeout(initTTSProviderUI, 400); // TTS UI init
   // Restore max tokens slider
-  (function(){ const v=localStorage.getItem('wiz_max_tokens')||'8000'; const sl=document.getElementById('cfgMaxTokens'); const lb=document.getElementById('token-budget-val'); if(sl){sl.value=v;} if(lb){lb.textContent=Number(v).toLocaleString('ru');} })();
+  (function(){ const v=localStorage.getItem('wiz_lab_max_tokens')||'8000'; const sl=document.getElementById('cfgMaxTokens'); const lb=document.getElementById('token-budget-val'); if(sl){sl.value=v;} if(lb){lb.textContent=Number(v).toLocaleString('ru');} })();
   // P2 fix: use requestIdleCallback for non-critical init to avoid UI thread freezes
   const _rIC = window.requestIdleCallback || (cb => setTimeout(cb, 0));
   _rIC(() => { tabVisibilityInit(); headerQuickNavApply(); if (typeof eitiInitMemoryAndBoard === 'function') eitiInitMemoryAndBoard(); });
@@ -8381,7 +8403,7 @@ document.getElementById('exportConfigJson').addEventListener('click', async () =
   const items = await dbGetAll('config');
   const cfg = Object.fromEntries(items.map(i => [i.key, i.value]));
   // Добавляем API ключ из sessionStorage
-  const apiKey = sessionStorage.getItem('cfgApiKey');
+  const apiKey = sessionStorage.getItem('wiz_lab_cfgApiKey');
   if (apiKey) cfg.apiKey = apiKey;
   const data = JSON.stringify(cfg, null, 2);
   downloadFile(data, 'velan-eiti-config.json', 'application/json');
@@ -8454,7 +8476,7 @@ document.getElementById('importConfigJson').addEventListener('change', async (e)
     // Сохраняем конфигурацию
     for (const [key, value] of Object.entries(cfg)) {
       if (key === 'apiKey') {
-        sessionStorage.setItem('cfgApiKey', value);
+        sessionStorage.setItem('wiz_lab_cfgApiKey', value);
       } else {
         dbPut('config', { id: key, key, value });
       }
@@ -9067,7 +9089,7 @@ const CHAT_TOOL_IDS = ['toolAttach','toolClear','toolGear','toolVoice'];
 const GEAR_ITEM_IDS = ['gearAttach','gearThink','gearCopy','gearClearChat','gearVoice','gearMute'];
 
 function loadChatTools() {
-  const saved = JSON.parse(localStorage.getItem('wizardChatTools') || '{}');
+  const saved = JSON.parse(localStorage.getItem('wiz_lab_wizardChatTools') || '{}');
   // defaults
   if (saved.toolAttach === undefined) saved.toolAttach = true;
   if (saved.toolClear  === undefined) saved.toolClear  = true;
@@ -9094,7 +9116,7 @@ function saveChatTools() {
     const el = document.getElementById(id);
     if (el) obj[id] = el.checked;
   });
-  localStorage.setItem('wizardChatTools', JSON.stringify(obj));
+  localStorage.setItem('wiz_lab_wizardChatTools', JSON.stringify(obj));
   applyToolButtons(obj);
 }
 
@@ -9114,7 +9136,7 @@ function applyToolButtons(cfg) {
 
 // ⚙️ Gear Bottom Sheet
 function openGearSheet() {
-  const cfg = JSON.parse(localStorage.getItem('wizardChatTools') || '{}');
+  const cfg = JSON.parse(localStorage.getItem('wiz_lab_wizardChatTools') || '{}');
   const container = document.getElementById('gearItems');
   container.innerHTML = '';
 
@@ -9159,7 +9181,7 @@ function toggleThinkMode() {
 function toggleMicMute() {
   if (!grokRecording) { showToast('⚠️ Grok Voice не активен'); return; }
   grokMuted = !grokMuted;
-  localStorage.setItem('wizardGrokMute', grokMuted);
+  localStorage.setItem('wiz_lab_wizardGrokMute', grokMuted);
   // Sync settings toggle
   const muteTog = document.getElementById('grokVoiceMute');
   if (muteTog) muteTog.checked = grokMuted;
@@ -9198,7 +9220,7 @@ function clearChatConfirm() {
 // ═══════════════════════════════════════════════════════════════
 // 🧠 PERSONAL MEMORY
 // ═══════════════════════════════════════════════════════════════
-const PERSONAL_MEMORY_KEY = 'wizard_personal_memory';
+const PERSONAL_MEMORY_KEY = 'wiz_lab_wizard_personal_memory';
 
 function getPersonalMemory() {
   try { return JSON.parse(localStorage.getItem(PERSONAL_MEMORY_KEY) || '[]'); } catch { return []; }
@@ -9223,12 +9245,12 @@ function getMemoryContext() {
 const toggleAutoMemory = document.getElementById('toggleAutoMemory');
 const autoMemoryStatus = document.getElementById('autoMemoryStatus');
 if (toggleAutoMemory) {
-  const autoEnabled = localStorage.getItem('wizardAutoMemory') === 'true';
+  const autoEnabled = localStorage.getItem('wiz_lab_wizardAutoMemory') === 'true';
   toggleAutoMemory.checked = autoEnabled;
   if (autoMemoryStatus) { const _amt = LANGS[currentLang] || LANGS.ru; autoMemoryStatus.textContent = autoEnabled ? (currentLang==='en' ? 'On — facts auto-extracted' : 'Вкл — факты извлекаются автоматически') : (_amt.tog_auto_memory_off || 'Выкл — только /запомни'); }
   toggleAutoMemory.addEventListener('change', () => {
     const v = toggleAutoMemory.checked;
-    localStorage.setItem('wizardAutoMemory', String(v));
+    localStorage.setItem('wiz_lab_wizardAutoMemory', String(v));
     if (autoMemoryStatus) { const _amt = LANGS[currentLang] || LANGS.ru; autoMemoryStatus.textContent = v ? (currentLang==='en' ? 'On — facts auto-extracted' : 'Вкл — факты извлекаются автоматически') : (_amt.tog_auto_memory_off || 'Выкл — только /запомни'); }
   });
 }
@@ -9241,12 +9263,12 @@ document.getElementById('clearPersonalMemory')?.addEventListener('click', () => 
 });
 
 document.getElementById('toggleMemoryInject')?.addEventListener('change', function() {
-  localStorage.setItem('wizardMemoryInject', this.checked ? 'true' : 'false');
+  localStorage.setItem('wiz_lab_wizardMemoryInject', this.checked ? 'true' : 'false');
 });
 // Restore state
 (function() {
   const el = document.getElementById('toggleMemoryInject');
-  if (el) el.checked = localStorage.getItem('wizardMemoryInject') !== 'false';
+  if (el) el.checked = localStorage.getItem('wiz_lab_wizardMemoryInject') !== 'false';
 })();
 
 // Pattern: "что ты знаешь обо мне"
@@ -9269,7 +9291,7 @@ function buildPersonalMemoryAnswer() {
 
 // Auto-extract personal facts from AI response (lightweight heuristic)
 async function autoExtractFacts(aiText) {
-  if (localStorage.getItem('wizardAutoMemory') !== 'true') return;
+  if (localStorage.getItem('wiz_lab_wizardAutoMemory') !== 'true') return;
   const sentences = aiText.split(/[.!?\n]/).filter(s => s.length > 10 && s.length < 120);
   const personal = sentences.filter(s =>
     /\b(ты|вы|тебе|вам|твой|твоей|твоя|ваш|пользователь)\b/i.test(s) &&
@@ -9281,7 +9303,7 @@ async function autoExtractFacts(aiText) {
 // ═══════════════════════════════════════════════════════════════
 // 🧰 PROJECTS
 // ═══════════════════════════════════════════════════════════════
-const PROJECTS_KEY = 'wizard_projects';
+const PROJECTS_KEY = 'wiz_lab_wizard_projects';
 let activeProjectId = null;
 let _suggestContent = '';
 
@@ -9425,7 +9447,7 @@ const AGENT_TEMPLATES = [
 ];
 
 function loadAgentTools() {
-  const saved = JSON.parse(localStorage.getItem('wizardAgentTools') || '{}');
+  const saved = JSON.parse(localStorage.getItem('wiz_lab_wizardAgentTools') || '{}');
   if (saved.agToolAttach    === undefined) saved.agToolAttach    = true;
   if (saved.agToolClear     === undefined) saved.agToolClear     = true;
   if (saved.agToolGear      === undefined) saved.agToolGear      = false;
@@ -9448,7 +9470,7 @@ function saveAgentTools() {
     const el = document.getElementById(id);
     if (el) obj[id] = el.checked;
   });
-  localStorage.setItem('wizardAgentTools', JSON.stringify(obj));
+  localStorage.setItem('wiz_lab_wizardAgentTools', JSON.stringify(obj));
   applyAgentButtons(obj);
 }
 
@@ -9465,7 +9487,7 @@ function applyAgentButtons(cfg) {
 });
 
 function openAgentGearSheet() {
-  const cfg = JSON.parse(localStorage.getItem('wizardAgentTools') || '{}');
+  const cfg = JSON.parse(localStorage.getItem('wiz_lab_wizardAgentTools') || '{}');
   const container = document.getElementById('agentGearItems');
   container.innerHTML = '';
   const _agt = LANGS[currentLang] || LANGS.ru;
@@ -9546,7 +9568,7 @@ loadChatTools();
 
 // ── Бюджет токенов ───────────────────────────────────────────────────────────
 function wizGetMaxTokens() {
-  return parseInt(localStorage.getItem('wiz_max_tokens') || '8000', 10);
+  return parseInt(localStorage.getItem('wiz_lab_max_tokens') || '8000', 10);
 }
 // ── Provider display info ────────────────────────────────────────────────────
 const WIZ_PROVIDER_INFO = {
@@ -9656,13 +9678,13 @@ var _rneData = { goals:[], facts:[], questions:[], gaps:[], solutions:[], lastEx
 var _rneSection = 'goals';
 var _rneChatHistory = [];
 var _rneLoaded = false;
-var RNE_IDB_KEY = 'wizard_rne_v1';
+var RNE_IDB_KEY = 'wiz_lab_wizard_rne_v1';
 
 // ── Вызов AI через Wizard-провайдер ─────────────────────────────────────────
 async function _rneCallLLM(prompt, isChat) {
   var provider = document.getElementById('cfgProvider').value;
   var model    = document.getElementById('cfgModel').value;
-  var apiKey   = sessionStorage.getItem('cfgApiKey');
+  var apiKey   = sessionStorage.getItem('wiz_lab_cfgApiKey');
 
   var headers, body, apiUrl;
   var maxTok = isChat ? 800 : 1500;
@@ -9682,7 +9704,7 @@ async function _rneCallLLM(prompt, isChat) {
       openrouter:'https://openrouter.ai/api/v1/chat/completions'
     };
     apiUrl = urlMap[provider];
-    var bearerKey = provider === 'openrouter' ? sessionStorage.getItem('eiti_or_key') || apiKey : apiKey;
+    var bearerKey = provider === 'openrouter' ? sessionStorage.getItem('eiti_lab_or_key') || apiKey : apiKey;
     headers = { 'Content-Type':'application/json', 'Authorization':'Bearer ' + bearerKey };
     body = { model:model, messages:[{role:'user',content:prompt}], max_tokens:maxTok, temperature:temp };
     if (!isChat) body.response_format = { type:'json_object' };
@@ -9940,7 +9962,7 @@ window.rneRender = rneRender;
 // ═══════════════════════════════════════════════════════════════════════════
 // 🗂 TAB VISIBILITY — управление видимостью вкладок
 // ═══════════════════════════════════════════════════════════════════════════
-var TAB_VIS_KEY = 'wiz_tab_visibility';
+var TAB_VIS_KEY = 'wiz_lab_tab_visibility';
 
 // Все вкладки с мета-данными
 // v1.7.8: переводы берутся из LANGS[currentLang] во время рендера
@@ -9996,7 +10018,7 @@ function tabVisToggle(panel, visible) {
 }
 
 // Header quick-nav state
-var TAB_HDR_VIS_KEY = 'wiz_tab_hdr_vis';
+var TAB_HDR_VIS_KEY = 'wiz_lab_tab_hdr_vis';
 function tabVisHdrLoadState() {
   try {
     var stored = localStorage.getItem(TAB_HDR_VIS_KEY);
@@ -10193,7 +10215,7 @@ function wizShowImageChip(file, base64, mime) {
 let _eitiMemCache = null;
 
 function eitiMemEnabled() {
-  return localStorage.getItem('wiz_eiti_memory_enabled') !== 'false';
+  return localStorage.getItem('wiz_lab_eiti_memory_enabled') !== 'false';
 }
 
 function eitiMemLoadAsync() {
@@ -10319,7 +10341,7 @@ function escapeHtml(s) {
 // что новых зависимостей и ключей не добавляет. Тихо выключается, если нет
 // провайдера или тумблер в Настройках снят.
 // ═══════════════════════════════════════════════════════════════════════════
-const WIZ_SUGG_KEY = 'wiz_suggestions_enabled';
+const WIZ_SUGG_KEY = 'wiz_lab_suggestions_enabled';
 
 function wizSuggIsEnabled() {
   return localStorage.getItem(WIZ_SUGG_KEY) !== '0';
@@ -10330,9 +10352,9 @@ function _wizSuggResolveAPI() {
   const provider = document.getElementById('cfgProvider')?.value;
   const model    = document.getElementById('cfgModel')?.value;
   if (!provider || provider === 'ollama') return null; // локалка пропускаем
-  const apiKey = sessionStorage.getItem('cfgApiKey_' + provider) ||
+  const apiKey = sessionStorage.getItem('wiz_lab_cfgApiKey_' + provider) ||
                  (provider === document.getElementById('cfgProvider')?.value
-                   ? (sessionStorage.getItem('cfgApiKey') || '')
+                   ? (sessionStorage.getItem('wiz_lab_cfgApiKey') || '')
                    : '');
   if (!apiKey) return null;
   return { provider, model, apiKey };
@@ -10370,7 +10392,7 @@ async function wizGenerateSuggestions(msgEl, lastUserMsg, lastAIMsg) {
       };
       apiUrl = urlMap[cfg.provider];
       if (!apiUrl) return;
-      const bearer = cfg.provider === 'openrouter' ? (sessionStorage.getItem('eiti_or_key') || cfg.apiKey) : cfg.apiKey;
+      const bearer = cfg.provider === 'openrouter' ? (sessionStorage.getItem('eiti_lab_or_key') || cfg.apiKey) : cfg.apiKey;
       headers = { 'Content-Type':'application/json', 'Authorization':'Bearer ' + bearer };
       body = { model: cfg.model, max_tokens:150, temperature:0.7, messages:[{ role:'user', content: prompt }] };
     }
@@ -10517,7 +10539,7 @@ function getEitiMemoryContext() {
 // Toggle handler
 document.addEventListener('change', e => {
   if (e.target?.id === 'toggleEitiMemory') {
-    localStorage.setItem('wiz_eiti_memory_enabled', e.target.checked ? 'true' : 'false');
+    localStorage.setItem('wiz_lab_eiti_memory_enabled', e.target.checked ? 'true' : 'false');
     const sub = document.getElementById('eitiMemStatusSub');
     if (sub) sub.textContent = e.target.checked ? 'AI читает и записывает память' : 'Память отключена';
     showToast(e.target.checked ? '✅ Память включена' : '⛔ Память выключена');
@@ -10891,7 +10913,7 @@ function l2Consolidate(chatId) {
   if (typeof fmEnabled === 'function' && !fmEnabled('l2')) return;
   const provider = document.getElementById('cfgProvider')?.value;
   const model = document.getElementById('cfgModel')?.value;
-  const apiKey = sessionStorage.getItem('cfgApiKey_' + provider) || sessionStorage.getItem('cfgApiKey');
+  const apiKey = sessionStorage.getItem('wiz_lab_cfgApiKey_' + provider) || sessionStorage.getItem('wiz_lab_cfgApiKey');
   if (!apiKey || !provider || provider === 'ollama') return;
 
   dbGetAll('messages').then(allMsgs => {
@@ -10899,7 +10921,7 @@ function l2Consolidate(chatId) {
     const period = (typeof fmCfg === 'function') ? fmCfg('l2', 'period') : 10;
     if (chatMsgs.length < period) return;
     // Throttle: пересжимаем только раз в period сообщений
-    const atKey = 'wiz_l2_at_' + chatId;
+    const atKey = 'wiz_lab_l2_at_' + chatId;
     const lastN = Number(localStorage.getItem(atKey) || 0);
     if (chatMsgs.length - lastN < period && lastN > 0) return;
     localStorage.setItem(atKey, String(chatMsgs.length));
@@ -10969,7 +10991,7 @@ const FRACTAL_DEFAULTS = {
   l3: { enabled: true,  depth: 15, slice: 200 },                     // depth = max фактов в инжекте
 };
 
-function fmKey(layer, key) { return 'wiz_mem_' + layer + '_' + key; }
+function fmKey(layer, key) { return 'wiz_lab_mem_' + layer + '_' + key; }
 function fmCfg(layer, key) {
   const raw = localStorage.getItem(fmKey(layer, key));
   const def = FRACTAL_DEFAULTS[layer]?.[key];
@@ -11042,7 +11064,7 @@ async function getL0Context() {
 }
 
 // ── L1: LLM-сжатие старой части текущей сессии ─────────────────────────────
-function fmL1Key(chatId) { return 'wiz_l1_sum_' + chatId; }
+function fmL1Key(chatId) { return 'wiz_lab_l1_sum_' + chatId; }
 function getL1Context() {
   if (!fmEnabled('l1')) return '';
   const id = activePanel === 'chat' ? activeChatId : activeAgentId;
@@ -11055,7 +11077,7 @@ async function l1Compress(chatId) {
   if (!fmEnabled('l1') || !chatId || !db) return;
   const provider = document.getElementById('cfgProvider')?.value;
   const model    = document.getElementById('cfgModel')?.value;
-  const apiKey   = sessionStorage.getItem('cfgApiKey_' + provider) || sessionStorage.getItem('cfgApiKey');
+  const apiKey   = sessionStorage.getItem('wiz_lab_cfgApiKey_' + provider) || sessionStorage.getItem('wiz_lab_cfgApiKey');
   if (!apiKey || !provider || provider === 'ollama') return;
   try {
     const allMsgs = await dbGetAll('messages');
@@ -11154,7 +11176,7 @@ async function fmShowData(layer) {
 async function fmClearLayer(layer) {
   if (!confirm('Очистить данные слоя ' + layer.toUpperCase() + '?')) return;
   if (layer === 'l1') {
-    Object.keys(localStorage).filter(k => k.startsWith('wiz_l1_sum_')).forEach(k => localStorage.removeItem(k));
+    Object.keys(localStorage).filter(k => k.startsWith('wiz_lab_l1_sum_')).forEach(k => localStorage.removeItem(k));
   } else if (layer === 'l2') {
     const digs = await l2GetDigests();
     for (const d of digs) { try { await eitiMemDeleteEntry(d.id); } catch(e){} }
@@ -11315,7 +11337,7 @@ async function memAiAnalyze() {
 
   const provider = document.getElementById('cfgProvider')?.value;
   const model = document.getElementById('cfgModel')?.value;
-  const apiKey = sessionStorage.getItem('cfgApiKey');
+  const apiKey = sessionStorage.getItem('wiz_lab_cfgApiKey');
   if (!apiKey || !provider || provider === 'ollama') {
     res.textContent = '⚠️ Нужен API-ключ (не Ollama) для анализа';
     return;
@@ -11371,7 +11393,7 @@ async function memAiEdit() {
 
   const provider = document.getElementById('cfgProvider')?.value;
   const model = document.getElementById('cfgModel')?.value;
-  const apiKey = sessionStorage.getItem('cfgApiKey');
+  const apiKey = sessionStorage.getItem('wiz_lab_cfgApiKey');
   if (!apiKey) return;
   const res = document.getElementById('memAnalyzeResult');
   res.textContent = '⏳ Обрабатываю…';
@@ -11485,20 +11507,20 @@ function notesSetFolder(folder) {
 }
 
 function notesLoad() {
-  try { return JSON.parse(localStorage.getItem('wiz_notes_v1')||'[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem('wiz_lab_notes_v1')||'[]'); } catch { return []; }
 }
 function notesSave(notes) {
-  localStorage.setItem('wiz_notes_v1', JSON.stringify(notes));
+  localStorage.setItem('wiz_lab_notes_v1', JSON.stringify(notes));
   _wizNotesIdxDirty = true; // FTS-индекс пересоберётся при следующем поиске
 }
 
 function notesGetLayout() {
-  const v = localStorage.getItem('wiz_notes_layout') || 'tiles';
+  const v = localStorage.getItem('wiz_lab_notes_layout') || 'tiles';
   return ['tiles','vertical','sheets'].includes(v) ? v : 'tiles';
 }
 function notesSetLayout(layout) {
   if (!['tiles','vertical','sheets'].includes(layout)) layout = 'tiles';
-  localStorage.setItem('wiz_notes_layout', layout);
+  localStorage.setItem('wiz_lab_notes_layout', layout);
   ['tiles','vertical','sheets'].forEach(l => {
     const btn = document.getElementById('notesLayoutBtn' + l.charAt(0).toUpperCase()+l.slice(1));
     if (btn) {
@@ -11734,10 +11756,10 @@ function notesParseAICommands(text) {
 // 💾 EITI FILES — Создание и управление файлами
 // ═══════════════════════════════════════════════════════════════════════════
 function eitiFilesLoad() {
-  try { return JSON.parse(localStorage.getItem('wiz_eiti_files_v1')||'[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem('wiz_lab_eiti_files_v1')||'[]'); } catch { return []; }
 }
 function eitiFilesSave(files) {
-  localStorage.setItem('wiz_eiti_files_v1', JSON.stringify(files));
+  localStorage.setItem('wiz_lab_eiti_files_v1', JSON.stringify(files));
 }
 
 function eitiFilesRender(filter) {

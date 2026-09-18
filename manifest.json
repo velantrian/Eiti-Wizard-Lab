@@ -1,10 +1,10 @@
 {
-  "name": "EITI WIZARD",
-  "short_name": "EITI WIZARD",
-  "id": "/Eiti-Wizard/",
+  "name": "EITI WIZARD LAB",
+  "short_name": "Eiti Lab",
+  "id": "/Eiti-Wizard-Lab/",
   "description": "Терминальный AI-клиент · DeepSeek · Claude · Gemini · Grok · Groq · Ollama · Агент · Офлайн",
-  "start_url": "/Eiti-Wizard/",
-  "scope": "/Eiti-Wizard/",
+  "start_url": "/Eiti-Wizard-Lab/",
+  "scope": "/Eiti-Wizard-Lab/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0d0618",
@@ -81,7 +81,7 @@
       "name": "Чат",
       "short_name": "Чат",
       "description": "Открыть чат",
-      "url": "/Eiti-Wizard/?panel=chat",
+      "url": "/Eiti-Wizard-Lab/?panel=chat",
       "icons": [
         {
           "src": "icon-96x96.png",
@@ -94,7 +94,7 @@
       "name": "Агент",
       "short_name": "Агент",
       "description": "Открыть агента",
-      "url": "/Eiti-Wizard/?panel=agent",
+      "url": "/Eiti-Wizard-Lab/?panel=agent",
       "icons": [
         {
           "src": "icon-96x96.png",

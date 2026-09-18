@@ -1,5 +1,5 @@
-// sw.js — Eiti Wizard Service Worker v1.8.4
-const CACHE_NAME = 'eiti-wizard-lab-v1.8.4';
+// sw.js — Eiti Wizard Service Worker v1.8.6
+const CACHE_NAME = 'eiti-wizard-lab-v1.8.6';
 const BASE_PATH = '/Eiti-Wizard-Lab';
 
 const STATIC_ASSETS = [
@@ -71,7 +71,10 @@ self.addEventListener('fetch', event => {
         return response;
       }).catch(() => {
         return caches.match(request).then(cached => {
-          return cached || caches.match(BASE_PATH + '/index.html');
+          if (cached) return cached;
+          return caches.match(BASE_PATH + '/index.html').then(fallback => {
+            return fallback || new Response('', { status: 504, statusText: 'Offline' });
+          });
         });
       })
     );
@@ -90,7 +93,12 @@ self.addEventListener('fetch', event => {
         caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
         return response;
       }).catch(() => {
-        if (request.mode === 'navigate') return caches.match(BASE_PATH + '/index.html');
+        if (request.mode === 'navigate') {
+          return caches.match(BASE_PATH + '/index.html').then(cached => {
+            return cached || new Response('', { status: 504, statusText: 'Offline' });
+          });
+        }
+        return new Response('', { status: 504, statusText: 'Offline' });
       });
     })
   );

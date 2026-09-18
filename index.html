@@ -7941,6 +7941,9 @@ if (toggleDiary) {
 
 document.getElementById('openDiaryBtn')?.addEventListener('click', openDiary);
 
+// Lab suggestions toggle key — must exist before wizSuggIsEnabled()/toggle init
+const WIZ_SUGG_KEY = 'wiz_lab_suggestions_enabled';
+
 // Умные подсказки — тумблер в Настройках (по умолчанию вкл)
 const toggleWizSugg = document.getElementById('toggleWizSugg');
 if (toggleWizSugg) {
@@ -10341,7 +10344,7 @@ function escapeHtml(s) {
 // что новых зависимостей и ключей не добавляет. Тихо выключается, если нет
 // провайдера или тумблер в Настройках снят.
 // ═══════════════════════════════════════════════════════════════════════════
-const WIZ_SUGG_KEY = 'wiz_lab_suggestions_enabled';
+// WIZ_SUGG_KEY declared earlier (before Settings toggle init) to avoid TDZ.
 
 function wizSuggIsEnabled() {
   return localStorage.getItem(WIZ_SUGG_KEY) !== '0';

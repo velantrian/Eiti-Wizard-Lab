@@ -2838,7 +2838,12 @@ if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => {
         try {
           const scope = (r && r.scope) ? r.scope : '';
-          if (scope.includes('/Eiti-Wizard-Lab')) r.unregister();
+          if ((() => {
+          try {
+            const path = new URL(scope).pathname.replace(/\/+$/, '') || '/';
+            return path === '/Eiti-Wizard-Lab';
+          } catch (_) { return false; }
+        })()) r.unregister();
         } catch (_) {}
       }));
       if (window.caches) caches.keys().then(keys => keys.forEach(k => {
@@ -2857,7 +2862,12 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => {
       try {
         const scope = (r && r.scope) ? r.scope : '';
-        if (scope.includes('/Eiti-Wizard-Lab')) r.unregister();
+        if ((() => {
+          try {
+            const path = new URL(scope).pathname.replace(/\/+$/, '') || '/';
+            return path === '/Eiti-Wizard-Lab';
+          } catch (_) { return false; }
+        })()) r.unregister();
       } catch (_) {}
     })).catch(()=>{});
   }
@@ -9210,7 +9220,7 @@ function clearChatConfirm() {
 // ═══════════════════════════════════════════════════════════════
 // 🧠 PERSONAL MEMORY
 // ═══════════════════════════════════════════════════════════════
-const PERSONAL_MEMORY_KEY = 'wizard_personal_memory';
+const PERSONAL_MEMORY_KEY = 'wiz_lab_wizard_personal_memory';
 
 function getPersonalMemory() {
   try { return JSON.parse(localStorage.getItem(PERSONAL_MEMORY_KEY) || '[]'); } catch { return []; }
@@ -9293,7 +9303,7 @@ async function autoExtractFacts(aiText) {
 // ═══════════════════════════════════════════════════════════════
 // 🧰 PROJECTS
 // ═══════════════════════════════════════════════════════════════
-const PROJECTS_KEY = 'wizard_projects';
+const PROJECTS_KEY = 'wiz_lab_wizard_projects';
 let activeProjectId = null;
 let _suggestContent = '';
 
@@ -9668,7 +9678,7 @@ var _rneData = { goals:[], facts:[], questions:[], gaps:[], solutions:[], lastEx
 var _rneSection = 'goals';
 var _rneChatHistory = [];
 var _rneLoaded = false;
-var RNE_IDB_KEY = 'wizard_rne_v1';
+var RNE_IDB_KEY = 'wiz_lab_wizard_rne_v1';
 
 // ── Вызов AI через Wizard-провайдер ─────────────────────────────────────────
 async function _rneCallLLM(prompt, isChat) {

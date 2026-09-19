@@ -3057,11 +3057,14 @@ async function wizCommitSnapshotFromEditor() {
     rejected: (document.getElementById('wiz-snap-rejected') || {}).value || '',
     thinking: (document.getElementById('wiz-snap-thinking') || {}).value || ''
   };
-  const text = wizFormatSnapshotText(fields);
-  if (!text.replace(/\s+/g, '').length) {
+  // Validate raw fields (formatted text always contains labels)
+  const hasAnyField = [fields.where, fields.changed, fields.rejected, fields.thinking]
+    .some(v => String(v || '').trim().length > 0);
+  if (!hasAnyField) {
     showToast('⚠️ Заполните хотя бы одно поле');
     return;
   }
+  const text = wizFormatSnapshotText(fields);
   const allMsgs = await dbGetAll('messages');
   const chatMsgs = (allMsgs || [])
     .filter(m => m.chatId === activeChatId && m.panel === 'chat')
@@ -3172,7 +3175,7 @@ async function wizStartCleanResume(snapshotId) {
   showToast('▶ Clean Resume: ' + snap.id);
 }
 
-async function wizBuildCleanResumeContext(userText, extraCtx) {
+async function wizBuildCleanResumeContext(userText) {
   const st = wizCleanResumeState;
   if (!st || !st.snapshotId) return null;
   const snap = await wizGetSnapshot(st.snapshotId);
@@ -3196,10 +3199,11 @@ async function wizBuildCleanResumeContext(userText, extraCtx) {
   const postStr = post.length
     ? post.map(m => (m.role === 'user' ? 'User' : 'Assistant') + ': ' + (m.content || '')).join('\n')
     : '(none yet)';
+  // Clean Resume outbound purity: ONLY instruction + snapshot + post-boundary + current text
   const body =
     '[SAVED SNAPSHOT ' + st.snapshotId + ']\n' + snapText +
     '\n\n[MESSAGES AFTER RESUME BOUNDARY]\n' + postStr +
-    '\n\n[CURRENT USER MESSAGE]\n' + userText + (extraCtx || '');
+    '\n\n[CURRENT USER MESSAGE]\n' + userText;
   return {
     instructions: WIZ_CLEAN_RESUME_INSTRUCTION,
     messageWithFiles: body,
@@ -6656,22 +6660,37 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
     return;
   }
 
-  // Добавляем контекст файлов с использованием чанков
-  const filesContext = await getFilesContext(activePanel, text);
-  // v1.7.4: добавляем paste chips в контекст
+  // M2 Clean Resume gate: decide BEFORE file/paste retrieval so outbound stays pure
+  const _wizResumeOn = (activePanel === 'chat' && wizIsCleanResumeActive(currentChatId));
+
+  let filesContext = '';
   let _pasteCtx = '';
-  if (window._wizPasteChips && window._wizPasteChips.length > 0) {
-    _pasteCtx = '\n\n--- ВСТАВЛЕННЫЙ ТЕКСТ ---\n' +
-      window._wizPasteChips.map((p, i) => `[Чип ${i+1}]:\n${p.text}`).join('\n---\n');
-    window._wizPasteChips = []; // очищаем после отправки
-    wizRenderFileChips();
+  if (_wizResumeOn) {
+    // Clean Resume: do NOT call getFilesContext; discard paste/file/vision/server extras
+    window._wizFilesSentSnapshot = null;
+    window._wizServerFileRefs = [];
+    if (window._wizPasteChips && window._wizPasteChips.length) {
+      window._wizPasteChips = [];
+      wizRenderFileChips();
+    }
+    if (typeof wizClearVisionImages === 'function') wizClearVisionImages();
+    document.getElementById('wiz-vision-chips')?.remove();
+  } else {
+    // Normal Chat: keep file retrieval + paste context as before
+    filesContext = await getFilesContext(activePanel, text);
+    // v1.7.4: добавляем paste chips в контекст
+    if (window._wizPasteChips && window._wizPasteChips.length > 0) {
+      _pasteCtx = '\n\n--- ВСТАВЛЕННЫЙ ТЕКСТ ---\n' +
+        window._wizPasteChips.map((p, i) => `[Чип ${i+1}]:\n${p.text}`).join('\n---\n');
+      window._wizPasteChips = []; // очищаем после отправки
+      wizRenderFileChips();
+    }
   }
   let messageWithFiles = text + filesContext + _pasteCtx;
 
   // M2 Clean Resume: replace normal assembly with snapshot-only payload
-  const _wizResumeOn = (activePanel === 'chat' && wizIsCleanResumeActive(currentChatId));
   if (_wizResumeOn) {
-    const _cr = await wizBuildCleanResumeContext(text, filesContext + _pasteCtx);
+    const _cr = await wizBuildCleanResumeContext(text);
     if (_cr) {
       instructions = _cr.instructions;
       messageWithFiles = _cr.messageWithFiles;

@@ -2808,7 +2808,7 @@ const DB_VERSION = 7;
 const STORES     = ['messages', 'config', 'memory', 'agent_backups', 'files', 'chats', 'agents', 'chunks', 'tasks'];
 
 // Единый источник версии приложения (используется в шапке, sys-info, ответах бота)
-const APP_VERSION = '1.8.7';
+const APP_VERSION = '1.8.8';
 document.addEventListener('DOMContentLoaded', () => {
   const _vl = document.getElementById('appVersionLabel');
   if (_vl) _vl.textContent = 'v' + APP_VERSION;
@@ -6248,6 +6248,99 @@ async function executeAgentTool(name, args) {
 window._agentStop = false;
 window.stopAgentLoop = function() { window._agentStop = true; };
 
+
+// ── M2.1 P0: Provider request normalizers (DeepSeek / Gemini / Claude / Grok) ─
+/** DeepSeek UI id → canonical {model, thinking?, reasoning_effort?} — NO budget_tokens. */
+function wizNormalizeDeepSeekRequest(model) {
+  const m = String(model || '');
+  if (m === 'deepseek-v4-flash' || m === 'deepseek-flash' || m === 'deepseek-chat') {
+    return { model: 'deepseek-flash' };
+  }
+  if (m === 'deepseek-v4-pro-xhigh') {
+    return { model: 'deepseek-v4-pro', thinking: { type: 'enabled' }, reasoning_effort: 'max' };
+  }
+  if (m === 'deepseek-v4-pro-high') {
+    return { model: 'deepseek-v4-pro', thinking: { type: 'enabled' }, reasoning_effort: 'high' };
+  }
+  if (m === 'deepseek-v4-pro' || m === 'deepseek-reasoner') {
+    return { model: 'deepseek-v4-pro', thinking: { type: 'enabled' }, reasoning_effort: 'low' };
+  }
+  // Legacy suffix strip fallback (should not hit for known UI ids)
+  let canon = m.replace(/-xhigh$/, '').replace(/-high$/, '');
+  if (canon === 'deepseek-v4-flash') canon = 'deepseek-flash';
+  const out = { model: canon || m };
+  if (canon === 'deepseek-v4-pro') {
+    out.thinking = { type: 'enabled' };
+    out.reasoning_effort = 'low';
+  }
+  return out;
+}
+
+/** Apply DeepSeek normalize fields onto a chat/completions body (mutates + returns body). */
+function wizApplyDeepSeekNormalize(body, model) {
+  const n = wizNormalizeDeepSeekRequest(model);
+  body.model = n.model;
+  if (n.thinking) body.thinking = n.thinking;
+  if (n.reasoning_effort) body.reasoning_effort = n.reasoning_effort;
+  if ('budget_tokens' in (body.thinking || {})) delete body.thinking.budget_tokens;
+  return body;
+}
+
+/**
+ * Gemini generateContent thinkingConfig by series.
+ * gemini-3*: thinkingLevel; gemini-2.5*: thinkingBudget only. Never mix.
+ */
+function wizGeminiThinkingConfig(model, maxTokens) {
+  const m = String(model || '');
+  const id = m.includes('/') ? m.split('/').pop() : m;
+  const mt = Number(maxTokens) || 8000;
+  // Short utility calls (Suggestions/L1/L2/Memory/RNE-small): omit thinking so
+  // thinking tokens do not consume the entire maxOutputTokens budget.
+  const isShort = mt < 1024;
+  if (id.startsWith('gemini-3')) {
+    if (isShort) return null; // omit / not high on utility paths
+    // capability-based: pro / 3.1-pro → high; flash defaults → medium
+    const isPro = /(?:^|[.-])pro(?:-|$)/i.test(id) && !/flash/i.test(id);
+    return { thinkingLevel: isPro ? 'high' : 'medium' };
+  }
+  if (id.startsWith('gemini-2.5')) {
+    if (isShort) return null;
+    const budget = Math.min(mt, 8000);
+    return { thinkingBudget: budget };
+  }
+  return null;
+}
+
+/**
+ * Claude Messages thinking fields when cfgThinking is checked.
+ * opus-4-7 / sonnet-4-6 → adaptive + output_config.effort high
+ * haiku-4-5 → enabled + budget_tokens (adaptive may 400)
+ * unchecked → {}
+ */
+function wizClaudeThinkingFields(model, thinkingOn, maxTokens) {
+  if (!thinkingOn) return {};
+  const m = String(model || '');
+  if (m === 'claude-opus-4-7' || m === 'claude-sonnet-4-6') {
+    return { thinking: { type: 'adaptive' }, output_config: { effort: 'high' } };
+  }
+  if (m.indexOf('haiku') !== -1) {
+    const mt = Number(maxTokens) || 8000;
+    // Anthropic Haiku extended thinking: budget_tokens >= 1024 AND budget_tokens < max_tokens.
+    // Short utility maxTokens (400/500/…) cannot satisfy both → omit thinking.
+    if (mt <= 1024) return {};
+    const budget = Math.min(8000, Math.max(1024, mt - 1));
+    return { thinking: { type: 'enabled', budget_tokens: budget } };
+  }
+  return { thinking: { type: 'adaptive' }, output_config: { effort: 'high' } };
+}
+
+/** Grok chat/completions: explicit reasoning_effort for 4.3 / 4.20 (default low). */
+function wizGrokReasoningEffort(model) {
+  const m = String(model || '');
+  if (m === 'grok-4.3' || m === 'grok-4.20') return 'low';
+  return null;
+}
+
 async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userText, typing, historyEl, currentChatId, _wizUsedWeb }) {
   const _liveId = typing.dataset.liveId;
   const _textEl = document.getElementById(_liveId + '-text');
@@ -6288,14 +6381,13 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
     if (provider === 'deepseek') {
       apiUrl = 'https://api.deepseek.com/v1/chat/completions';
       headers = { 'Content-Type':'application/json', 'Authorization': `Bearer ${apiKey}` };
-      const _dsBudgetMap = { 'deepseek-v4-pro-high': 8000, 'deepseek-v4-pro-xhigh': 20000 };
-      const _dsBudget = _dsBudgetMap[model] || null;
-      const _dsRealModel = model.replace('-high','').replace('-xhigh','');
       const msgs = [{ role:'system', content: instructions }];
       for (const h of history) {
         if (h.role === 'user') msgs.push({ role:'user', content: h.text });
         else if (h.role === 'assistant') {
           const msg = { role:'assistant', content: h.text || null };
+          // DeepSeek tool-loop: must echo reasoning_content back or API 400
+          if (h.reasoning_content) msg.reasoning_content = h.reasoning_content;
           if (h.toolCalls && h.toolCalls.length) {
             msg.tool_calls = h.toolCalls.map(tc => ({
               id: tc.id, type:'function',
@@ -6307,8 +6399,8 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
           msgs.push({ role:'tool', tool_call_id: h.toolCallId, content: h.content });
         }
       }
-      body = { model: _dsRealModel, max_tokens: wizGetMaxTokens(), messages: msgs, tools: _agentToolsToOpenAI() };
-      if (_dsBudget) body.thinking = { type:'enabled', budget_tokens: _dsBudget };
+      body = { max_tokens: wizGetMaxTokens(), messages: msgs, tools: _agentToolsToOpenAI() };
+      wizApplyDeepSeekNormalize(body, model);
     } else { // gemini
       apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       headers = { 'Content-Type':'application/json' };
@@ -6325,11 +6417,16 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
           contents.push({ role:'user', parts:[{ functionResponse: { name: h.toolName, response: { content: h.content } } }] });
         }
       }
+      const _gemMax = wizGetMaxTokens();
+      const _gemTC = wizGeminiThinkingConfig(model, _gemMax);
       body = {
         contents,
         systemInstruction: { parts:[{ text: instructions }] },
         tools: _agentToolsToGemini(),
-        generationConfig: { maxOutputTokens: wizGetMaxTokens() }
+        generationConfig: {
+          maxOutputTokens: _gemMax,
+          ...(_gemTC ? { thinkingConfig: _gemTC } : {})
+        }
       };
     }
 
@@ -6342,9 +6439,11 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
 
     let textOut = '';
     let toolCalls = [];
+    let _dsReasoningContent = null;
     if (provider === 'deepseek') {
       const m = data.choices?.[0]?.message;
       textOut = m?.content || '';
+      _dsReasoningContent = m?.reasoning_content || null;
       toolCalls = (m?.tool_calls || []).map(tc => ({
         id: tc.id,
         name: tc.function?.name,
@@ -6362,7 +6461,7 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
       });
     }
 
-    history.push({ role:'assistant', text: textOut, toolCalls: toolCalls.length ? toolCalls : null });
+    history.push({ role:'assistant', text: textOut, reasoning_content: _dsReasoningContent, toolCalls: toolCalls.length ? toolCalls : null });
 
     if (textOut && textOut !== lastTextOut) {
       if (liveLog) liveLog += '\n\n';
@@ -6397,12 +6496,12 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
       if (provider === 'deepseek') {
         apiUrl = 'https://api.deepseek.com/v1/chat/completions';
         headers = { 'Content-Type':'application/json', 'Authorization': `Bearer ${apiKey}` };
-        const _dsRealModel = model.replace('-high','').replace('-xhigh','');
         const msgs = [{ role:'system', content: instructions + '\n\nЗаверши ответ обычным текстом — расскажи пользователю что сделал.' }];
         for (const h of history) {
           if (h.role === 'user') msgs.push({ role:'user', content: h.text });
           else if (h.role === 'assistant') {
             const msg = { role:'assistant', content: h.text || null };
+            if (h.reasoning_content) msg.reasoning_content = h.reasoning_content;
             if (h.toolCalls && h.toolCalls.length) {
               msg.tool_calls = h.toolCalls.map(tc => ({ id: tc.id, type:'function', function: { name: tc.name, arguments: JSON.stringify(tc.args||{}) } }));
             }
@@ -6411,7 +6510,8 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
             msgs.push({ role:'tool', tool_call_id: h.toolCallId, content: h.content });
           }
         }
-        body = { model: _dsRealModel, max_tokens: 2000, messages: msgs };
+        body = { max_tokens: 2000, messages: msgs };
+        wizApplyDeepSeekNormalize(body, model);
       } else {
         apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         headers = { 'Content-Type':'application/json' };
@@ -6953,19 +7053,14 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
       case 'deepseek': {
         apiUrl = 'https://api.deepseek.com/v1/chat/completions';
         headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
-        // Thinking budget for high/xhigh models
-        const _dsBudgetMap = { 'deepseek-v4-pro-high': 8000, 'deepseek-v4-pro-xhigh': 20000 };
-        const _dsBudget = _dsBudgetMap[model] || null;
-        const _dsRealModel = model.replace('-high','').replace('-xhigh','');
         body = {
-          model: _dsRealModel,
           max_tokens: wizGetMaxTokens(),
           messages: [
             ...(instructions ? [{ role: 'system', content: instructions }] : []),
             { role: 'user', content: messageWithFiles }
           ]
         };
-        if (_dsBudget) body.thinking = { type: 'enabled', budget_tokens: _dsBudget };
+        wizApplyDeepSeekNormalize(body, model);
         break;
       }
       case 'claude': {
@@ -6974,11 +7069,14 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
         const _cldContent = window._wizVisionImages?.length
           ? [{ type:'text', text:messageWithFiles }, ...(window._wizVisionImages||[]).map(img=>({ type:'image', source:{ type:'base64', media_type:img.mime, data:img.base64 }}))]
           : messageWithFiles;
+        const _cldMax = wizGetMaxTokens();
+        const _cldThinkOn = !!document.getElementById('cfgThinking')?.checked;
         body = {
           model,
-          max_tokens: wizGetMaxTokens(),
+          max_tokens: _cldMax,
           ...(instructions ? { system: instructions } : {}),
-          messages: [{ role: 'user', content: _cldContent }]
+          messages: [{ role: 'user', content: _cldContent }],
+          ...wizClaudeThinkingFields(model, _cldThinkOn, _cldMax)
         };
         wizClearVisionImages();
         document.getElementById('wiz-vision-chips')?.remove();
@@ -7041,7 +7139,6 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
       case 'gemini': {
         apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         headers = { 'Content-Type': 'application/json' };
-        const _gemThinking = model.includes('pro') || model.includes('3.1');
         // v1.7.7: добавляем server-uploaded файлы как file_data parts
         const _gemServerRefs = (window._wizServerFileRefs || []).filter(r => r.type === 'gemini');
         let _gemParts = [];
@@ -7055,30 +7152,35 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
           _gemParts.push({ file_data: { mime_type: ref.mimeType, file_uri: ref.uri } });
         });
         window._wizServerFileRefs = [];
+        const _gemMax = wizGetMaxTokens();
+        const _gemTC = wizGeminiThinkingConfig(model, _gemMax);
         body = {
           contents: [{ role: 'user', parts: _gemParts }],
           ...(instructions ? { systemInstruction: { parts: [{ text: instructions }] } } : {}),
           generationConfig: {
-            maxOutputTokens: wizGetMaxTokens(),
-            ...(_gemThinking ? { thinkingConfig: { thinkingBudget: Math.min(wizGetMaxTokens(), 8000) } } : {})
+            maxOutputTokens: _gemMax,
+            ...(_gemTC ? { thinkingConfig: _gemTC } : {})
           }
         };
         wizClearVisionImages();
         document.getElementById('wiz-vision-chips')?.remove();
         break;
       }
-      case 'grok':
+      case 'grok': {
         apiUrl = 'https://api.x.ai/v1/chat/completions';
         headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
+        const _grokEffort = wizGrokReasoningEffort(model);
         body = {
           model,
           max_tokens: wizGetMaxTokens(),
           messages: [
             ...(instructions ? [{ role: 'system', content: instructions }] : []),
             { role: 'user', content: messageWithFiles }
-          ]
+          ],
+          ...(_grokEffort ? { reasoning_effort: _grokEffort } : {})
         };
         break;
+      }
     }
 
     const shouldStream = document.getElementById('cfgStream')?.checked ?? false;
@@ -7732,7 +7834,7 @@ async function cleanupOldMessages() {
   });
 });
 
-// ── PROVIDER_MODELS — актуальные модели на май 2026 (проверено по docs) ──────
+// ── PROVIDER_MODELS — M2.1 P0 refresh 2026-09-19 (DS/Gemini/Claude/Grok/Groq) ─
 const PROVIDER_MODELS = {
   ollama: [
     { id: 'gemma4:e4b',       label: 'Gemma 4 E4B 🌟' },
@@ -7745,12 +7847,12 @@ const PROVIDER_MODELS = {
     { id: 'gemma3:9b',        label: 'Gemma 3 9B' },
   ],
   deepseek: [
-    // Официальные API ID май 2026: deepseek-v4-flash и deepseek-v4-pro
-    // (deepseek-chat / deepseek-reasoner — legacy, устаревают July 2026)
-    { id: 'deepseek-v4-flash',     label: '⚡ V4 Flash (быстрый, 1M ctx)' },
-    { id: 'deepseek-v4-pro',       label: '🔬 V4 Pro (мощный, мышление)' },
-    { id: 'deepseek-v4-pro-high',  label: '🧠 V4 Pro High (бюджет мышл. 8K)' },
-    { id: 'deepseek-v4-pro-xhigh', label: '🔮 V4 Pro XHigh (бюджет мышл. 20K)' },
+    // M2.1: UI aliases; outbound via wizNormalizeDeepSeekRequest → deepseek-flash / deepseek-v4-pro + reasoning_effort
+    // (deepseek-chat / deepseek-reasoner — legacy)
+    { id: 'deepseek-v4-flash',     label: '⚡ Flash (→ deepseek-flash)' },
+    { id: 'deepseek-v4-pro',       label: '🔬 V4 Pro (thinking, effort low)' },
+    { id: 'deepseek-v4-pro-high',  label: '🧠 V4 Pro High (effort high)' },
+    { id: 'deepseek-v4-pro-xhigh', label: '🔮 V4 Pro XHigh (effort max)' },
   ],
   claude: [
     // Флагман апрель 2026: claude-opus-4-7
@@ -7767,14 +7869,12 @@ const PROVIDER_MODELS = {
     { id: 'o3',            label: 'o3 🔬 (глубокое рассуждение)' },
   ],
   groq: [
-    // deepseek-r1 и llama-4-maverick deprecated. Актуально май 2026:
-    { id: 'llama-3.3-70b-versatile',                    label: 'Llama 3.3 70B ⭐ (лучший)' },
-    { id: 'openai/gpt-oss-120b',                        label: 'GPT-OSS 120B 🔥 (топ Groq)' },
-    { id: 'openai/gpt-oss-20b',                         label: 'GPT-OSS 20B (быстрый)' },
-    { id: 'meta-llama/llama-4-scout-17b-16e-instruct',  label: 'Llama 4 Scout 17B' },
-    { id: 'llama-3.1-8b-instant',                       label: 'Llama 3.1 8B (мгновенный)' },
-    { id: 'compound-beta',                              label: 'Compound Beta (веб+код)' },
-    { id: 'qwen-qwq-32b',                               label: 'Qwen QwQ 32B 🧠 (рассуждение)' },
+    // M2.1 P0: retired Free/Dev IDs removed (llama-3.1-8b-instant, llama-3.3-70b-versatile,
+    // meta-llama/llama-4-scout-17b-16e-instruct, qwen-qwq-32b — absent/deprecated per Groq catalog 2026-09-19).
+    // Keep 8192 max_tokens clamp (P1 later).
+    { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B ⭐ (default)' },
+    { id: 'openai/gpt-oss-20b',  label: 'GPT-OSS 20B (быстрый)' },
+    { id: 'compound-beta',       label: 'Compound Beta (веб+код)' },
   ],
   openrouter: [
     { id: 'openrouter/auto',                              label: '🤖 Auto (лучшая доступная)' },
@@ -7801,8 +7901,9 @@ const PROVIDER_MODELS = {
   ],
   grok: [
     // grok-3, grok-4-1-fast-*, grok-4-0709 — retired May 15 2026 (официально)
-    { id: 'grok-4.3',  label: 'Grok 4.3 ⭐ (флагман, 1M ctx, reasoning levels)' },
-    { id: 'grok-4.20', label: 'Grok 4.20 🔥 (топ)' },
+    // M2.1: Chat sends reasoning_effort:'low' (documented default) — not display-only
+    { id: 'grok-4.3',  label: 'Grok 4.3 ⭐ (флагман, 1M ctx, reasoning_effort low)' },
+    { id: 'grok-4.20', label: 'Grok 4.20 🔥 (топ, reasoning_effort low)' },
   ],
 };
 
@@ -8190,10 +8291,10 @@ function wizSetDsModel(model) {
   if (sel) { sel.value = model; saveConfigField('model', model); }
   wizRenderDsModel();
   const labels = {
-    'deepseek-v4-flash':     '⚡ Flash: быстро и дёшево',
-    'deepseek-v4-pro':       '🔬 Pro: глубже анализ',
-    'deepseek-v4-pro-high':  '🧠 Think High: мышление с бюджетом 8K токенов',
-    'deepseek-v4-pro-xhigh': '🔮 XHigh: экстремальное мышление 20K токенов'
+    'deepseek-v4-flash':     '⚡ Flash → deepseek-flash',
+    'deepseek-v4-pro':       '🔬 Pro: thinking + effort low',
+    'deepseek-v4-pro-high':  '🧠 Think High: reasoning_effort high',
+    'deepseek-v4-pro-xhigh': '🔮 XHigh: reasoning_effort max'
   };
   showToast(labels[model] || model);
 }
@@ -8211,10 +8312,10 @@ function wizRenderDsModel() {
   const desc = document.getElementById('ds-model-desc');
   if (!desc) return;
   const descs = {
-    'deepseek-v4-flash':'⚡ Flash — оптимально для большинства задач',
-    'deepseek-v4-pro':'🔬 Pro — глубже анализ, выше цена токена',
-    'deepseek-v4-pro-high':'🧠 Think High — бюджет мышления 8 000 токенов',
-    'deepseek-v4-pro-xhigh':'🔮 XHigh — бюджет мышления 20 000 токенов, медленнее'
+    'deepseek-v4-flash':'⚡ Flash — outbound model deepseek-flash',
+    'deepseek-v4-pro':'🔬 Pro — thinking enabled, reasoning_effort low',
+    'deepseek-v4-pro-high':'🧠 Think High — reasoning_effort high (no budget_tokens)',
+    'deepseek-v4-pro-xhigh':'🔮 XHigh — reasoning_effort max (no budget_tokens)'
   };
   desc.textContent = descs[cur] || '';
 }
@@ -10172,6 +10273,7 @@ async function _rneCallLLM(prompt, isChat) {
   if (provider === 'gemini') {
     apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
     headers = { 'Content-Type': 'application/json' };
+    // Utility (RNE): omit thinkingConfig entirely — maxTok 800/1500 must stay visible output
     body = { contents:[{parts:[{text:prompt}]}], generationConfig:{ temperature:temp, maxOutputTokens:maxTok } };
     if (!isChat) body.generationConfig.responseMimeType = 'application/json';
   } else if (provider === 'deepseek' || provider === 'openai' || provider === 'groq' || provider === 'grok' || provider === 'openrouter') {
@@ -10186,10 +10288,13 @@ async function _rneCallLLM(prompt, isChat) {
     var bearerKey = provider === 'openrouter' ? sessionStorage.getItem('eiti_lab_or_key') || apiKey : apiKey;
     headers = { 'Content-Type':'application/json', 'Authorization':'Bearer ' + bearerKey };
     body = { model:model, messages:[{role:'user',content:prompt}], max_tokens:maxTok, temperature:temp };
+    // Utility: canonicalize DeepSeek model id only — no thinking/reasoning_effort
+    if (provider === 'deepseek') body.model = wizNormalizeDeepSeekRequest(model).model;
     if (!isChat) body.response_format = { type:'json_object' };
   } else if (provider === 'claude') {
     apiUrl = 'https://api.anthropic.com/v1/messages';
     headers = { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' };
+    // Utility (RNE): omit thinking — Haiku@1500 would get budget_tokens=1499 (1 visible token)
     body = { model:model, max_tokens:maxTok, messages:[{role:'user',content:prompt}] };
   } else {
     throw new Error('Провайдер ' + provider + ' не поддерживает RNE');
@@ -10856,10 +10961,12 @@ async function wizGenerateSuggestions(msgEl, lastUserMsg, lastAIMsg) {
     if (cfg.provider === 'gemini') {
       apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + cfg.model + ':generateContent?key=' + cfg.apiKey;
       headers = { 'Content-Type': 'application/json' };
+      // Utility (suggestions): omit thinkingConfig
       body = { contents:[{ parts:[{ text: prompt }] }], generationConfig:{ temperature:0.7, maxOutputTokens:150 } };
     } else if (cfg.provider === 'claude') {
       apiUrl = 'https://api.anthropic.com/v1/messages';
       headers = { 'Content-Type':'application/json', 'x-api-key':cfg.apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' };
+      // Suggestions: keep lean — no thinking (short JSON chips)
       body = { model: cfg.model, max_tokens:150, temperature:0.7, messages:[{ role:'user', content: prompt }] };
     } else {
       const urlMap = {
@@ -10874,6 +10981,8 @@ async function wizGenerateSuggestions(msgEl, lastUserMsg, lastAIMsg) {
       const bearer = cfg.provider === 'openrouter' ? (sessionStorage.getItem('eiti_lab_or_key') || cfg.apiKey) : cfg.apiKey;
       headers = { 'Content-Type':'application/json', 'Authorization':'Bearer ' + bearer };
       body = { model: cfg.model, max_tokens:150, temperature:0.7, messages:[{ role:'user', content: prompt }] };
+      // Utility: DeepSeek model id only; omit thinking/reasoning_effort (and Grok effort)
+      if (cfg.provider === 'deepseek') body.model = wizNormalizeDeepSeekRequest(cfg.model).model;
     }
 
     const r = await fetch(apiUrl, { method:'POST', headers, body: JSON.stringify(body) });
@@ -11416,6 +11525,7 @@ function l2Consolidate(chatId) {
       if (provider === 'gemini') {
         url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         headers = {'Content-Type':'application/json'};
+        // Utility (L2): omit thinkingConfig
         body = {contents:[{role:'user',parts:[{text:prompt+'\n\nДиалог:\n'+sliceText}]}],generationConfig:{maxOutputTokens:300,temperature:0.25}};
       } else {
         url = provider === 'deepseek' ? 'https://api.deepseek.com/v1/chat/completions'
@@ -11424,9 +11534,9 @@ function l2Consolidate(chatId) {
             : provider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions'
             : null;
         if (!url) return;
-        const realModel = model.replace('-high','').replace('-xhigh','');
         headers = {'Content-Type':'application/json','Authorization':'Bearer '+apiKey};
-        body = {model:realModel,messages:[{role:'system',content:prompt},{role:'user',content:sliceText}],max_tokens:300,temperature:0.25};
+        body = {model:model,messages:[{role:'system',content:prompt},{role:'user',content:sliceText}],max_tokens:300,temperature:0.25};
+        if (provider === 'deepseek') body.model = wizNormalizeDeepSeekRequest(model).model;
       }
       return fetch(url, {method:'POST', headers, body:JSON.stringify(body)})
         .then(r => r.json())
@@ -11576,6 +11686,7 @@ async function l1Compress(chatId) {
     if (provider === 'gemini') {
       url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       headers = {'Content-Type':'application/json'};
+      // Utility (L1): omit thinkingConfig
       body = {contents:[{role:'user',parts:[{text: sysPrompt + '\n\nДиалог:\n' + sliceText}]}], generationConfig:{maxOutputTokens: 400, temperature: 0.2}};
     } else {
       url = provider === 'deepseek' ? 'https://api.deepseek.com/v1/chat/completions'
@@ -11584,9 +11695,9 @@ async function l1Compress(chatId) {
           : provider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions'
           : null;
       if (!url) return;
-      const realModel = model.replace('-high','').replace('-xhigh','');
       headers = {'Content-Type':'application/json','Authorization':'Bearer '+apiKey};
-      body = {model:realModel, messages:[{role:'system',content:sysPrompt},{role:'user',content:sliceText}], max_tokens:400, temperature:0.2};
+      body = {model:model, messages:[{role:'system',content:sysPrompt},{role:'user',content:sliceText}], max_tokens:400, temperature:0.2};
+      if (provider === 'deepseek') body.model = wizNormalizeDeepSeekRequest(model).model;
     }
     const r = await fetch(url, { method:'POST', headers, body: JSON.stringify(body) });
     const d = await r.json();
@@ -11833,6 +11944,7 @@ async function memAiAnalyze() {
     if (provider === 'gemini') {
       url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       headers = {'Content-Type':'application/json'};
+      // Utility (mem analyze): omit thinkingConfig
       body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:500}};
     } else {
       const urls = {deepseek:'https://api.deepseek.com/v1/chat/completions',openai:'https://api.openai.com/v1/chat/completions',groq:'https://api.groq.com/openai/v1/chat/completions',openrouter:'https://openrouter.ai/api/v1/chat/completions',grok:'https://api.x.ai/v1/chat/completions',claude:'https://api.anthropic.com/v1/messages'};
@@ -11840,10 +11952,12 @@ async function memAiAnalyze() {
       if (!url) { res.textContent = '⚠️ Провайдер не поддерживается'; return; }
       if (provider === 'claude') {
         headers = {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'};
+        // Utility: omit thinking
         body = {model,max_tokens:500,messages:[{role:'user',content:prompt}]};
       } else {
         headers = {'Content-Type':'application/json','Authorization':'Bearer '+apiKey};
-        body = {model:model.replace(/-high|-xhigh/,''),max_tokens:500,messages:[{role:'user',content:prompt}]};
+        body = {model:model,max_tokens:500,messages:[{role:'user',content:prompt}]};
+        if (provider === 'deepseek') body.model = wizNormalizeDeepSeekRequest(model).model;
       }
     }
     const r = await fetch(url, {method:'POST',headers,body:JSON.stringify(body)});
@@ -11881,16 +11995,19 @@ async function memAiEdit() {
     if (provider === 'gemini') {
       url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       headers = {'Content-Type':'application/json'};
+      // Utility (mem edit): omit thinkingConfig
       body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:400}};
     } else if (provider === 'claude') {
       url = 'https://api.anthropic.com/v1/messages';
       headers = {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'};
+      // Utility: omit thinking
       body = {model,max_tokens:400,messages:[{role:'user',content:prompt}]};
     } else {
       const us = {deepseek:'https://api.deepseek.com/v1/chat/completions',openai:'https://api.openai.com/v1/chat/completions',groq:'https://api.groq.com/openai/v1/chat/completions',openrouter:'https://openrouter.ai/api/v1/chat/completions',grok:'https://api.x.ai/v1/chat/completions'};
       url = us[provider]; if (!url) return;
       headers = {'Content-Type':'application/json','Authorization':'Bearer '+apiKey};
-      body = {model:model.replace(/-high|-xhigh/,''),max_tokens:400,messages:[{role:'user',content:prompt}]};
+      body = {model:model,max_tokens:400,messages:[{role:'user',content:prompt}]};
+      if (provider === 'deepseek') body.model = wizNormalizeDeepSeekRequest(model).model;
     }
     const r = await fetch(url, {method:'POST',headers,body:JSON.stringify(body)});
     const d = await r.json();

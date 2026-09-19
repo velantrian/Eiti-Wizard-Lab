@@ -2079,21 +2079,21 @@ main {
           <div id="ds-model-block" style="display:none;margin-bottom:8px;">
             <div style="font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🐋 DeepSeek — режим мышления</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-              <button id="dsm-flash" onclick="wizSetDsModel('deepseek-v4-flash')"
+              <button id="dsm-flash" onclick="wizSetDsModel('deepseek-flash')"
                 style="padding:10px 6px;border-radius:12px;border:2px solid var(--gold-dim);background:var(--card-bg);color:var(--text);font-size:.78rem;font-weight:700;cursor:pointer;text-align:center;transition:all .15s">
-                ⚡ Flash<br><span style="font-size:10px;opacity:.55;font-weight:400">быстро, дёшево</span>
-              </button>
-              <button id="dsm-pro" onclick="wizSetDsModel('deepseek-v4-pro')"
-                style="padding:10px 6px;border-radius:12px;border:2px solid var(--gold-dim);background:var(--card-bg);color:var(--text);font-size:.78rem;font-weight:700;cursor:pointer;text-align:center;transition:all .15s">
-                🔬 Pro<br><span style="font-size:10px;opacity:.55;font-weight:400">мышление</span>
+                ⚡ Flash<br><span style="font-size:10px;opacity:.55;font-weight:400">V4.1, быстро</span>
               </button>
               <button id="dsm-high" onclick="wizSetDsModel('deepseek-v4-pro-high')"
                 style="padding:10px 6px;border-radius:12px;border:2px solid var(--gold-dim);background:var(--card-bg);color:var(--text);font-size:.78rem;font-weight:700;cursor:pointer;text-align:center;transition:all .15s">
-                🧠 Think<br><span style="font-size:10px;opacity:.55;font-weight:400">глубокое, 8K бюджет</span>
+                🔬 Pro High ⭐<br><span style="font-size:10px;opacity:.55;font-weight:400">default effort high</span>
               </button>
-              <button id="dsm-xhigh" onclick="wizSetDsModel('deepseek-v4-pro-xhigh')"
+              <button id="dsm-low" onclick="wizSetDsModel('deepseek-v4-pro-low')"
+                style="padding:10px 6px;border-radius:12px;border:2px solid var(--gold-dim);background:var(--card-bg);color:var(--text);font-size:.78rem;font-weight:700;cursor:pointer;text-align:center;transition:all .15s">
+                🧠 Pro Low<br><span style="font-size:10px;opacity:.55;font-weight:400">effort low</span>
+              </button>
+              <button id="dsm-max" onclick="wizSetDsModel('deepseek-v4-pro-max')"
                 style="padding:10px 6px;border-radius:12px;border:2px solid rgba(167,139,250,.5);background:var(--card-bg);color:var(--text);font-size:.78rem;font-weight:700;cursor:pointer;text-align:center;transition:all .15s">
-                🔮 XHigh<br><span style="font-size:10px;opacity:.55;font-weight:400">экстрем, 20K бюджет</span>
+                🔮 Pro Max<br><span style="font-size:10px;opacity:.55;font-weight:400">effort max</span>
               </button>
             </div>
             <div id="ds-model-desc" style="font-size:11px;color:var(--text-dim);text-align:center;margin-top:6px;min-height:16px"></div>
@@ -2119,14 +2119,14 @@ main {
               <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
                 <button id="or-model-auto" onclick="eitiSetORModel('openrouter/auto')"
                     style="flex:1;min-width:68px;padding:7px 4px;border-radius:9px;border:2px solid #FFD700;background:rgba(255,200,0,0.25);color:var(--text-color);font-size:11px;font-weight:700;cursor:pointer;">🤖 Auto</button>
-                <button id="or-model-claude" onclick="eitiSetORModel('anthropic/claude-sonnet-4-6')"
-                    style="flex:1;min-width:68px;padding:7px 4px;border-radius:9px;border:2px solid var(--border-color);background:var(--secondary-color);color:var(--text-color);font-size:11px;font-weight:700;cursor:pointer;">Claude</button>
-                <button id="or-model-insta" onclick="eitiSetORModel('openai/gpt-5.4-mini')"
-                    style="flex:1;min-width:68px;padding:7px 4px;border-radius:9px;border:2px solid var(--border-color);background:var(--secondary-color);color:var(--text-color);font-size:11px;font-weight:700;cursor:pointer;">GPT-5.4 mini</button>
-                <button id="or-model-think" onclick="eitiSetORModel('openai/gpt-5.5')"
-                    style="flex:1;min-width:68px;padding:7px 4px;border-radius:9px;border:2px solid var(--border-color);background:var(--secondary-color);color:var(--text-color);font-size:11px;font-weight:700;cursor:pointer;">GPT-5.5</button>
-                <button id="or-model-qwen" onclick="eitiSetORModel('qwen/qwen2.5-72b-instruct')"
-                    style="flex:1;min-width:68px;padding:7px 4px;border-radius:9px;border:2px solid var(--border-color);background:var(--secondary-color);color:var(--text-color);font-size:11px;font-weight:700;cursor:pointer;">QWEN</button>
+                <button id="or-model-claude" onclick="eitiSetORModel('anthropic/claude-sonnet-5')"
+                    style="flex:1;min-width:68px;padding:7px 4px;border-radius:9px;border:2px solid var(--border-color);background:var(--secondary-color);color:var(--text-color);font-size:11px;font-weight:700;cursor:pointer;">Claude 5</button>
+                <button id="or-model-insta" onclick="eitiSetORModel('openai/gpt-5.6-sol')"
+                    style="flex:1;min-width:68px;padding:7px 4px;border-radius:9px;border:2px solid var(--border-color);background:var(--secondary-color);color:var(--text-color);font-size:11px;font-weight:700;cursor:pointer;">GPT-5.6</button>
+                <button id="or-model-think" onclick="eitiSetORModel('google/gemini-3.8-flash')"
+                    style="flex:1;min-width:68px;padding:7px 4px;border-radius:9px;border:2px solid var(--border-color);background:var(--secondary-color);color:var(--text-color);font-size:11px;font-weight:700;cursor:pointer;">Gem 3.8</button>
+                <button id="or-model-qwen" onclick="eitiSetORModel('x-ai/grok-4.6')"
+                    style="flex:1;min-width:68px;padding:7px 4px;border-radius:9px;border:2px solid var(--border-color);background:var(--secondary-color);color:var(--text-color);font-size:11px;font-weight:700;cursor:pointer;">Grok 4.6</button>
               </div>
               <div style="display:flex;gap:6px;align-items:center;">
                 <input type="text" id="openrouter-model-custom" placeholder="provider/model-name"
@@ -6256,22 +6256,28 @@ function wizNormalizeDeepSeekRequest(model) {
   if (m === 'deepseek-v4-flash' || m === 'deepseek-flash' || m === 'deepseek-chat') {
     return { model: 'deepseek-flash' };
   }
-  if (m === 'deepseek-v4-pro-xhigh') {
+  // Max + leftover XHigh alias (saved settings) → reasoning_effort max
+  if (m === 'deepseek-v4-pro-max' || m === 'deepseek-v4-pro-xhigh') {
     return { model: 'deepseek-v4-pro', thinking: { type: 'enabled' }, reasoning_effort: 'max' };
   }
-  if (m === 'deepseek-v4-pro-high') {
-    return { model: 'deepseek-v4-pro', thinking: { type: 'enabled' }, reasoning_effort: 'high' };
-  }
-  if (m === 'deepseek-v4-pro' || m === 'deepseek-reasoner') {
+  if (m === 'deepseek-v4-pro-low') {
     return { model: 'deepseek-v4-pro', thinking: { type: 'enabled' }, reasoning_effort: 'low' };
   }
-  // Legacy suffix strip fallback (should not hit for known UI ids)
-  let canon = m.replace(/-xhigh$/, '').replace(/-high$/, '');
+  // Plain/default V4 Pro = High (not Low)
+  if (m === 'deepseek-v4-pro-high' || m === 'deepseek-v4-pro' || m === 'deepseek-reasoner') {
+    return { model: 'deepseek-v4-pro', thinking: { type: 'enabled' }, reasoning_effort: 'high' };
+  }
+  // Legacy suffix strip fallback
+  let effort = null;
+  let canon = m;
+  if (/-xhigh$/.test(canon) || /-max$/.test(canon)) { effort = 'max'; canon = canon.replace(/-(xhigh|max)$/, ''); }
+  else if (/-high$/.test(canon)) { effort = 'high'; canon = canon.replace(/-high$/, ''); }
+  else if (/-low$/.test(canon)) { effort = 'low'; canon = canon.replace(/-low$/, ''); }
   if (canon === 'deepseek-v4-flash') canon = 'deepseek-flash';
   const out = { model: canon || m };
   if (canon === 'deepseek-v4-pro') {
     out.thinking = { type: 'enabled' };
-    out.reasoning_effort = 'low';
+    out.reasoning_effort = effort || 'high';
   }
   return out;
 }
@@ -6320,7 +6326,9 @@ function wizGeminiThinkingConfig(model, maxTokens) {
 function wizClaudeThinkingFields(model, thinkingOn, maxTokens) {
   if (!thinkingOn) return {};
   const m = String(model || '');
-  if (m === 'claude-opus-4-7' || m === 'claude-sonnet-4-6') {
+  // Adaptive + output_config for Claude 5 / Opus 4.8 / Opus 4.7 / Sonnet 4.6 (Fable/Opus5/Sonnet5 per Anthropic)
+  if (m === 'claude-opus-5' || m === 'claude-sonnet-5' || m === 'claude-fable-5' ||
+      m === 'claude-opus-4-8' || m === 'claude-opus-4-7' || m === 'claude-sonnet-4-6') {
     return { thinking: { type: 'adaptive' }, output_config: { effort: 'high' } };
   }
   if (m.indexOf('haiku') !== -1) {
@@ -6334,11 +6342,22 @@ function wizClaudeThinkingFields(model, thinkingOn, maxTokens) {
   return { thinking: { type: 'adaptive' }, output_config: { effort: 'high' } };
 }
 
-/** Grok chat/completions: explicit reasoning_effort for 4.3 / 4.20 (default low). */
-function wizGrokReasoningEffort(model) {
+/** Grok UI alias → {model, reasoning_effort?} — effort is NOT an official model id. */
+function wizNormalizeGrokRequest(model) {
   const m = String(model || '');
-  if (m === 'grok-4.3' || m === 'grok-4.20') return 'low';
-  return null;
+  const efforts = ['low', 'medium', 'high', 'xhigh'];
+  for (const e of efforts) {
+    if (m === 'grok-4.6-' + e) return { model: 'grok-4.6', reasoning_effort: e };
+  }
+  // Plain grok-4.6 default = high (docs default)
+  if (m === 'grok-4.6') return { model: 'grok-4.6', reasoning_effort: 'high' };
+  if (m === 'grok-4.3' || m === 'grok-4.20') return { model: m, reasoning_effort: 'low' };
+  return { model: m, reasoning_effort: null };
+}
+
+/** Grok chat/completions: reasoning_effort for 4.6 presets / 4.3 / 4.20. */
+function wizGrokReasoningEffort(model) {
+  return wizNormalizeGrokRequest(model).reasoning_effort;
 }
 
 async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userText, typing, historyEl, currentChatId, _wizUsedWeb }) {
@@ -7169,15 +7188,15 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
       case 'grok': {
         apiUrl = 'https://api.x.ai/v1/chat/completions';
         headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
-        const _grokEffort = wizGrokReasoningEffort(model);
+        const _grokN = wizNormalizeGrokRequest(model);
         body = {
-          model,
+          model: _grokN.model,
           max_tokens: wizGetMaxTokens(),
           messages: [
             ...(instructions ? [{ role: 'system', content: instructions }] : []),
             { role: 'user', content: messageWithFiles }
           ],
-          ...(_grokEffort ? { reasoning_effort: _grokEffort } : {})
+          ...(_grokN.reasoning_effort ? { reasoning_effort: _grokN.reasoning_effort } : {})
         };
         break;
       }
@@ -7834,7 +7853,7 @@ async function cleanupOldMessages() {
   });
 });
 
-// ── PROVIDER_MODELS — M2.1 P0 refresh 2026-09-19 (DS/Gemini/Claude/Grok/Groq) ─
+// ── PROVIDER_MODELS — catalog update 2026-09-19 (DS/Gemini/Claude/Grok/OpenAI/OR) ─
 const PROVIDER_MODELS = {
   ollama: [
     { id: 'gemma4:e4b',       label: 'Gemma 4 E4B 🌟' },
@@ -7847,22 +7866,27 @@ const PROVIDER_MODELS = {
     { id: 'gemma3:9b',        label: 'Gemma 3 9B' },
   ],
   deepseek: [
-    // M2.1: UI aliases; outbound via wizNormalizeDeepSeekRequest → deepseek-flash / deepseek-v4-pro + reasoning_effort
-    // (deepseek-chat / deepseek-reasoner — legacy)
-    { id: 'deepseek-v4-flash',     label: '⚡ Flash (→ deepseek-flash)' },
-    { id: 'deepseek-v4-pro',       label: '🔬 V4 Pro (thinking, effort low)' },
-    { id: 'deepseek-v4-pro-high',  label: '🧠 V4 Pro High (effort high)' },
-    { id: 'deepseek-v4-pro-xhigh', label: '🔮 V4 Pro XHigh (effort max)' },
+    // Catalog 2026-09-19: UI aliases → deepseek-flash / deepseek-v4-pro + reasoning_effort
+    { id: 'deepseek-flash',        label: '⚡ DeepSeek V4.1 Flash' },
+    { id: 'deepseek-v4-pro-high',  label: '🔬 DeepSeek V4 Pro — High ⭐ (default)' },
+    { id: 'deepseek-v4-pro',       label: '🔬 DeepSeek V4 Pro (→ High)' },
+    { id: 'deepseek-v4-pro-low',   label: '🧠 DeepSeek V4 Pro — Low' },
+    { id: 'deepseek-v4-pro-max',   label: '🔮 DeepSeek V4 Pro — Max' },
   ],
   claude: [
-    // Флагман апрель 2026: claude-opus-4-7
-    { id: 'claude-opus-4-7',           label: 'Claude Opus 4.7 🔥 (флагман апр.2026)' },
-    { id: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6 ⭐ (оптимальный)' },
+    { id: 'claude-opus-5',             label: 'Claude Opus 5 🔥 (флагман)' },
+    { id: 'claude-sonnet-5',           label: 'Claude Sonnet 5 ⭐ (оптимальный)' },
+    { id: 'claude-fable-5',            label: 'Claude Fable 5 (adaptive)' },
+    { id: 'claude-opus-4-8',           label: 'Claude Opus 4.8' },
+    { id: 'claude-opus-4-7',           label: 'Claude Opus 4.7 (апр.2026)' },
+    { id: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6' },
     { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (быстрый, дёшево)' },
   ],
   openai: [
-    // GPT-5.x — только в ChatGPT UI. В API актуальны gpt-4.1 серия + o4
-    { id: 'gpt-4.1',       label: 'GPT-4.1 ⭐ (код, 1M ctx, апр.2025)' },
+    { id: 'gpt-5.6-sol',   label: 'GPT-5.6 Sol ⭐' },
+    { id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra' },
+    { id: 'gpt-5.6-luna',  label: 'GPT-5.6 Luna' },
+    { id: 'gpt-4.1',       label: 'GPT-4.1 (код, 1M ctx)' },
     { id: 'gpt-4.1-mini',  label: 'GPT-4.1 mini (быстрый, дёшево)' },
     { id: 'gpt-4.1-nano',  label: 'GPT-4.1 nano (самый быстрый)' },
     { id: 'o4-mini',       label: 'o4-mini 🧠 (рассуждение)' },
@@ -7877,33 +7901,40 @@ const PROVIDER_MODELS = {
     { id: 'compound-beta',       label: 'Compound Beta (веб+код)' },
   ],
   openrouter: [
-    { id: 'openrouter/auto',                              label: '🤖 Auto (лучшая доступная)' },
-    { id: 'anthropic/claude-opus-4-7',                   label: 'Claude Opus 4.7 🔥' },
-    { id: 'anthropic/claude-sonnet-4-6',                 label: 'Claude Sonnet 4.6 ⭐' },
-    { id: 'openai/gpt-4.1',                              label: 'GPT-4.1' },
-    { id: 'openai/o4-mini',                              label: 'o4-mini 🧠' },
-    { id: 'google/gemini-3.5-flash',                     label: 'Gemini 3.5 Flash 🔥 (новый)' },
-    { id: 'google/gemini-3.1-pro-preview',               label: 'Gemini 3.1 Pro (preview)' },
-    { id: 'google/gemini-2.5-flash',                     label: 'Gemini 2.5 Flash' },
-    { id: 'meta-llama/llama-3.3-70b-instruct:free',      label: 'Llama 3.3 70B (free)' },
-    { id: 'deepseek/deepseek-v4-flash:free',             label: 'DeepSeek V4 Flash (free)' },
-    { id: 'qwen/qwen3-72b:free',                         label: 'Qwen 3 72B (free)' },
+    { id: 'openrouter/auto',                         label: '🤖 Auto (лучшая доступная)' },
+    { id: 'anthropic/claude-opus-5',                 label: 'Claude Opus 5 🔥' },
+    { id: 'anthropic/claude-sonnet-5',               label: 'Claude Sonnet 5 ⭐' },
+    { id: 'openai/gpt-5.6-sol',                      label: 'GPT-5.6 Sol' },
+    { id: 'google/gemini-3.8-flash',                 label: 'Gemini 3.8 Flash ⭐' },
+    { id: 'x-ai/grok-4.6',                           label: 'Grok 4.6' },
+    { id: 'deepseek/deepseek-flash',                 label: 'DeepSeek Flash' },
+    { id: 'deepseek/deepseek-v4-pro',                 label: 'DeepSeek V4 Pro' },
+    { id: 'google/gemini-3.5-flash',                 label: 'Gemini 3.5 Flash' },
+    { id: 'anthropic/claude-sonnet-4-6',             label: 'Claude Sonnet 4.6' },
   ],
   gemini: [
-    // gemini-2.0-flash retiring June 1 2026; gemini-3-pro-preview deprecated → 3.1
-    { id: 'gemini-3.5-flash',          label: 'Gemini 3.5 Flash 🔥 (новый, Pro-уровень)' },
-    { id: 'gemini-3-flash-preview',    label: 'Gemini 3 Flash (сложный агент)' },
+    // Catalog 2026-09-19: 3.8 Flash = latest; 3.5 Flash-Lite = preferred cheap Lite
+    { id: 'gemini-3.8-flash',          label: 'Gemini 3.8 Flash ⭐ (latest)' },
+    { id: 'gemini-3.7-flash',          label: 'Gemini 3.7 Flash' },
+    { id: 'gemini-3.6-flash',          label: 'Gemini 3.6 Flash' },
+    { id: 'gemini-3.5-flash',          label: 'Gemini 3.5 Flash' },
+    { id: 'gemini-3.5-flash-lite',     label: 'Gemini 3.5 Flash-Lite 💰 (preferred Lite)' },
+    { id: 'gemini-3-flash-preview',    label: 'Gemini 3 Flash Preview (legacy)' },
     { id: 'gemini-3.1-pro-preview',    label: 'Gemini 3.1 Pro 🧠 (рассуждение, preview)' },
-    { id: 'gemini-3.1-flash-lite',     label: 'Gemini 3.1 Flash-Lite (GA, дёшево)' },
-    { id: 'gemini-2.5-pro',            label: 'Gemini 2.5 Pro ⭐ (стабильный)' },
+    { id: 'gemini-3.1-flash-lite',     label: 'Gemini 3.1 Flash-Lite' },
+    { id: 'gemini-2.5-pro',            label: 'Gemini 2.5 Pro (стабильный)' },
     { id: 'gemini-2.5-flash',          label: 'Gemini 2.5 Flash (проверенный)' },
     { id: 'gemini-2.5-flash-lite',     label: 'Gemini 2.5 Flash-Lite (бюджет)' },
   ],
   grok: [
-    // grok-3, grok-4-1-fast-*, grok-4-0709 — retired May 15 2026 (официально)
-    // M2.1: Chat sends reasoning_effort:'low' (documented default) — not display-only
-    { id: 'grok-4.3',  label: 'Grok 4.3 ⭐ (флагман, 1M ctx, reasoning_effort low)' },
-    { id: 'grok-4.20', label: 'Grok 4.20 🔥 (топ, reasoning_effort low)' },
+    // grok-4.6 UI effort presets normalize via wizNormalizeGrokRequest (not official model IDs)
+    { id: 'grok-4.6-high',   label: 'Grok 4.6 — High ⭐ (default)' },
+    { id: 'grok-4.6',        label: 'Grok 4.6 (→ High)' },
+    { id: 'grok-4.6-medium', label: 'Grok 4.6 — Medium' },
+    { id: 'grok-4.6-low',    label: 'Grok 4.6 — Low' },
+    { id: 'grok-4.6-xhigh',  label: 'Grok 4.6 — XHigh' },
+    { id: 'grok-4.3',        label: 'Grok 4.3 (reasoning_effort low)' },
+    { id: 'grok-4.20',       label: 'Grok 4.20 (reasoning_effort low)' },
   ],
 };
 
@@ -8112,10 +8143,10 @@ function _orRestoreModel() {
   if (label) label.textContent = 'Модель: ' + m;
   const ids = {
     'openrouter/auto': 'or-model-auto',
-    'anthropic/claude-sonnet-4-6': 'or-model-claude',
-    'openai/gpt-5.4-mini': 'or-model-insta',
-    'openai/gpt-5.5': 'or-model-think',
-    'qwen/qwen2.5-72b-instruct': 'or-model-qwen'
+    'anthropic/claude-sonnet-5': 'or-model-claude',
+    'openai/gpt-5.6-sol': 'or-model-insta',
+    'google/gemini-3.8-flash': 'or-model-think',
+    'x-ai/grok-4.6': 'or-model-qwen'
   };
   ['or-model-auto','or-model-claude','or-model-insta','or-model-think','or-model-qwen'].forEach(id => {
     const btn = document.getElementById(id);
@@ -8185,10 +8216,10 @@ function eitiSetORModel(model) {
   // Highlight active button
   const map = {
     'openrouter/auto': 'or-model-auto',
-    'anthropic/claude-sonnet-4-6': 'or-model-claude',
-    'openai/gpt-5.4-mini': 'or-model-insta',
-    'openai/gpt-5.5': 'or-model-think',
-    'qwen/qwen2.5-72b-instruct': 'or-model-qwen'
+    'anthropic/claude-sonnet-5': 'or-model-claude',
+    'openai/gpt-5.6-sol': 'or-model-insta',
+    'google/gemini-3.8-flash': 'or-model-think',
+    'x-ai/grok-4.6': 'or-model-qwen'
   };
   ['or-model-auto','or-model-claude','or-model-insta','or-model-think','or-model-qwen'].forEach(id => {
     const btn = document.getElementById(id);
@@ -8291,31 +8322,35 @@ function wizSetDsModel(model) {
   if (sel) { sel.value = model; saveConfigField('model', model); }
   wizRenderDsModel();
   const labels = {
-    'deepseek-v4-flash':     '⚡ Flash → deepseek-flash',
-    'deepseek-v4-pro':       '🔬 Pro: thinking + effort low',
-    'deepseek-v4-pro-high':  '🧠 Think High: reasoning_effort high',
-    'deepseek-v4-pro-xhigh': '🔮 XHigh: reasoning_effort max'
+    'deepseek-flash':        '⚡ Flash → deepseek-flash',
+    'deepseek-v4-pro':       '🔬 Pro: thinking + effort high (default)',
+    'deepseek-v4-pro-high':  '🔬 Pro High: reasoning_effort high',
+    'deepseek-v4-pro-low':   '🧠 Pro Low: reasoning_effort low',
+    'deepseek-v4-pro-max':   '🔮 Pro Max: reasoning_effort max'
   };
   showToast(labels[model] || model);
 }
 function wizRenderDsModel() {
   const cur = document.getElementById('cfgModel')?.value || '';
-  const btnMap = { flash:'deepseek-v4-flash', pro:'deepseek-v4-pro', high:'deepseek-v4-pro-high', xhigh:'deepseek-v4-pro-xhigh' };
+  const btnMap = { flash:'deepseek-flash', high:'deepseek-v4-pro-high', low:'deepseek-v4-pro-low', max:'deepseek-v4-pro-max' };
+  // Plain deepseek-v4-pro highlights High (default)
+  const curNorm = (cur === 'deepseek-v4-pro') ? 'deepseek-v4-pro-high' : cur;
   Object.entries(btnMap).forEach(([k,v]) => {
     const btn = document.getElementById('dsm-'+k);
     if (!btn) return;
-    const active = cur === v;
-    btn.style.borderColor = active ? 'var(--gold)' : (k==='xhigh'?'rgba(167,139,250,.5)':'var(--gold-dim)');
+    const active = curNorm === v || cur === v;
+    btn.style.borderColor = active ? 'var(--gold)' : (k==='max'?'rgba(167,139,250,.5)':'var(--gold-dim)');
     btn.style.background  = active ? 'rgba(201,149,42,.18)' : 'var(--card-bg)';
     btn.style.color       = active ? 'var(--gold)' : 'var(--text)';
   });
   const desc = document.getElementById('ds-model-desc');
   if (!desc) return;
   const descs = {
-    'deepseek-v4-flash':'⚡ Flash — outbound model deepseek-flash',
-    'deepseek-v4-pro':'🔬 Pro — thinking enabled, reasoning_effort low',
-    'deepseek-v4-pro-high':'🧠 Think High — reasoning_effort high (no budget_tokens)',
-    'deepseek-v4-pro-xhigh':'🔮 XHigh — reasoning_effort max (no budget_tokens)'
+    'deepseek-flash':'⚡ Flash — outbound model deepseek-flash',
+    'deepseek-v4-pro':'🔬 Pro — thinking enabled, reasoning_effort high (default)',
+    'deepseek-v4-pro-high':'🔬 Pro High — reasoning_effort high',
+    'deepseek-v4-pro-low':'🧠 Pro Low — reasoning_effort low',
+    'deepseek-v4-pro-max':'🔮 Pro Max — reasoning_effort max'
   };
   desc.textContent = descs[cur] || '';
 }
@@ -9223,10 +9258,10 @@ const LANGS = {
     ph_api_key_ollama:'не нужен',
     hint_api_key_ollama:'🖥 Локальный сервер — ключ не требуется',
     ds_mode_title:'🐋 DeepSeek — режим мышления',
-    ds_flash_label:'⚡ Flash', ds_flash_sub:'быстро, дёшево',
-    ds_pro_label:'🔬 Pro', ds_pro_sub:'мышление',
-    ds_high_label:'🧠 Think', ds_high_sub:'глубокое, 8K бюджет',
-    ds_xhigh_label:'🔮 XHigh', ds_xhigh_sub:'экстрем, 20K бюджет',
+    ds_flash_label:'⚡ Flash', ds_flash_sub:'V4.1, быстро',
+    ds_pro_label:'🔬 Pro High', ds_pro_sub:'default effort high',
+    ds_high_label:'🧠 Pro Low', ds_high_sub:'effort low',
+    ds_xhigh_label:'🔮 Pro Max', ds_xhigh_sub:'effort max',
     or_section_title:'🔀 OpenRouter API Key',
     or_section_hint:'Единый доступ к 300+ моделям (Claude, GPT, Llama, Mistral и др.). Получить ключ: openrouter.ai/settings/keys',
     or_model_label:'🧩 Модель',
@@ -9475,10 +9510,10 @@ const LANGS = {
     ph_api_key_ollama:'not required',
     hint_api_key_ollama:'🖥 Local server — no key needed',
     ds_mode_title:'🐋 DeepSeek — thinking mode',
-    ds_flash_label:'⚡ Flash', ds_flash_sub:'fast, cheap',
-    ds_pro_label:'🔬 Pro', ds_pro_sub:'thinking',
-    ds_high_label:'🧠 Think', ds_high_sub:'deep, 8K budget',
-    ds_xhigh_label:'🔮 XHigh', ds_xhigh_sub:'extreme, 20K budget',
+    ds_flash_label:'⚡ Flash', ds_flash_sub:'V4.1, fast',
+    ds_pro_label:'🔬 Pro High', ds_pro_sub:'default effort high',
+    ds_high_label:'🧠 Pro Low', ds_high_sub:'effort low',
+    ds_xhigh_label:'🔮 Pro Max', ds_xhigh_sub:'effort max',
     or_section_title:'🔀 OpenRouter API Key',
     or_section_hint:'Unified access to 300+ models (Claude, GPT, Llama, Mistral, etc.). Get key: openrouter.ai/settings/keys',
     or_model_label:'🧩 Model',
@@ -10188,15 +10223,18 @@ function wizDetectThinkMode(text, model, provider) {
   // Включаем ТОЛЬКО если модель реально думает через CoT
   const isPro = (
     // DeepSeek — только Pro (не flash)
-    m === 'deepseek-v4-pro' || m === 'deepseek-v4-pro-high' || m === 'deepseek-v4-pro-xhigh' ||
-    // Claude Opus
-    m.includes('opus') ||
-    // Gemini — только pro и 2.5-pro
-    m === 'gemini-3.1-pro-preview' || m === 'gemini-2.5-pro' || m === 'gemini-3.5-flash' || m === 'gemini-3-flash-preview' ||
-    // OpenAI — reasoning
-    m === 'o3' || m === 'o4-mini' || m === 'o3-pro' ||
+    m === 'deepseek-v4-pro' || m === 'deepseek-v4-pro-high' || m === 'deepseek-v4-pro-low' ||
+    m === 'deepseek-v4-pro-max' || m === 'deepseek-v4-pro-xhigh' ||
+    // Claude Opus / Fable
+    m.includes('opus') || m.includes('fable') || m.includes('sonnet-5') ||
+    // Gemini — pro + main flash lines
+    m === 'gemini-3.1-pro-preview' || m === 'gemini-2.5-pro' || m === 'gemini-3.5-flash' ||
+    m === 'gemini-3.8-flash' || m === 'gemini-3.7-flash' || m === 'gemini-3.6-flash' ||
+    m === 'gemini-3-flash-preview' ||
+    // OpenAI — reasoning + 5.6
+    m === 'o3' || m === 'o4-mini' || m === 'o3-pro' || m.startsWith('gpt-5.6') ||
     // Grok flagship
-    m === 'grok-4.3' || m === 'grok-4.20' ||
+    m === 'grok-4.6' || m.startsWith('grok-4.6-') || m === 'grok-4.3' || m === 'grok-4.20' ||
     // GPT-OSS heavy
     m.includes('gpt-oss-120b') ||
     // Явный запрос мышления в тексте

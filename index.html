@@ -10273,9 +10273,8 @@ async function _rneCallLLM(prompt, isChat) {
   if (provider === 'gemini') {
     apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
     headers = { 'Content-Type': 'application/json' };
-    var _rneGemTC = wizGeminiThinkingConfig(model, maxTok);
+    // Utility (RNE): omit thinkingConfig entirely — maxTok 800/1500 must stay visible output
     body = { contents:[{parts:[{text:prompt}]}], generationConfig:{ temperature:temp, maxOutputTokens:maxTok } };
-    if (_rneGemTC) body.generationConfig.thinkingConfig = _rneGemTC;
     if (!isChat) body.generationConfig.responseMimeType = 'application/json';
   } else if (provider === 'deepseek' || provider === 'openai' || provider === 'groq' || provider === 'grok' || provider === 'openrouter') {
     var urlMap = {
@@ -10289,17 +10288,14 @@ async function _rneCallLLM(prompt, isChat) {
     var bearerKey = provider === 'openrouter' ? sessionStorage.getItem('eiti_lab_or_key') || apiKey : apiKey;
     headers = { 'Content-Type':'application/json', 'Authorization':'Bearer ' + bearerKey };
     body = { model:model, messages:[{role:'user',content:prompt}], max_tokens:maxTok, temperature:temp };
-    if (provider === 'deepseek') wizApplyDeepSeekNormalize(body, model);
-    if (provider === 'grok') {
-      var _rneGrokE = wizGrokReasoningEffort(model);
-      if (_rneGrokE) body.reasoning_effort = _rneGrokE;
-    }
+    // Utility: canonicalize DeepSeek model id only — no thinking/reasoning_effort
+    if (provider === 'deepseek') body.model = wizNormalizeDeepSeekRequest(model).model;
     if (!isChat) body.response_format = { type:'json_object' };
   } else if (provider === 'claude') {
     apiUrl = 'https://api.anthropic.com/v1/messages';
     headers = { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' };
-    var _rneThinkOn = !!(document.getElementById('cfgThinking') && document.getElementById('cfgThinking').checked);
-    body = Object.assign({ model:model, max_tokens:maxTok, messages:[{role:'user',content:prompt}] }, wizClaudeThinkingFields(model, _rneThinkOn, maxTok));
+    // Utility (RNE): omit thinking — Haiku@1500 would get budget_tokens=1499 (1 visible token)
+    body = { model:model, max_tokens:maxTok, messages:[{role:'user',content:prompt}] };
   } else {
     throw new Error('Провайдер ' + provider + ' не поддерживает RNE');
   }
@@ -10965,9 +10961,8 @@ async function wizGenerateSuggestions(msgEl, lastUserMsg, lastAIMsg) {
     if (cfg.provider === 'gemini') {
       apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + cfg.model + ':generateContent?key=' + cfg.apiKey;
       headers = { 'Content-Type': 'application/json' };
-      const _suggTC = wizGeminiThinkingConfig(cfg.model, 150);
+      // Utility (suggestions): omit thinkingConfig
       body = { contents:[{ parts:[{ text: prompt }] }], generationConfig:{ temperature:0.7, maxOutputTokens:150 } };
-      if (_suggTC) body.generationConfig.thinkingConfig = _suggTC;
     } else if (cfg.provider === 'claude') {
       apiUrl = 'https://api.anthropic.com/v1/messages';
       headers = { 'Content-Type':'application/json', 'x-api-key':cfg.apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' };
@@ -10986,11 +10981,8 @@ async function wizGenerateSuggestions(msgEl, lastUserMsg, lastAIMsg) {
       const bearer = cfg.provider === 'openrouter' ? (sessionStorage.getItem('eiti_lab_or_key') || cfg.apiKey) : cfg.apiKey;
       headers = { 'Content-Type':'application/json', 'Authorization':'Bearer ' + bearer };
       body = { model: cfg.model, max_tokens:150, temperature:0.7, messages:[{ role:'user', content: prompt }] };
-      if (cfg.provider === 'deepseek') wizApplyDeepSeekNormalize(body, cfg.model);
-      if (cfg.provider === 'grok') {
-        const _suggGrokE = wizGrokReasoningEffort(cfg.model);
-        if (_suggGrokE) body.reasoning_effort = _suggGrokE;
-      }
+      // Utility: DeepSeek model id only; omit thinking/reasoning_effort (and Grok effort)
+      if (cfg.provider === 'deepseek') body.model = wizNormalizeDeepSeekRequest(cfg.model).model;
     }
 
     const r = await fetch(apiUrl, { method:'POST', headers, body: JSON.stringify(body) });
@@ -11533,9 +11525,8 @@ function l2Consolidate(chatId) {
       if (provider === 'gemini') {
         url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         headers = {'Content-Type':'application/json'};
-        const _l2TC = wizGeminiThinkingConfig(model, 300);
+        // Utility (L2): omit thinkingConfig
         body = {contents:[{role:'user',parts:[{text:prompt+'\n\nДиалог:\n'+sliceText}]}],generationConfig:{maxOutputTokens:300,temperature:0.25}};
-        if (_l2TC) body.generationConfig.thinkingConfig = _l2TC;
       } else {
         url = provider === 'deepseek' ? 'https://api.deepseek.com/v1/chat/completions'
             : provider === 'openai' ? 'https://api.openai.com/v1/chat/completions'
@@ -11545,7 +11536,7 @@ function l2Consolidate(chatId) {
         if (!url) return;
         headers = {'Content-Type':'application/json','Authorization':'Bearer '+apiKey};
         body = {model:model,messages:[{role:'system',content:prompt},{role:'user',content:sliceText}],max_tokens:300,temperature:0.25};
-        if (provider === 'deepseek') wizApplyDeepSeekNormalize(body, model);
+        if (provider === 'deepseek') body.model = wizNormalizeDeepSeekRequest(model).model;
       }
       return fetch(url, {method:'POST', headers, body:JSON.stringify(body)})
         .then(r => r.json())
@@ -11695,9 +11686,8 @@ async function l1Compress(chatId) {
     if (provider === 'gemini') {
       url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       headers = {'Content-Type':'application/json'};
-      const _l1TC = wizGeminiThinkingConfig(model, 400);
+      // Utility (L1): omit thinkingConfig
       body = {contents:[{role:'user',parts:[{text: sysPrompt + '\n\nДиалог:\n' + sliceText}]}], generationConfig:{maxOutputTokens: 400, temperature: 0.2}};
-      if (_l1TC) body.generationConfig.thinkingConfig = _l1TC;
     } else {
       url = provider === 'deepseek' ? 'https://api.deepseek.com/v1/chat/completions'
           : provider === 'openai' ? 'https://api.openai.com/v1/chat/completions'
@@ -11707,7 +11697,7 @@ async function l1Compress(chatId) {
       if (!url) return;
       headers = {'Content-Type':'application/json','Authorization':'Bearer '+apiKey};
       body = {model:model, messages:[{role:'system',content:sysPrompt},{role:'user',content:sliceText}], max_tokens:400, temperature:0.2};
-      if (provider === 'deepseek') wizApplyDeepSeekNormalize(body, model);
+      if (provider === 'deepseek') body.model = wizNormalizeDeepSeekRequest(model).model;
     }
     const r = await fetch(url, { method:'POST', headers, body: JSON.stringify(body) });
     const d = await r.json();
@@ -11954,25 +11944,20 @@ async function memAiAnalyze() {
     if (provider === 'gemini') {
       url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       headers = {'Content-Type':'application/json'};
-      const _memTC = wizGeminiThinkingConfig(model, 500);
+      // Utility (mem analyze): omit thinkingConfig
       body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:500}};
-      if (_memTC) body.generationConfig.thinkingConfig = _memTC;
     } else {
       const urls = {deepseek:'https://api.deepseek.com/v1/chat/completions',openai:'https://api.openai.com/v1/chat/completions',groq:'https://api.groq.com/openai/v1/chat/completions',openrouter:'https://openrouter.ai/api/v1/chat/completions',grok:'https://api.x.ai/v1/chat/completions',claude:'https://api.anthropic.com/v1/messages'};
       url = urls[provider];
       if (!url) { res.textContent = '⚠️ Провайдер не поддерживается'; return; }
       if (provider === 'claude') {
         headers = {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'};
-        const _memThinkOn = !!document.getElementById('cfgThinking')?.checked;
-        body = {model,max_tokens:500,messages:[{role:'user',content:prompt}], ...wizClaudeThinkingFields(model, _memThinkOn, 500)};
+        // Utility: omit thinking
+        body = {model,max_tokens:500,messages:[{role:'user',content:prompt}]};
       } else {
         headers = {'Content-Type':'application/json','Authorization':'Bearer '+apiKey};
         body = {model:model,max_tokens:500,messages:[{role:'user',content:prompt}]};
-        if (provider === 'deepseek') wizApplyDeepSeekNormalize(body, model);
-        if (provider === 'grok') {
-          const _memGrokE = wizGrokReasoningEffort(model);
-          if (_memGrokE) body.reasoning_effort = _memGrokE;
-        }
+        if (provider === 'deepseek') body.model = wizNormalizeDeepSeekRequest(model).model;
       }
     }
     const r = await fetch(url, {method:'POST',headers,body:JSON.stringify(body)});
@@ -12010,24 +11995,19 @@ async function memAiEdit() {
     if (provider === 'gemini') {
       url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       headers = {'Content-Type':'application/json'};
-      const _editTC = wizGeminiThinkingConfig(model, 400);
+      // Utility (mem edit): omit thinkingConfig
       body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:400}};
-      if (_editTC) body.generationConfig.thinkingConfig = _editTC;
     } else if (provider === 'claude') {
       url = 'https://api.anthropic.com/v1/messages';
       headers = {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'};
-      const _editThinkOn = !!document.getElementById('cfgThinking')?.checked;
-      body = {model,max_tokens:400,messages:[{role:'user',content:prompt}], ...wizClaudeThinkingFields(model, _editThinkOn, 400)};
+      // Utility: omit thinking
+      body = {model,max_tokens:400,messages:[{role:'user',content:prompt}]};
     } else {
       const us = {deepseek:'https://api.deepseek.com/v1/chat/completions',openai:'https://api.openai.com/v1/chat/completions',groq:'https://api.groq.com/openai/v1/chat/completions',openrouter:'https://openrouter.ai/api/v1/chat/completions',grok:'https://api.x.ai/v1/chat/completions'};
       url = us[provider]; if (!url) return;
       headers = {'Content-Type':'application/json','Authorization':'Bearer '+apiKey};
       body = {model:model,max_tokens:400,messages:[{role:'user',content:prompt}]};
-      if (provider === 'deepseek') wizApplyDeepSeekNormalize(body, model);
-      if (provider === 'grok') {
-        const _editGrokE = wizGrokReasoningEffort(model);
-        if (_editGrokE) body.reasoning_effort = _editGrokE;
-      }
+      if (provider === 'deepseek') body.model = wizNormalizeDeepSeekRequest(model).model;
     }
     const r = await fetch(url, {method:'POST',headers,body:JSON.stringify(body)});
     const d = await r.json();

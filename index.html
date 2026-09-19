@@ -773,6 +773,69 @@ main {
   flex: 1;
 }
 
+
+/* ── M2 Snapshot + Clean Resume ─────────────────────────── */
+.wiz-snap-divider {
+  margin: 14px 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed rgba(201,149,42,0.55);
+  background: rgba(201,149,42,0.08);
+  color: var(--gold);
+  font-size: 12px;
+  text-align: center;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+.wiz-snap-modal-bg {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.wiz-snap-modal {
+  width: min(520px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--panel-bg, #1a1a1a);
+  border: 1px solid rgba(201,149,42,0.35);
+  border-radius: 14px;
+  padding: 14px 16px 16px;
+  color: var(--text);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+}
+.wiz-snap-modal h3 { margin: 0 0 10px; font-size: 1rem; color: var(--gold); }
+.wiz-snap-modal label { display:block; font-size:12px; opacity:.8; margin:10px 0 4px; }
+.wiz-snap-modal textarea {
+  width: 100%; min-height: 58px; box-sizing: border-box;
+  border-radius: 8px; border: 1px solid var(--gold-dim, rgba(201,149,42,.4));
+  background: var(--input-bg, #111); color: var(--text);
+  padding: 8px 10px; font-size: .85rem; resize: vertical;
+}
+.wiz-snap-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.wiz-snap-actions button {
+  border: 1px solid rgba(201,149,42,0.45); background: rgba(201,149,42,0.15);
+  color: var(--text); border-radius: 8px; padding: 7px 12px; cursor: pointer; font-size: .82rem;
+}
+.wiz-snap-actions button.primary { background: rgba(201,149,42,0.35); font-weight: 700; }
+.wiz-snap-list { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.wiz-snap-item {
+  border: 1px solid rgba(201,149,42,0.25); border-radius: 10px;
+  padding: 8px 10px; background: rgba(255,255,255,0.03);
+}
+.wiz-snap-item .sid { font-size: 11px; color: var(--gold); font-weight: 700; }
+.wiz-snap-item .prev { font-size: 12px; opacity: .75; margin: 4px 0 8px; white-space: pre-wrap; max-height: 54px; overflow: hidden; }
+.wiz-snap-item .row { display:flex; gap:6px; flex-wrap:wrap; }
+.wiz-snap-item button {
+  border: 1px solid rgba(201,149,42,0.4); background: transparent;
+  color: var(--text); border-radius: 7px; padding: 5px 9px; cursor: pointer; font-size: 11px;
+}
+.wiz-snap-badge {
+  display:inline-block; margin-left:8px; font-size:10px; padding:2px 6px;
+  border-radius: 999px; border:1px solid rgba(201,149,42,.5); color: var(--gold);
+}
+
 #chatInput, #agentInput {
   width: 100%;
   background: var(--input-bg);
@@ -1489,6 +1552,7 @@ main {
           </select>
         </div>
         <div class="chat-header-right">
+          <button id="snapListBtn" class="btn-small" title="Снимки (M2)">🗂</button>
           <button id="clearChatBtn" class="btn-small" title="Очистить чат">🗑</button>
         </div>
       </div>
@@ -1515,6 +1579,7 @@ main {
       <div class="input-bar">
         <div class="input-buttons" id="chatInputBtns">
           <button class="attach-btn small" id="chatAttachBtn" data-i18n-title="ttl_attach" title="Прикрепить файл">📎</button>
+          <button class="attach-btn small" id="chatSnapBtn" title="Зафиксировать снимок">📝</button>
           <button class="attach-btn small" id="chatClearBtn" data-i18n-title="ttl_clear_chat" title="Очистить чат">♻️</button>
           <button class="attach-btn small" id="gearMenuBtn" data-i18n-title="ttl_chat_toolbar" title="Панель инструментов" style="display:none">⚙️</button>
           <button class="attach-btn small" id="voiceMicBtn" data-i18n-title="ttl_voice_input" title="Голосовой ввод (Grok Voice)" style="display:none">🎤</button>
@@ -2739,11 +2804,11 @@ main {
 <script>
 // ── Config & State ───────────────────────────────────────────────────────
 const DB_NAME    = 'velan-eiti-lab-db';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 const STORES     = ['messages', 'config', 'memory', 'agent_backups', 'files', 'chats', 'agents', 'chunks', 'tasks'];
 
 // Единый источник версии приложения (используется в шапке, sys-info, ответах бота)
-const APP_VERSION = '1.8.4';
+const APP_VERSION = '1.8.7';
 document.addEventListener('DOMContentLoaded', () => {
   const _vl = document.getElementById('appVersionLabel');
   if (_vl) _vl.textContent = 'v' + APP_VERSION;
@@ -2789,6 +2854,10 @@ function openDB() {
       if (!idb.objectStoreNames.contains('reasoning')) {
         idb.createObjectStore('reasoning', { keyPath: 'id' });
       }
+      // M2: manual snapshots (v7) — never use NOTES for this
+      if (!idb.objectStoreNames.contains('snapshots')) {
+        idb.createObjectStore('snapshots', { keyPath: 'id' });
+      }
     };
     req.onsuccess = e => { db = e.target.result; resolve(db); };
     req.onerror   = e => reject(e.target.error);
@@ -2813,6 +2882,7 @@ function dbAdd(store, data) {
   });
 }
 
+
 function dbGetAll(store) {
   return new Promise((resolve, reject) => {
     const tx  = db.transaction(store, 'readonly');
@@ -2821,6 +2891,334 @@ function dbGetAll(store) {
     req.onerror   = () => reject(req.error);
   });
 }
+
+// ── M2 Manual Snapshot + Clean Resume ────────────────────────────────────
+const WIZ_CLEAN_RESUME_INSTRUCTION =
+  'You are continuing work from a saved snapshot. Do not assume access to conversation before the resume boundary. Use only the supplied snapshot and messages after the boundary. If information is missing, say that it is missing.';
+
+/** @type {{snapshotId:string, boundaryTs:number, boundaryIndex:number, chatId:string}|null} */
+let wizCleanResumeState = null;
+window.__wizLastOutboundPayload = null;
+window.__wizDumpLastPayload = function () { return window.__wizLastOutboundPayload; };
+
+function wizSnapPad(n) { return String(n).padStart(2, '0'); }
+
+function wizMakeSnapshotId(d) {
+  d = d || new Date();
+  return 'SNAP-' + d.getFullYear() + wizSnapPad(d.getMonth()+1) + wizSnapPad(d.getDate())
+    + '-' + wizSnapPad(d.getHours()) + wizSnapPad(d.getMinutes());
+}
+
+function wizFormatSnapshotText(fields) {
+  return [
+    '1. Где остановились:\n' + (fields.where || '').trim(),
+    '2. Что изменилось / решили:\n' + (fields.changed || '').trim(),
+    '3. Что отвергли и почему:\n' + (fields.rejected || '').trim(),
+    '4. Что ещё требует мышления:\n' + (fields.thinking || '').trim()
+  ].join('\n\n');
+}
+
+function wizResumeStorageKey(chatId) {
+  return 'wiz_lab_clean_resume_' + (chatId || '');
+}
+
+function wizPersistResumeState(state) {
+  wizCleanResumeState = state;
+  try {
+    if (state && state.chatId) {
+      localStorage.setItem(wizResumeStorageKey(state.chatId), JSON.stringify(state));
+    }
+  } catch (e) {}
+}
+
+function wizClearResumeState(chatId) {
+  const id = chatId || (wizCleanResumeState && wizCleanResumeState.chatId) || activeChatId;
+  if (wizCleanResumeState && (!chatId || wizCleanResumeState.chatId === chatId)) {
+    wizCleanResumeState = null;
+  }
+  try { if (id) localStorage.removeItem(wizResumeStorageKey(id)); } catch (e) {}
+}
+
+function wizLoadResumeStateForChat(chatId) {
+  if (!chatId) { wizCleanResumeState = null; return null; }
+  try {
+    const raw = localStorage.getItem(wizResumeStorageKey(chatId));
+    if (!raw) { wizCleanResumeState = null; return null; }
+    const st = JSON.parse(raw);
+    if (st && st.snapshotId && typeof st.boundaryTs === 'number') {
+      wizCleanResumeState = st;
+      return st;
+    }
+  } catch (e) {}
+  wizCleanResumeState = null;
+  return null;
+}
+
+function wizIsCleanResumeActive(chatId) {
+  const id = chatId || activeChatId;
+  if (!wizCleanResumeState || !id) return false;
+  return wizCleanResumeState.chatId === id && !!wizCleanResumeState.snapshotId;
+}
+
+async function wizGetSnapshot(id) {
+  if (!db || !id) return null;
+  return new Promise((resolve, reject) => {
+    try {
+      const tx = db.transaction('snapshots', 'readonly');
+      const req = tx.objectStore('snapshots').get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    } catch (e) { resolve(null); }
+  });
+}
+
+async function wizListSnapshots() {
+  if (!db) return [];
+  try {
+    const all = await dbGetAll('snapshots');
+    return (all || []).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  } catch (e) { return []; }
+}
+
+async function wizSaveSnapshotRecord(rec) {
+  // Never overwrite: dbAdd fails on duplicate key → bump id suffix
+  let attempt = 0;
+  let id = rec.id;
+  while (attempt < 30) {
+    const copy = Object.assign({}, rec, { id: id });
+    try {
+      await dbAdd('snapshots', copy);
+      return copy;
+    } catch (e) {
+      attempt++;
+      id = rec.id + '-' + attempt;
+    }
+  }
+  throw new Error('snapshot id collision');
+}
+
+function wizAppendResumeDivider(historyEl, snapshotId) {
+  if (!historyEl) return;
+  const div = document.createElement('div');
+  div.className = 'wiz-snap-divider';
+  div.dataset.resumeDivider = '1';
+  div.dataset.snapshotId = snapshotId || '';
+  div.textContent = '──────── CLEAN RESUME ────────\n' + (snapshotId || '') + '\n──────────────────────────────';
+  historyEl.appendChild(div);
+  if (!historyEl.dataset.userScrolled) historyEl.scrollTop = historyEl.scrollHeight;
+}
+
+function wizCloseSnapModal() {
+  const el = document.getElementById('wiz-snap-modal-bg');
+  if (el) el.remove();
+}
+
+function wizOpenSnapshotEditor(prefill) {
+  wizCloseSnapModal();
+  const f = prefill || {};
+  const bg = document.createElement('div');
+  bg.className = 'wiz-snap-modal-bg';
+  bg.id = 'wiz-snap-modal-bg';
+  bg.onclick = (e) => { if (e.target === bg) wizCloseSnapModal(); };
+  bg.innerHTML = '<div class="wiz-snap-modal" role="dialog">'
+    + '<h3>📝 Зафиксировать снимок</h3>'
+    + '<label>1. Где остановились</label><textarea id="wiz-snap-where"></textarea>'
+    + '<label>2. Что изменилось / решили</label><textarea id="wiz-snap-changed"></textarea>'
+    + '<label>3. Что отвергли и почему</label><textarea id="wiz-snap-rejected"></textarea>'
+    + '<label>4. Что ещё требует мышления</label><textarea id="wiz-snap-thinking"></textarea>'
+    + '<div class="wiz-snap-actions">'
+    + '<button class="primary" id="wiz-snap-save">💾 Сохранить</button>'
+    + '<button type="button" id="wiz-snap-to-list">🗂 Список снимков</button>'
+    + '<button type="button" id="wiz-snap-cancel">Отмена</button>'
+    + '</div></div>';
+  document.body.appendChild(bg);
+  bg.querySelector('#wiz-snap-where').value = f.where || '';
+  bg.querySelector('#wiz-snap-changed').value = f.changed || '';
+  bg.querySelector('#wiz-snap-rejected').value = f.rejected || '';
+  bg.querySelector('#wiz-snap-thinking').value = f.thinking || '';
+  bg.querySelector('#wiz-snap-cancel').onclick = wizCloseSnapModal;
+  bg.querySelector('#wiz-snap-to-list').onclick = () => wizOpenSnapshotList();
+  bg.querySelector('#wiz-snap-save').onclick = async () => {
+    try {
+      await wizCommitSnapshotFromEditor();
+    } catch (e) {
+      console.warn(e);
+      showToast('❌ Не удалось сохранить снимок: ' + (e.message || e));
+    }
+  };
+}
+
+async function wizCommitSnapshotFromEditor() {
+  if (!db) throw new Error('DB not ready');
+  if (!activeChatId) throw new Error('нет активного чата');
+  const fields = {
+    where: (document.getElementById('wiz-snap-where') || {}).value || '',
+    changed: (document.getElementById('wiz-snap-changed') || {}).value || '',
+    rejected: (document.getElementById('wiz-snap-rejected') || {}).value || '',
+    thinking: (document.getElementById('wiz-snap-thinking') || {}).value || ''
+  };
+  // Validate raw fields (formatted text always contains labels)
+  const hasAnyField = [fields.where, fields.changed, fields.rejected, fields.thinking]
+    .some(v => String(v || '').trim().length > 0);
+  if (!hasAnyField) {
+    showToast('⚠️ Заполните хотя бы одно поле');
+    return;
+  }
+  const text = wizFormatSnapshotText(fields);
+  const allMsgs = await dbGetAll('messages');
+  const chatMsgs = (allMsgs || [])
+    .filter(m => m.chatId === activeChatId && m.panel === 'chat')
+    .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  const boundaryIndex = chatMsgs.length;
+  const boundaryTs = chatMsgs.length ? (chatMsgs[chatMsgs.length - 1].ts || Date.now()) : Date.now();
+  const baseId = wizMakeSnapshotId(new Date());
+  const rec = {
+    id: baseId,
+    ts: Date.now(),
+    chatId: activeChatId,
+    boundaryIndex: boundaryIndex,
+    boundaryTs: boundaryTs,
+    sourceMessageId: chatMsgs.length ? chatMsgs[chatMsgs.length - 1].id : null,
+    where: fields.where,
+    changed: fields.changed,
+    rejected: fields.rejected,
+    thinking: fields.thinking,
+    text: text
+  };
+  const saved = await wizSaveSnapshotRecord(rec);
+  wizCloseSnapModal();
+  showToast('✅ Снимок ' + saved.id + ' сохранён');
+  wizOpenSnapshotList();
+}
+
+async function wizOpenSnapshotList() {
+  wizCloseSnapModal();
+  const snaps = await wizListSnapshots();
+  const bg = document.createElement('div');
+  bg.className = 'wiz-snap-modal-bg';
+  bg.id = 'wiz-snap-modal-bg';
+  bg.onclick = (e) => { if (e.target === bg) wizCloseSnapModal(); };
+  let listHtml = '';
+  if (!snaps.length) {
+    listHtml = '<div style="opacity:.7;font-size:13px;margin-top:8px">Снимков пока нет. Нажмите «📝 Зафиксировать».</div>';
+  } else {
+    listHtml = '<div class="wiz-snap-list">' + snaps.map(s => {
+      const prev = (s.text || '').slice(0, 140).replace(/</g, '&lt;');
+      const dt = s.ts ? new Date(s.ts).toLocaleString('ru') : '';
+      return '<div class="wiz-snap-item" data-sid="' + s.id + '">'
+        + '<div class="sid">' + s.id + ' · ' + dt + '</div>'
+        + '<div class="prev">' + prev + '</div>'
+        + '<div class="row">'
+        + '<button data-act="open">Open</button>'
+        + '<button data-act="resume">▶ Continue from this snapshot</button>'
+        + '</div></div>';
+    }).join('') + '</div>';
+  }
+  bg.innerHTML = '<div class="wiz-snap-modal"><h3>🗂 Снимки</h3>'
+    + listHtml
+    + '<div class="wiz-snap-actions">'
+    + '<button class="primary" id="wiz-snap-new">📝 Зафиксировать</button>'
+    + '<button type="button" id="wiz-snap-close">Закрыть</button>'
+    + '</div></div>';
+  document.body.appendChild(bg);
+  bg.querySelector('#wiz-snap-close').onclick = wizCloseSnapModal;
+  bg.querySelector('#wiz-snap-new').onclick = () => wizOpenSnapshotEditor();
+  bg.querySelectorAll('.wiz-snap-item').forEach(item => {
+    const sid = item.getAttribute('data-sid');
+    item.querySelector('[data-act="open"]').onclick = async () => {
+      const snap = await wizGetSnapshot(sid);
+      if (!snap) return showToast('Снимок не найден');
+      wizOpenSnapshotEditor({
+        where: snap.where || '',
+        changed: snap.changed || '',
+        rejected: snap.rejected || '',
+        thinking: snap.thinking || ''
+      });
+      // Open is view/edit of fields; saving creates a NEW snapshot (never overwrite)
+      showToast('👁 Открыт ' + sid + ' (сохранение создаст новый снимок)');
+    };
+    item.querySelector('[data-act="resume"]').onclick = () => wizStartCleanResume(sid);
+  });
+}
+
+async function wizStartCleanResume(snapshotId) {
+  if (!activeChatId) return showToast('❌ Нет активного чата');
+  const snap = await wizGetSnapshot(snapshotId);
+  if (!snap) return showToast('❌ Снимок не найден');
+  const allMsgs = await dbGetAll('messages');
+  const chatMsgs = (allMsgs || [])
+    .filter(m => m.chatId === activeChatId && m.panel === 'chat')
+    .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  const boundaryIndex = chatMsgs.length;
+  // Boundary AFTER existing messages: anything with ts > boundaryTs is post-resume
+  const boundaryTs = Date.now();
+  const state = {
+    chatId: activeChatId,
+    snapshotId: snap.id,
+    boundaryTs: boundaryTs,
+    boundaryIndex: boundaryIndex
+  };
+  wizPersistResumeState(state);
+  // Also mirror onto chat record if present
+  try {
+    const chats = await dbGetAll('chats');
+    const chat = (chats || []).find(c => c.id === activeChatId);
+    if (chat) {
+      chat.cleanResume = state;
+      chat.updated = Date.now();
+      await dbPut('chats', chat);
+    }
+  } catch (e) { console.warn('persist resume on chat:', e); }
+  wizCloseSnapModal();
+  const historyEl = document.getElementById('chatHistory');
+  wizAppendResumeDivider(historyEl, snap.id);
+  showToast('▶ Clean Resume: ' + snap.id);
+}
+
+async function wizBuildCleanResumeContext(userText) {
+  const st = wizCleanResumeState;
+  if (!st || !st.snapshotId) return null;
+  const snap = await wizGetSnapshot(st.snapshotId);
+  const snapText = (snap && (snap.text || wizFormatSnapshotText(snap))) || ('(snapshot ' + st.snapshotId + ' missing)');
+  let post = [];
+  if (db && st.chatId) {
+    try {
+      const allMsgs = await dbGetAll('messages');
+      post = (allMsgs || [])
+        .filter(m => m.chatId === st.chatId && m.panel === 'chat' && (m.ts || 0) > st.boundaryTs)
+        .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      // Drop the just-saved current user message (last matching user text) from C; it is D
+      if (post.length) {
+        const last = post[post.length - 1];
+        if (last.role === 'user' && (last.content || '') === userText) {
+          post = post.slice(0, -1);
+        }
+      }
+    } catch (e) {}
+  }
+  const postStr = post.length
+    ? post.map(m => (m.role === 'user' ? 'User' : 'Assistant') + ': ' + (m.content || '')).join('\n')
+    : '(none yet)';
+  // Clean Resume outbound purity: ONLY instruction + snapshot + post-boundary + current text
+  const body =
+    '[SAVED SNAPSHOT ' + st.snapshotId + ']\n' + snapText +
+    '\n\n[MESSAGES AFTER RESUME BOUNDARY]\n' + postStr +
+    '\n\n[CURRENT USER MESSAGE]\n' + userText;
+  return {
+    instructions: WIZ_CLEAN_RESUME_INSTRUCTION,
+    messageWithFiles: body,
+    snapshotId: st.snapshotId,
+    postCount: post.length
+  };
+}
+
+function wizRecordOutboundPayload(meta) {
+  window.__wizLastOutboundPayload = meta;
+  try {
+    if (window.__wizPayloadLog) window.__wizPayloadLog.push(meta);
+  } catch (e) {}
+}
+
 
 // ── Service Worker registration ──────────────────────────────────────────
 // SW нужен для установки PWA (иконка на домашний экран) — регистрируем на HTTPS
@@ -3104,16 +3502,28 @@ async function loadChatMessages() {
   const chatMessages = allMessages.filter(m => m.chatId === activeChatId && m.panel === 'chat');
   const historyEl = document.getElementById('chatHistory');
   historyEl.innerHTML = '';
+
+  // M2: restore Clean Resume state for this chat (survives reload)
+  const resumeSt = wizLoadResumeStateForChat(activeChatId);
   
   if (!chatMessages.length) {
     historyEl.innerHTML = '<div class="msg ai"><div class="msg-meta">⚡ EITI WIZARD · ' + ((LANGS[currentLang]||LANGS.ru)?.now_label || 'сейчас') + '</div>' + ((LANGS[currentLang]||LANGS.ru)?.welcome_chat || 'Добро пожаловать. Я готов — чат, агент, офлайн через Ollama. Что делаем?') + '</div>';
+    if (resumeSt) wizAppendResumeDivider(historyEl, resumeSt.snapshotId);
     return;
   }
   
   chatMessages.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  let dividerDone = false;
   chatMessages.forEach(msg => {
+    if (resumeSt && !dividerDone && (msg.ts || 0) > resumeSt.boundaryTs) {
+      wizAppendResumeDivider(historyEl, resumeSt.snapshotId);
+      dividerDone = true;
+    }
     appendMsg(msg.content, msg.role, historyEl);
   });
+  if (resumeSt && !dividerDone) {
+    wizAppendResumeDivider(historyEl, resumeSt.snapshotId);
+  }
 }
 
 // Переключение чата
@@ -3135,6 +3545,12 @@ document.getElementById('clearChatBtn').addEventListener('click', async () => {
       const tx = db.transaction('messages', 'readwrite');
       const store = tx.objectStore('messages');
       chatMessages.forEach(msg => store.delete(msg.id));
+      wizClearResumeState(activeChatId);
+      try {
+        const chats = await dbGetAll('chats');
+        const chat = (chats || []).find(c => c.id === activeChatId);
+        if (chat && chat.cleanResume) { delete chat.cleanResume; await dbPut('chats', chat); }
+      } catch (_e) {}
       await loadChatMessages();
       showToast('🗑 Чат очищен');
     }
@@ -6221,7 +6637,7 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
 
 ВАЖНО: эти команды не появляются в твоём видимом тексте. Просто вставь их в ответ — система сама обработает и удалит из вывода. Используй активно когда уместно.`;
 
-  const instructions = userInstr ? `${userInstr}\n\n${sysInfo}` : sysInfo;
+  let instructions = userInstr ? `${userInstr}\n\n${sysInfo}` : sysInfo;
 
   // ── Grok Voice тихий режим: текст → голосовой ответ ────────────────
   if (grokMuted && grokRecording && grokVoiceWS?.readyState === WebSocket.OPEN) {
@@ -6244,17 +6660,49 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
     return;
   }
 
-  // Добавляем контекст файлов с использованием чанков
-  const filesContext = await getFilesContext(activePanel, text);
-  // v1.7.4: добавляем paste chips в контекст
+  // M2 Clean Resume gate: decide BEFORE file/paste retrieval so outbound stays pure
+  const _wizResumeOn = (activePanel === 'chat' && wizIsCleanResumeActive(currentChatId));
+
+  let filesContext = '';
   let _pasteCtx = '';
-  if (window._wizPasteChips && window._wizPasteChips.length > 0) {
-    _pasteCtx = '\n\n--- ВСТАВЛЕННЫЙ ТЕКСТ ---\n' +
-      window._wizPasteChips.map((p, i) => `[Чип ${i+1}]:\n${p.text}`).join('\n---\n');
-    window._wizPasteChips = []; // очищаем после отправки
-    wizRenderFileChips();
+  if (_wizResumeOn) {
+    // Clean Resume: do NOT call getFilesContext; discard paste/file/vision/server extras
+    window._wizFilesSentSnapshot = null;
+    window._wizServerFileRefs = [];
+    if (window._wizPasteChips && window._wizPasteChips.length) {
+      window._wizPasteChips = [];
+      wizRenderFileChips();
+    }
+    if (typeof wizClearVisionImages === 'function') wizClearVisionImages();
+    document.getElementById('wiz-vision-chips')?.remove();
+  } else {
+    // Normal Chat: keep file retrieval + paste context as before
+    filesContext = await getFilesContext(activePanel, text);
+    // v1.7.4: добавляем paste chips в контекст
+    if (window._wizPasteChips && window._wizPasteChips.length > 0) {
+      _pasteCtx = '\n\n--- ВСТАВЛЕННЫЙ ТЕКСТ ---\n' +
+        window._wizPasteChips.map((p, i) => `[Чип ${i+1}]:\n${p.text}`).join('\n---\n');
+      window._wizPasteChips = []; // очищаем после отправки
+      wizRenderFileChips();
+    }
   }
   let messageWithFiles = text + filesContext + _pasteCtx;
+
+  // M2 Clean Resume: replace normal assembly with snapshot-only payload
+  if (_wizResumeOn) {
+    const _cr = await wizBuildCleanResumeContext(text);
+    if (_cr) {
+      instructions = _cr.instructions;
+      messageWithFiles = _cr.messageWithFiles;
+      wizRecordOutboundPayload({
+        mode: 'clean_resume',
+        snapshotId: _cr.snapshotId,
+        instructions,
+        messageWithFiles,
+        ts: Date.now()
+      });
+    }
+  } else {
 
   // ── Веб-поиск (Google Grounding / Tavily / Wikipedia / DDG) ─────────
   const _wizSearchProv = localStorage.getItem('wiz_lab_search_provider') || 'off';
@@ -6346,6 +6794,14 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
     try { const c = await getL3Context(); if (c) messageWithFiles += c; } catch(e) {}
   }
 
+  wizRecordOutboundPayload({
+    mode: 'normal',
+    instructions,
+    messageWithFiles,
+    ts: Date.now()
+  });
+  } // end else !clean resume
+
   // L3: авто-извлечь личные факты из текста пользователя
   if (typeof l3AutoExtract === 'function') l3AutoExtract(text);
 
@@ -6379,6 +6835,14 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
 
       const shouldStream = document.getElementById('cfgStream')?.checked ?? false;
 
+      try {
+        wizRecordOutboundPayload(Object.assign({}, window.__wizLastOutboundPayload || {}, {
+          provider: 'ollama', model,
+          bodyMessages: ollamaMessages,
+          userContent: messageWithFiles,
+          cleanResume: !!_wizResumeOn
+        }));
+      } catch (_e) {}
       const resp = await fetch('http://localhost:11434/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -6621,6 +7085,15 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
     // Gemini не принимает поле stream в JSON body — для него стриминг не поддерживается
     if (shouldStream && provider !== 'gemini') body.stream = true;
 
+    try {
+      wizRecordOutboundPayload(Object.assign({}, window.__wizLastOutboundPayload || {}, {
+        provider, model,
+        bodyMessages: body.messages || body.contents || null,
+        system: body.system || (body.systemInstruction && body.systemInstruction.parts) || instructions,
+        userContent: messageWithFiles,
+        cleanResume: !!_wizResumeOn
+      }));
+    } catch (_e) {}
     const resp = await fetch(apiUrl, {
       method: 'POST',
       headers,
@@ -6782,6 +7255,9 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
 }
 
 document.getElementById('sendBtn').addEventListener('click', () => sendMessage(chatInput, chatHistory));
+document.getElementById('chatSnapBtn')?.addEventListener('click', () => wizOpenSnapshotEditor());
+document.getElementById('snapListBtn')?.addEventListener('click', () => wizOpenSnapshotList());
+
 document.getElementById('agentSendBtn').addEventListener('click', () => {
   sendMessage(document.getElementById('agentInput'), document.getElementById('agentHistory'));
 });

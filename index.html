@@ -6293,13 +6293,19 @@ function wizApplyDeepSeekNormalize(body, model) {
 function wizGeminiThinkingConfig(model, maxTokens) {
   const m = String(model || '');
   const id = m.includes('/') ? m.split('/').pop() : m;
+  const mt = Number(maxTokens) || 8000;
+  // Short utility calls (Suggestions/L1/L2/Memory/RNE-small): omit thinking so
+  // thinking tokens do not consume the entire maxOutputTokens budget.
+  const isShort = mt < 1024;
   if (id.startsWith('gemini-3')) {
+    if (isShort) return null; // omit / not high on utility paths
     // capability-based: pro / 3.1-pro → high; flash defaults → medium
     const isPro = /(?:^|[.-])pro(?:-|$)/i.test(id) && !/flash/i.test(id);
     return { thinkingLevel: isPro ? 'high' : 'medium' };
   }
   if (id.startsWith('gemini-2.5')) {
-    const budget = Math.min(Number(maxTokens) || 8000, 8000);
+    if (isShort) return null;
+    const budget = Math.min(mt, 8000);
     return { thinkingBudget: budget };
   }
   return null;
@@ -6319,7 +6325,11 @@ function wizClaudeThinkingFields(model, thinkingOn, maxTokens) {
   }
   if (m.indexOf('haiku') !== -1) {
     const mt = Number(maxTokens) || 8000;
-    return { thinking: { type: 'enabled', budget_tokens: Math.min(8000, Math.max(1, mt - 1)) } };
+    // Anthropic Haiku extended thinking: budget_tokens >= 1024 AND budget_tokens < max_tokens.
+    // Short utility maxTokens (400/500/…) cannot satisfy both → omit thinking.
+    if (mt <= 1024) return {};
+    const budget = Math.min(8000, Math.max(1024, mt - 1));
+    return { thinking: { type: 'enabled', budget_tokens: budget } };
   }
   return { thinking: { type: 'adaptive' }, output_config: { effort: 'high' } };
 }

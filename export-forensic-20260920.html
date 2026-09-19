@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Eiti-Wizard-Lab — Artifact Export Forensic V2 (read-only)</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff; --fg: #1a1a1a; --muted: #666; --line: #d8d8d8;
+    --accent: #2f6f4f; --warn: #a8500f; --card: #f6f6f6;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141414; --fg: #ececec; --muted: #9a9a9a; --line: #333;
+      --accent: #7fd6a6; --warn: #e2a15c; --card: #1e1e1e;
+    }
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  body {
+    margin: 0; padding: 16px; background: var(--bg); color: var(--fg);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    max-width: 900px; margin-inline: auto;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row b { font-weight: 600; }
+  .ok { color: var(--accent); font-weight: 600; }
+  .bad { color: var(--warn); font-weight: 600; }
+  button {
+    font: inherit; padding: 12px 16px; margin: 0 8px 8px 0; cursor: pointer;
+    background: var(--accent); color: var(--bg); border: 0; border-radius: 8px; font-weight: 600;
+  }
+  button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+  textarea {
+    width: 100%; max-width: 100%; min-height: 220px; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace;
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 10px;
+  }
+  code { font: 12px ui-monospace, Menlo, Consolas, monospace; background: var(--card); padding: 1px 4px; border-radius: 4px; }
+  ul { margin: 6px 0 0; padding-left: 20px; }
+  .note { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<h1>📦 Eiti-Wizard-Lab — выгрузка артефактов · Forensic V2</h1>
+<div class="sub">Read-only. Эта страница только читает IndexedDB и ничего не изменяет и не удаляет. Код приложения здесь не выполняется, поэтому <code>cleanupOldMessages()</code> не срабатывает.</div>
+
+<div class="card" id="status">⏳ Читаю базу…</div>
+
+<div id="controls" style="display:none">
+  <button id="btnCopy">📋 Скопировать JSON</button>
+  <button id="btnDownload" class="secondary">💾 Скачать файл</button>
+</div>
+
+<div class="card" id="snapCard" style="display:none">
+  <b>Снапшоты в базе:</b>
+  <ul id="snapList"></ul>
+</div>
+
+<div class="card" style="display:none" id="dumpCard">
+  <div class="note" style="margin-bottom:8px">Если копирование или скачивание не работает — выдели текст ниже вручную.</div>
+  <textarea id="out" readonly></textarea>
+</div>
+
+<script>
+(async function () {
+  const DB_NAME = 'velan-eiti-lab-db';
+  const WANT = ['snapshots', 'messages', 'chats'];
+  const MAX_MESSAGES = 1000; // порог автоочистки в приложении
+  const $ = id => document.getElementById(id);
+
+  function fail(msg) { $('status').innerHTML = '❌ ' + msg; }
+
+  let db;
+  try {
+    db = await new Promise((res, rej) => {
+      const r = indexedDB.open(DB_NAME);
+      let missing = false;
+
+      // Forensic safety: if the DB does not exist on this origin,
+      // IndexedDB would normally create a new empty v1 database.
+      // Abort that creation so this export page remains read-only.
+      r.onupgradeneeded = e => {
+        missing = true;
+        try { e.target.transaction.abort(); } catch (_) {}
+        rej(new Error(
+          'DATABASE_NOT_FOUND_ON_THIS_ORIGIN: база ' + DB_NAME +
+          ' не существует на origin ' + location.origin +
+          '. Создание пустой базы отменено.'
+        ));
+      };
+
+      r.onsuccess = e => {
+        if (missing) {
+          try { e.target.result.close(); } catch (_) {}
+          return;
+        }
+        res(e.target.result);
+      };
+
+      r.onerror = e => {
+        if (!missing) rej(e.target.error || r.error);
+      };
+
+      r.onblocked = () => rej(new Error('DATABASE_BLOCKED: база заблокирована другой вкладкой'));
+    });
+  } catch (e) {
+    return fail(
+      'Не удалось открыть базу: ' + e.message +
+      '<br><br>Это не доказывает потерю данных. Проверь, что страница открыта ' +
+      'на том же origin (<code>' + location.origin + '</code>), в том же браузере/профиле, ' +
+      'где реально шли trials.'
+    );
+  }
+
+  const dump = {
+    dumpedAt: new Date().toISOString(),
+    origin: location.origin,
+    db: DB_NAME,
+    dbVersion: db.version,
+    stores: {},
+    localStorage: {}
+  };
+
+  for (const s of WANT) {
+    if (!db.objectStoreNames.contains(s)) { dump.stores[s] = null; continue; }
+    try {
+      dump.stores[s] = await new Promise((res, rej) => {
+        const q = db.transaction(s, 'readonly').objectStore(s).getAll();
+        q.onsuccess = () => res(q.result);
+        q.onerror = () => rej(q.error);
+      });
+    } catch (e) { dump.stores[s] = { __error: String(e) }; }
+  }
+
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.indexOf('wiz_lab_') === 0) dump.localStorage[k] = localStorage.getItem(k);
+    }
+  } catch (e) { dump.localStorage.__error = String(e); }
+
+  function storeState(v) {
+    if (v === null) return { ok: false, label: 'STORE_MISSING' };
+    if (v && typeof v === 'object' && !Array.isArray(v) && v.__error) {
+      return { ok: false, label: 'READ_ERROR: ' + v.__error };
+    }
+    if (!Array.isArray(v)) return { ok: false, label: 'UNEXPECTED_STORE_RESULT' };
+    return { ok: true, label: null };
+  }
+
+  const snapStoreState = storeState(dump.stores.snapshots);
+  const msgStoreState  = storeState(dump.stores.messages);
+  const chatStoreState = storeState(dump.stores.chats);
+
+  const snaps = snapStoreState.ok ? dump.stores.snapshots : [];
+  const msgs  = msgStoreState.ok  ? dump.stores.messages  : [];
+  const chats = chatStoreState.ok ? dump.stores.chats     : [];
+  const resumeKeys = Object.keys(dump.localStorage).filter(k => k.indexOf('wiz_lab_clean_resume_') === 0);
+  const storeNames = Array.from(db.objectStoreNames || []);
+
+  const near = msgStoreState.ok && msgs.length >= MAX_MESSAGES * 0.9;
+
+  const snapDisplay = snapStoreState.ok
+    ? String(snaps.length)
+    : '<span class="bad">' + snapStoreState.label + '</span>';
+
+  const msgDisplay = msgStoreState.ok
+    ? '<span class="' + (near ? 'bad' : 'ok') + '">' + msgs.length + ' / ' + MAX_MESSAGES +
+      (near ? ' ⚠️ близко к порогу очистки' : '') + '</span>'
+    : '<span class="bad">' + msgStoreState.label + '</span>';
+
+  const chatDisplay = chatStoreState.ok
+    ? String(chats.length)
+    : '<span class="bad">' + chatStoreState.label + '</span>';
+
+  $('status').innerHTML =
+    '<div class="row"><span>Origin</span><b>' + location.origin + '</b></div>' +
+    '<div class="row"><span>Версия БД</span><b>' + dump.dbVersion + '</b></div>' +
+    '<div class="row"><span>Object stores</span><b style="text-align:right;word-break:break-word">' + storeNames.join(', ') + '</b></div>' +
+    '<div class="row"><span>Снапшотов</span><b>' + snapDisplay + '</b></div>' +
+    '<div class="row"><span>Сообщений</span><b>' + msgDisplay + '</b></div>' +
+    '<div class="row"><span>Чатов</span><b>' + chatDisplay + '</b></div>' +
+    '<div class="row"><span>Clean Resume состояний</span><b>' + resumeKeys.length + '</b></div>';
+
+  $('snapCard').style.display = '';
+  if (!snapStoreState.ok) {
+    $('snapList').innerHTML =
+      '<li><span class="bad">' + snapStoreState.label +
+      '</span> — это не означает «0 снапшотов».</li>';
+  } else if (snaps.length) {
+    $('snapList').innerHTML = snaps.map(function (s) {
+      const id = s && s.id ? String(s.id) : '(без id)';
+      const mark = /SNAP-20260919-2059/.test(id) ? ' ✅ ← нужный для Trial 03' : '';
+      return '<li><code>' + id + '</code>' + mark + '</li>';
+    }).join('');
+  } else {
+    $('snapList').innerHTML = '<li>Store snapshots существует, записей: 0</li>';
+  }
+
+  const json = JSON.stringify(dump, null, 2);
+  $('out').value = json;
+  $('dumpCard').style.display = '';
+  $('controls').style.display = '';
+
+  $('btnCopy').onclick = async function () {
+    try {
+      await navigator.clipboard.writeText(json);
+      this.textContent = '✅ Скопировано';
+    } catch (e) {
+      $('out').select();
+      try { document.execCommand('copy'); this.textContent = '✅ Скопировано'; }
+      catch (_) { this.textContent = '⚠️ Скопируй вручную из поля ниже'; }
+    }
+  };
+
+  $('btnDownload').onclick = function () {
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'eiti-lab-dump-' + Date.now() + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  };
+})();
+</script>
+
+</body>
+</html>

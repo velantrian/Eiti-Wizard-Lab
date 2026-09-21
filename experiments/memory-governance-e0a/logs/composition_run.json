@@ -589,5 +589,5 @@
     "HELD_survive_persistence": true,
     "note": "PROPOSED from step1 is transitioned to REJECTED by USER_DECISION (row retained, status updated); step3 MODEL_PROPOSAL against ACTIVE is admitted REJECTED directly. HELD from RESEARCH_CLAIM must survive reopen."
   },
-  "git_HEAD_after_push": null
+  "git_HEAD_after_push": "fe7ecc4cb99fdd47b9c0779042f9151281cfc725"
 }

@@ -104,38 +104,44 @@
       "note": "Prospective natural dialogue with message_id + timestampMs + speaker metadata."
     }
   },
-  "corpus_size": 42,
+  "corpus_size": 52,
   "target_range": [
     30,
     50
   ],
-  "shortfall": {
-    "target_min": 30,
-    "verbatim_admitted": 42,
-    "shortfall_count": 0,
-    "reason": "Reached target via AGENT_CHAT prospective capture; Orchid/LIVE-01/SLOT-01 still missing (not reconstructed)."
-  },
+  "shortfall": "ATOMICITY_REPAIR applied: multi-act USER messages split into exact Unicode spans; human labels still PENDING; blind NOT_RUN",
   "source_distribution": {
-    "LAB-E0A-FIXTURE": 7,
-    "AGENT_CHAT:Labs": 35
+    "USER": 20,
+    "MODEL": 30,
+    "EXTERNAL": 2
   },
   "source_axis_distribution": {
-    "EXTERNAL": 2,
+    "USER": 20,
     "MODEL": 30,
-    "USER": 10
+    "EXTERNAL": 2
   },
-  "requires_human_label_count": 10,
+  "requires_human_label_count": 20,
   "requires_human_label_atom_ids": [
     "E0B-V04",
     "E0B-V07",
-    "E0B-V08",
+    "E0B-V08.1",
+    "E0B-V08.2",
     "E0B-V13",
-    "E0B-V17",
-    "E0B-V18",
-    "E0B-V21",
-    "E0B-V31",
-    "E0B-V34",
-    "E0B-V38"
+    "E0B-V17.1",
+    "E0B-V17.2",
+    "E0B-V18.1",
+    "E0B-V18.2",
+    "E0B-V18.3",
+    "E0B-V18.4",
+    "E0B-V21.1",
+    "E0B-V21.2",
+    "E0B-V31.1",
+    "E0B-V31.2",
+    "E0B-V34.1",
+    "E0B-V34.2",
+    "E0B-V38.1",
+    "E0B-V38.2",
+    "E0B-V38.3"
   ],
   "excluded_count": 7,
   "exclusion_ledger": "atoms_excluded.json",
@@ -153,5 +159,58 @@
     "E) Box: /workspace/tce-live-01 and tce-slot-01 ABSENT; claimed SHAs unmatched",
     "F) AGENT_CHAT: /home/box/agent-data/agents/*/store.db transcript_entries — PRIMARY new verbatim source (Labs conversation)",
     "G) Other lab logs: no additional stable-ID quoted dumps beyond agent stores + retained E0-A fixture"
-  ]
+  ],
+  "phase_1c_action": "ATOMICITY_REPAIR",
+  "HUMAN_GOLD": "NOT_CREATED",
+  "atomicity_repair": {
+    "old_user_atom_count": 10,
+    "new_atomic_user_span_count": 20,
+    "old_corpus_total": 42,
+    "new_corpus_total": 52,
+    "parent_to_children": {
+      "E0B-V08": [
+        "E0B-V08.1",
+        "E0B-V08.2"
+      ],
+      "E0B-V17": [
+        "E0B-V17.1",
+        "E0B-V17.2"
+      ],
+      "E0B-V18": [
+        "E0B-V18.1",
+        "E0B-V18.2",
+        "E0B-V18.3",
+        "E0B-V18.4"
+      ],
+      "E0B-V21": [
+        "E0B-V21.1",
+        "E0B-V21.2"
+      ],
+      "E0B-V31": [
+        "E0B-V31.1",
+        "E0B-V31.2"
+      ],
+      "E0B-V34": [
+        "E0B-V34.1",
+        "E0B-V34.2"
+      ],
+      "E0B-V38": [
+        "E0B-V38.1",
+        "E0B-V38.2",
+        "E0B-V38.3"
+      ]
+    },
+    "kept_atomic": [
+      "E0B-V04",
+      "E0B-V07",
+      "E0B-V13"
+    ],
+    "provenance_coverage_primary": "100%"
+  },
+  "verbatim_atom_count": 52,
+  "primary_corpus_atom_count": 52,
+  "user_atoms_requiring_human_label": 20,
+  "corpus_total": 52,
+  "updated_at": "2026-09-21T20:47:09.838769+02:00",
+  "phase1c_action": "ATOMICITY_REPAIR"
 }

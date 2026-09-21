@@ -53,3 +53,9 @@ BLIND_RUN = NOT_RUN
 ## Explicit non-actions
 
 - No blind run; E0-A untouched; owners untouched; no Orchid/LIVE/SLOT reconstruction
+
+
+## Phase 1C atomicity repair
+
+- Primary corpus still 100% provenance (child spans reconstruct archived parents).
+- HUMAN_GOLD not created. Blind not run.

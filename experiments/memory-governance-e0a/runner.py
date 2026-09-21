@@ -1,17 +1,25 @@
 #!/usr/bin/env python3
-"""E0-A Ownership & Governance Conformance Probe runner.
+"""E0-A Ownership & Governance Conformance Probe runner (LAB COMPOSITION).
 
-Deterministic apply / project / resume. NO LLM. NO Graphiti.
-Hardcoded fixture event types only.
+Pipeline per apply_step:
+  crystal_like_admission.admit_* →
+  native_kernel_like_transition_rules.apply_* →
+  SQLite persist →
+  continuum_like_resume.project_* (QUERY_RESUME / resume)
+
+Deterministic. NO LLM. NO Graphiti. LAB ONLY — not Crystal/NK/Continuum.
 """
 from __future__ import annotations
 
 import json
 import sqlite3
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+
+from lab_composition.crystal_like_admission import admit_typed_event
+from lab_composition.native_kernel_like_transition_rules import apply_admission
+from lab_composition.continuum_like_resume import project_resume
 
 ROOT = Path(__file__).resolve().parent
 SCHEMA_PATH = ROOT / "schema.sql"
@@ -23,16 +31,14 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _uid(prefix: str) -> str:
-    return f"{prefix}-{uuid.uuid4().hex[:12]}"
-
-
 class GovernanceRunner:
     def __init__(self, db_path: Path | str = DEFAULT_DB):
         self.db_path = Path(db_path)
         self.conn = sqlite3.connect(str(self.db_path))
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys = ON")
+        self.admission_trace: list[dict[str, Any]] = []
+        self.transition_trace: list[dict[str, Any]] = []
 
     def close(self) -> None:
         self.conn.close()
@@ -81,204 +87,57 @@ class GovernanceRunner:
             )
         )
 
-    def _create_state(self, content: str, status: str, event_id: str) -> str:
-        sid = _uid("state")
-        self.conn.execute(
-            "INSERT INTO states(state_id, content, state_status, event_id, created_at) VALUES (?,?,?,?,?)",
-            (sid, content, status, event_id, _now()),
-        )
-        return sid
-
-    def _relate(
-        self, from_id: str, to_id: str, relation_type: str, rationale: str
-    ) -> str:
-        rid = _uid("rel")
-        self.conn.execute(
-            "INSERT INTO relations(relation_id, from_id, to_id, relation_type, rationale, created_at) "
-            "VALUES (?,?,?,?,?,?)",
-            (rid, from_id, to_id, relation_type, rationale, _now()),
-        )
-        return rid
-
-    def apply_model_proposal(self, step: dict) -> dict[str, Any]:
-        """MODEL_PROPOSAL: store event; may create non-ACTIVE proposal state;
-        NEVER becomes USER_DECISION or ACTIVE decision alone."""
-        self._insert_event(step)
-        active = self._active_states()
-        # Always create a PROPOSED (non-ACTIVE) state for the proposal.
-        prop_id = self._create_state(step["content"], "PROPOSED", step["event_id"])
-        if active:
-            # Re-assert without new USER_DECISION: keep current ACTIVE; reject branch.
-            for a in active:
-                self._relate(
-                    prop_id,
-                    a["state_id"],
-                    "CONTRADICTS",
-                    "MODEL_PROPOSAL re-assert without USER_DECISION; current decision stands",
-                )
-                # Mark proposal REJECTED relative to active decision (do not delete).
-                self.conn.execute(
-                    "UPDATE states SET state_status = 'REJECTED' WHERE state_id = ?",
-                    (prop_id,),
-                )
-            self.audit(
-                "APPLY_MODEL_PROPOSAL",
-                step["event_id"],
-                step["source_actor"],
-                "stored; proposal REJECTED against existing ACTIVE; no second ACTIVE",
-            )
-            self.conn.commit()
-            return {
-                "ok": True,
-                "event_id": step["event_id"],
-                "proposal_state_id": prop_id,
-                "proposal_status": "REJECTED",
-                "active": [dict(a) for a in active],
-                "note": "no second ACTIVE; current decision preserved",
+    def _states_snapshot(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "state_id": r["state_id"],
+                "content": r["content"],
+                "state_status": r["state_status"],
+                "event_id": r["event_id"],
             }
-        # No ACTIVE yet: proposal stored as PROPOSED only — never ACTIVE alone.
-        self.audit(
-            "APPLY_MODEL_PROPOSAL",
-            step["event_id"],
-            step["source_actor"],
-            "stored as PROPOSED; NEVER ACTIVE alone",
-        )
-        self.conn.commit()
-        return {
-            "ok": True,
-            "event_id": step["event_id"],
-            "proposal_state_id": prop_id,
-            "proposal_status": "PROPOSED",
-            "active": [],
-            "note": "MODEL_PROPOSAL is not USER_DECISION and is not ACTIVE",
-        }
-
-    def apply_user_decision(self, step: dict) -> dict[str, Any]:
-        """USER_DECISION: becomes ACTIVE; prior conflicting proposals REJECTED/SUPERSEDED
-        via relation; NEVER delete old rows."""
-        self._insert_event(step)
-        prior_active = self._active_states()
-        new_id = self._create_state(step["content"], "ACTIVE", step["event_id"])
-
-        # Supersede prior ACTIVE decisions (keep rows).
-        for a in prior_active:
-            self.conn.execute(
-                "UPDATE states SET state_status = 'SUPERSEDED' WHERE state_id = ?",
-                (a["state_id"],),
-            )
-            self._relate(
-                new_id,
-                a["state_id"],
-                "SUPERSEDES",
-                "USER_DECISION supersedes prior ACTIVE",
-            )
-
-        # Reject any still-PROPOSED that contradict this decision (never delete).
-        for p in list(
-            self.conn.execute("SELECT * FROM states WHERE state_status = 'PROPOSED'")
-        ):
-            self.conn.execute(
-                "UPDATE states SET state_status = 'REJECTED' WHERE state_id = ?",
-                (p["state_id"],),
-            )
-            self._relate(
-                new_id,
-                p["state_id"],
-                "REJECTED_BECAUSE",
-                "USER_DECISION rejects conflicting MODEL_PROPOSAL (Graphiti branch)",
-            )
-
-        self.audit(
-            "APPLY_USER_DECISION",
-            step["event_id"],
-            step["source_actor"],
-            f"ACTIVE={new_id}; prior proposals REJECTED/SUPERSEDED; no deletes",
-        )
-        self.conn.commit()
-        return {
-            "ok": True,
-            "event_id": step["event_id"],
-            "active_state_id": new_id,
-            "content": step["content"],
-        }
-
-    def apply_research_claim(self, step: dict) -> dict[str, Any]:
-        """RESEARCH_CLAIM unsupported: store as held/observed; NOT authoritative ACTIVE."""
-        self._insert_event(step)
-        held_id = self._create_state(step["content"], "HELD", step["event_id"])
-        active = self._active_states()
-        for a in active:
-            self._relate(
-                held_id,
-                a["state_id"],
-                "CONTRADICTS",
-                "unsupported RESEARCH_CLAIM does not override ACTIVE decision",
-            )
-        self.audit(
-            "APPLY_RESEARCH_CLAIM",
-            step["event_id"],
-            step["source_actor"],
-            "stored as HELD; NOT authoritative ACTIVE",
-        )
-        self.conn.commit()
-        return {
-            "ok": True,
-            "event_id": step["event_id"],
-            "held_state_id": held_id,
-            "status": "HELD",
-            "is_authoritative": False,
-            "active_unchanged": [dict(a) for a in active],
-        }
+            for r in self.conn.execute("SELECT * FROM states ORDER BY created_at")
+        ]
 
     def resume(self, step: Optional[dict] = None) -> dict[str, Any]:
         """Return current goal, current state, rationale, rejected Graphiti branch,
-        open authorization question, next action."""
+        open authorization question, next action — via continuum_like_resume.project_*."""
         if step is not None:
             self._insert_event(step)
-            self.audit("QUERY_RESUME", step["event_id"], step["source_actor"], "resume projection")
+            active = self._active_states()
+            active0 = dict(active[0]) if active else None
+            decision = admit_typed_event(step, active_decision=active0)
+            self.admission_trace.append({"step": step, "decision": decision.as_dict()})
+            before = self._states_snapshot()
+            receipt = apply_admission(
+                self.conn,
+                event=step,
+                outcome=decision.outcome.value,
+                target_status=decision.target_status,
+                rationale=decision.rationale,
+                audit_fn=self.audit,
+            )
+            after = self._states_snapshot()
+            self.transition_trace.append(
+                {
+                    "step": step,
+                    "receipt": receipt.as_dict(),
+                    "states_before": before,
+                    "states_after": after,
+                }
+            )
             self.conn.commit()
 
-        goals = [dict(r) for r in self.conn.execute("SELECT * FROM goals WHERE status='OPEN'")]
-        active = [dict(r) for r in self._active_states()]
-        rejected = [
-            dict(r)
-            for r in self.conn.execute(
-                "SELECT * FROM states WHERE state_status = 'REJECTED' ORDER BY created_at"
-            )
-        ]
-        # Graphiti branch = rejected/proposed content mentioning Graphiti
-        rejected_graphiti = [
-            s for s in rejected if "Graphiti" in (s.get("content") or "")
-        ]
-        open_loops = [
-            dict(r)
-            for r in self.conn.execute("SELECT * FROM open_loops WHERE status='OPEN'")
-        ]
-        # Rationale from SUPERSEDES / REJECTED_BECAUSE relations into ACTIVE
-        rationale_rows = []
-        if active:
-            aid = active[0]["state_id"]
-            rationale_rows = [
-                dict(r)
-                for r in self.conn.execute(
-                    "SELECT * FROM relations WHERE from_id = ? OR to_id = ? ORDER BY created_at",
-                    (aid, aid),
-                )
-            ]
-
-        next_action = (
-            "Resolve open authorization question before treating any RESEARCH_CLAIM as production authority."
-            if open_loops
-            else "Continue from ACTIVE decision."
-        )
+        bundle = project_resume(self.conn)
+        out = bundle.as_dict()
+        # Public resume keys expected by tests (drop lab-only marker from contract surface)
         return {
-            "current_goal": goals[0] if goals else None,
-            "current_state": active[0] if active else None,
-            "rationale": rationale_rows,
-            "rejected_graphiti_branch": rejected_graphiti,
-            "open_authorization_question": open_loops[0] if open_loops else None,
-            "next_action": next_action,
-            "all_active_count": len(active),
+            "current_goal": out["current_goal"],
+            "current_state": out["current_state"],
+            "rationale": out["rationale"],
+            "rejected_graphiti_branch": out["rejected_graphiti_branch"],
+            "open_authorization_question": out["open_authorization_question"],
+            "next_action": out["next_action"],
+            "all_active_count": out["all_active_count"],
         }
 
     def project_current_state(self) -> dict[str, Any]:
@@ -294,15 +153,73 @@ class GovernanceRunner:
         }
 
     def apply_step(self, step: dict) -> dict[str, Any]:
+        """admit_* → apply_* → SQLite; QUERY_RESUME also project_*."""
         et = step["event_type"]
-        if et == "MODEL_PROPOSAL":
-            return self.apply_model_proposal(step)
-        if et == "USER_DECISION":
-            return self.apply_user_decision(step)
-        if et == "RESEARCH_CLAIM":
-            return self.apply_research_claim(step)
         if et == "QUERY_RESUME":
             return self.resume(step)
+
+        # Snapshot before for transition_trace
+        before = self._states_snapshot()
+        active = self._active_states()
+        active0 = dict(active[0]) if active else None
+
+        decision = admit_typed_event(step, active_decision=active0)
+        self.admission_trace.append({"step": step, "decision": decision.as_dict()})
+
+        self._insert_event(step)
+
+        receipt = apply_admission(
+            self.conn,
+            event=step,
+            outcome=decision.outcome.value,
+            target_status=decision.target_status,
+            rationale=decision.rationale,
+            audit_fn=self.audit,
+        )
+        after = self._states_snapshot()
+        self.transition_trace.append(
+            {
+                "step": step,
+                "receipt": receipt.as_dict(),
+                "states_before": before,
+                "states_after": after,
+            }
+        )
+        self.conn.commit()
+
+        active_now = [dict(a) for a in self._active_states()]
+
+        if et == "MODEL_PROPOSAL":
+            return {
+                "ok": True,
+                "event_id": step["event_id"],
+                "proposal_state_id": receipt.to_state_id,
+                "proposal_status": decision.target_status,
+                "active": active_now,
+                "note": decision.rationale,
+                "admission": decision.as_dict(),
+                "transition": receipt.as_dict(),
+            }
+        if et == "USER_DECISION":
+            return {
+                "ok": True,
+                "event_id": step["event_id"],
+                "active_state_id": receipt.to_state_id,
+                "content": step["content"],
+                "admission": decision.as_dict(),
+                "transition": receipt.as_dict(),
+            }
+        if et == "RESEARCH_CLAIM":
+            return {
+                "ok": True,
+                "event_id": step["event_id"],
+                "held_state_id": receipt.to_state_id,
+                "status": "HELD",
+                "is_authoritative": False,
+                "active_unchanged": active_now,
+                "admission": decision.as_dict(),
+                "transition": receipt.as_dict(),
+            }
         raise ValueError(f"unknown event_type: {et}")
 
     def run_fixture(self, fixture_path: Path = FIXTURE_PATH) -> dict[str, Any]:
@@ -321,6 +238,8 @@ class GovernanceRunner:
             "step_results": results,
             "projection": projection,
             "resume": resume_out or self.resume(),
+            "admission_trace": list(self.admission_trace),
+            "transition_trace": list(self.transition_trace),
         }
 
 

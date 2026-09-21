@@ -1,6 +1,8 @@
 # E0-B PROTOCOL — Typing Reliability Probe
 
-**Phase 1 only (this package):** prepare corpus + human label packet. STOP.
+**Phase 1 / 1A (this package):** prepare corpus + human label packet; Phase 1A repairs source integrity to VERBATIM-only. STOP.
+
+**Integrity rule:** primary blind corpus admits only atoms with source_artifact + location + speaker + VERBATIM=YES exact text. Paraphrases → `atoms_excluded.json`.
 
 ## Objective
 
@@ -34,6 +36,6 @@ Measure typing reliability of five **independent** axes on atomic statements dra
 
 See `atoms_phase1.json` and `blind_inputs.jsonl`.
 
-## Prepared
+## Prepared / Phase 1A repaired
 
-2026-09-21T18:27:42+02:00 Europe/Berlin
+2026-09-21T18:35:03+02:00 Europe/Berlin

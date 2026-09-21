@@ -1,37 +1,38 @@
-# E0-B RESULT — Phase 1 PREPARE
+# E0-B RESULT — Phase 1A SOURCE INTEGRITY REPAIR
 
-**When:** 2026-09-21T18:27:42+02:00 (Europe/Berlin / CEST)  
+**When:** 2026-09-21T18:35:03+02:00 (Europe/Berlin / CEST)  
 **Branch:** `exp/e0b-typing-reliability`  
 **Repo:** `velantrian/Eiti-Wizard-Lab`
 
 ## Outcome
 
 ```
-PHASE1 PREPARE complete
-STOP awaiting human GT
+PHASE1A SOURCE INTEGRITY REPAIR complete
+STOP awaiting human GT / missing-source recovery
 GROUND_TRUTH_STATUS = PENDING
 BLIND_RUN = NOT_RUN
 ```
 
 ## Corpus summary
 
-- **Size:** 45 atomic statements
-- **Sources:** {'LAB-E0A-FIXTURE': 8, 'SLOT-01': 17, 'LIVE-01': 20}
-- **SOURCE axis (metadata):** {'EXTERNAL': 16, 'MODEL': 16, 'USER': 13}
-- **Human confirmation required:** 13 USER atoms → see `human_label_packet.md`
+- **Verbatim primary atoms:** 7
+- **Sources:** {'LAB-E0A-FIXTURE': 7}
+- **SOURCE axis (metadata):** {'EXTERNAL': 2, 'MODEL': 3, 'USER': 2}
+- **Excluded:** 38 → `atoms_excluded.json` (`EXCLUDE_SOURCE_NOT_VERBATIM`)
+- **Human confirmation required:** 2 USER atoms → `human_label_packet.md`
+- **Provenance coverage:** 15.56% (7/45)
+- **Shortfall vs 30–50 target:** 23 (documented; no padding)
 
 ## Missing sources
 
-- **Orchid:** MISSING (no Lab/org/Notion/Drive transcript artifact found)
-- **LIVE-01 / SLOT-01 verbatim files:** MISSING on box; evidence records used as provenance excerpts only (SHA256 pointers recorded)
+- **Orchid:** ORCHID_SOURCE_MISSING (zero atoms)
+- **LIVE-01 / SLOT-01:** VERBATIM_TRANSCRIPT_MISSING (claimed SHA256s recorded; file bodies absent)
 
-## Files created
-
-All under `experiments/memory-governance-e0b/` (see README).
+See `SOURCE_INTEGRITY_REPORT.md`.
 
 ## Explicit non-actions
 
 - Did **not** run blind model classification
-- Did **not** fill gold semantic/authority labels for USER atoms
+- Did **not** invent missing transcript text
 - Did **not** touch `experiments/memory-governance-e0a/**` (except read)
 - Did **not** introduce PST-01 / Graphiti / Kuzu / FalkorDB / new controller

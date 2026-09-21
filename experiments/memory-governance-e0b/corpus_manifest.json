@@ -1,20 +1,23 @@
 {
   "experiment": "E0-B",
-  "phase": 1,
-  "title": "Typing reliability probe — corpus + HUMAN_LABEL_PACKET prepare",
-  "prepared_at": "2026-09-21T18:27:42+02:00",
+  "phase": "1A",
+  "title": "Typing reliability probe — SOURCE INTEGRITY REPAIR (verbatim-only corpus)",
+  "prepared_at": "2026-09-21T18:35:03+02:00",
   "timezone_note": "Europe/Berlin (CEST / UTC+2)",
   "lab_repo": "velantrian/Eiti-Wizard-Lab",
   "branch_intended": "exp/e0b-typing-reliability",
   "GROUND_TRUTH_STATUS": "PENDING",
   "blind_run_status": "NOT_RUN",
+  "phase1a_action": "SOURCE_INTEGRITY_REPAIR",
   "constraints": [
-    "No blind model classification in Phase 1",
+    "No blind model classification in Phase 1A",
+    "Primary corpus admits ONLY VERBATIM=YES atoms with source_artifact + location + speaker",
     "No inferred gold labels for authority-sensitive USER statements",
     "SOURCE axis from metadata only (never LLM-guessed)",
     "No PST-01, no Graphiti/Kuzu/FalkorDB, no new controller, no architecture promotion",
     "Do not mutate experiments/memory-governance-e0a/** (read-only)",
-    "Owner repos Crystal/Native Kernel/Continuum/Mentaury*/Titan = READ-ONLY"
+    "Owner repos Crystal/Native Kernel/Continuum/Mentaury*/Titan = READ-ONLY",
+    "Do not invent/reconstruct missing transcript text"
   ],
   "axes": {
     "SOURCE": [
@@ -56,14 +59,15 @@
   },
   "sources": {
     "Orchid": {
-      "status": "MISSING",
+      "status": "ORCHID_SOURCE_MISSING",
       "lab_local": false,
-      "notes": "No transcript artifact found in Lab, org clones probed, Notion, or Drive under name Orchid.",
+      "verbatim_transcript": "MISSING",
+      "atom_count": 0,
       "provenance_file": "provenance_excerpts/Orchid_MISSING.md",
-      "atom_count": 0
+      "notes": "Exhaustive Phase 1A re-search: Lab all branches, org gh code, Notion, Drive, /workspace tce-* — no Orchid transcript artifact. Zero fabricated atoms."
     },
     "LIVE-01": {
-      "status": "PARTIAL_EVIDENCE_ONLY",
+      "status": "VERBATIM_TRANSCRIPT_MISSING",
       "lab_local": false,
       "verbatim_transcript": "MISSING",
       "source_sha256_claimed": "e0e21160157b464c536e4e537cab4dd27cb625af4f901509adb7efdb45300fb5",
@@ -71,13 +75,14 @@
         "Notion:3e1ac84d-0547-8182-a48e-ed965721de93",
         "Drive:1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs"
       ],
-      "artifact_path_recorded": "/workspace/tce-live-01/ (absent on shared box at prepare time)",
+      "artifact_path_recorded": "/workspace/tce-live-01/ (absent on shared box)",
       "provenance_file": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
-      "atom_count": 20,
-      "caveat": "Atoms are evidence paraphrases/attributions, not verified verbatim splits of the frozen file."
+      "atom_count_primary": 0,
+      "atom_count_excluded": 20,
+      "caveat": "Evidence records summarize LIVE-01; they are NOT the frozen transcript body. All prior LIVE-01 atoms → EXCLUDE_SOURCE_NOT_VERBATIM."
     },
     "SLOT-01": {
-      "status": "PARTIAL_EVIDENCE_ONLY",
+      "status": "VERBATIM_TRANSCRIPT_MISSING",
       "lab_local": false,
       "verbatim_transcript": "MISSING",
       "frozen_source_filename": "source_transcript_before_snapshot.txt",
@@ -86,53 +91,60 @@
         "Notion:3e1ac84d-0547-8182-a48e-ed965721de93",
         "Drive:1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs"
       ],
-      "artifact_path_recorded": "/workspace/tce-slot-01/ (absent on shared box at prepare time)",
+      "artifact_path_recorded": "/workspace/tce-slot-01/ (absent on shared box)",
       "provenance_file": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
-      "atom_count": 17,
-      "caveat": "Atoms include frozen-source state features + SLOT-01 condition observations from evidence records."
+      "atom_count_primary": 0,
+      "atom_count_excluded": 17,
+      "caveat": "Evidence records name frozen file + SHA256 but do not embed transcript text. All prior SLOT-01 atoms → EXCLUDE_SOURCE_NOT_VERBATIM."
     },
     "LAB-E0A-FIXTURE": {
-      "status": "PRESENT_LAB_LOCAL",
+      "status": "PRESENT_LAB_LOCAL_VERBATIM",
       "lab_local": true,
-      "path": "experiments/memory-governance-e0a/fixture.json (read-only; copy under provenance_excerpts/)",
-      "atom_count": 8,
-      "note": "Supplementary Lab-local atoms with structural USER/MODEL metadata. Fixture event_type is NOT treated as E0-B gold speech-act."
+      "path": "experiments/memory-governance-e0a/fixture.json",
+      "sha256": "3e1b0803cc6790afdc48dd7cb214ecda597930f5225b1dbc1ad028ee3d539f71",
+      "atom_count": 7,
+      "note": "Fixture seed + event contents are verbatim lab text with path + event_id/goal_id provenance. USER semantic labels remain null in human packet.",
+      "excluded_non_fixture_text": 1
     }
   },
-  "corpus_size": 45,
+  "corpus_size": 7,
+  "target_range": [
+    30,
+    50
+  ],
+  "shortfall": {
+    "target_min": 30,
+    "verbatim_admitted": 7,
+    "shortfall_count": 23,
+    "reason": "Orchid/LIVE-01/SLOT-01 frozen transcripts unavailable; integrity > size — no paraphrase padding."
+  },
   "source_distribution": {
-    "LAB-E0A-FIXTURE": 8,
-    "SLOT-01": 17,
-    "LIVE-01": 20
+    "LAB-E0A-FIXTURE": 7
   },
   "source_axis_distribution": {
-    "EXTERNAL": 16,
-    "MODEL": 16,
-    "USER": 13
+    "EXTERNAL": 2,
+    "MODEL": 3,
+    "USER": 2
   },
-  "requires_human_label_count": 13,
+  "requires_human_label_count": 2,
   "requires_human_label_atom_ids": [
-    "E0B-A04",
-    "E0B-A07",
-    "E0B-A08",
-    "E0B-A09",
-    "E0B-A10",
-    "E0B-A11",
-    "E0B-A13",
-    "E0B-A14",
-    "E0B-A22",
-    "E0B-A23",
-    "E0B-A24",
-    "E0B-A25",
-    "E0B-A26"
+    "E0B-V04",
+    "E0B-V07"
   ],
+  "excluded_count": 38,
+  "exclusion_ledger": "atoms_excluded.json",
+  "provenance_coverage": {
+    "atoms_with_full_provenance": 7,
+    "total_considered": 45,
+    "coverage_pct": 15.56,
+    "definition": "full provenance = source_artifact + SHA256 + source_turn_id/location + speaker + VERBATIM=YES exact text; total_considered = prior Phase1 atom count (45)"
+  },
   "search_log_summary": [
-    "Eiti-Wizard-Lab main: no experiments/transcripts; PWA-only",
-    "Branch exp/e0a-memory-governance: e0a experiment present; no Orchid/LIVE/SLOT transcripts",
-    "gh code search org Orchid/LIVE-01/SLOT-01: rate-limited / empty usable hits",
-    "Cloned Continuum + crystal-e0-eval + State-Validation-Lab shallow: no matching transcript files",
-    "Notion: TCE Snapshot/Observer page found (SLOT-01 + LIVE-01 evidence); Orchid empty",
-    "Drive: TCE companion doc found; Orchid fullText empty (unrelated flora only)",
-    "Shared box /workspace/tce-*: absent"
+    "Eiti-Wizard-Lab: fetched all remote branches; path/content search — no Orchid/LIVE-01/SLOT-01 transcript files (only e0b provenance MISSING markers)",
+    "gh code search org:velantrian for orchid/tce-live-01/SLOT-01/source_transcript*: empty usable hits (Orchid hit = unrelated Titan floristry doc)",
+    "Notion: TCE Snapshot/Observer page 3e1ac84d… has evidence summaries + claimed SHA256s; Orchid search empty; no embedded transcript body",
+    "Drive: companion doc 1mLgFC4… evidence only; title/fullText searches found no source_transcript_before_snapshot.txt / tce-live / Orchid transcript; Orchid fullText → unrelated flora PDF",
+    "Shared box: /workspace/tce-live-01, /workspace/tce-slot-01, claimed SHA256 file matches — ABSENT",
+    "LAB-E0A-FIXTURE present: experiments/memory-governance-e0a/fixture.json SHA256=3e1b0803cc6790afdc48dd7cb214ecda597930f5225b1dbc1ad028ee3d539f71"
   ]
 }

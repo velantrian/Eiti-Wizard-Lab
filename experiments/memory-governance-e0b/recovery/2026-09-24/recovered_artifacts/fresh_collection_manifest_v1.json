@@ -1,0 +1,298 @@
+{
+  "schema": "E0B_FRESH_COLLECTION_MANIFEST_V1",
+  "phase": "2A",
+  "status": "FROZEN",
+  "frozen_at": "2026-09-22T00:50:05.034437+02:00",
+  "protocol_ref": "PHASE_1J_FINAL_PRECOLLECTION_PATCH",
+  "calibration_package_sha256": "745af6f39f2a2781553d8a289a7bd3a48d70773c27d9d74be04bbf975c3d9352",
+  "source_stream": "LABS_AGENT_CHAT:7870c64b-b8c5-4fe4-860f-0674ef545d23",
+  "source_db": "/home/box/sand-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+  "N_target_parent_messages": 30,
+  "N_collected": 30,
+  "sampling_rule": {
+    "type": "CONTIGUOUS_CHRONOLOGICAL_USER_PARENT_MESSAGES",
+    "order": "timestamp/seq ascending",
+    "sender": "USER",
+    "non_empty_text": true,
+    "keyword_search": false,
+    "expected_act_filtering": false,
+    "class_balancing": false,
+    "model_label_filtering": false,
+    "window": {
+      "first_message_id": "t8u",
+      "last_message_id": "t37u",
+      "first_seq": 58,
+      "last_seq": 227,
+      "first_timestamp_iso": "2026-09-09T22:13:47.616000+02:00",
+      "last_timestamp_iso": "2026-09-11T16:42:51.293000+02:00",
+      "turn_index_range": [
+        8,
+        37
+      ]
+    }
+  },
+  "exclusion_list": {
+    "calibration_parent_message_ids": [
+      "evt-002",
+      "evt-005",
+      "t0u",
+      "t1u",
+      "t2u",
+      "t3u",
+      "t4u",
+      "t5u",
+      "t6u",
+      "t7u"
+    ],
+    "excluded_from_this_window": [],
+    "note": "Window starts at t8u immediately after calibration parents t0u–t7u on the same Labs stream."
+  },
+  "items": [
+    {
+      "item_id": "FRESH-U0-01",
+      "message_id": "t8u",
+      "seq": 58,
+      "timestamp_iso": "2026-09-09T22:13:47.616000+02:00",
+      "content_sha256": "e5320bbc2550006056dc5b407c263002cfde7d9f88482b1d31fe6157a25ef885",
+      "char_len": 23
+    },
+    {
+      "item_id": "FRESH-U0-02",
+      "message_id": "t9u",
+      "seq": 63,
+      "timestamp_iso": "2026-09-09T22:18:12.139000+02:00",
+      "content_sha256": "23d50be1d1c22ef3cc0707f1e275c142e8f86d68c1e8ee69ad6974d205a9555c",
+      "char_len": 272
+    },
+    {
+      "item_id": "FRESH-U0-03",
+      "message_id": "t10u",
+      "seq": 67,
+      "timestamp_iso": "2026-09-09T22:36:14.115000+02:00",
+      "content_sha256": "7398b168b45670f145d581c4b40166ca6f5437a0bbb0105a63659c7e2c9f9d50",
+      "char_len": 16476
+    },
+    {
+      "item_id": "FRESH-U0-04",
+      "message_id": "t11u",
+      "seq": 72,
+      "timestamp_iso": "2026-09-09T22:38:43.995000+02:00",
+      "content_sha256": "c309b0500a1cdd10511a22ef4ec61963040061c2eaf998642873c3ee91e4d569",
+      "char_len": 20908
+    },
+    {
+      "item_id": "FRESH-U0-05",
+      "message_id": "t12u",
+      "seq": 75,
+      "timestamp_iso": "2026-09-09T22:53:18.717000+02:00",
+      "content_sha256": "4f5e67b0bf37f3080df367fd1b75cd9fb9056365a724b2ffba05131b7c80edfe",
+      "char_len": 22897
+    },
+    {
+      "item_id": "FRESH-U0-06",
+      "message_id": "t13u",
+      "seq": 82,
+      "timestamp_iso": "2026-09-09T23:09:15.700000+02:00",
+      "content_sha256": "15f1ca85e9b845343cee201853887b597cef88cdd5945b7adec3eabaaf604f82",
+      "char_len": 5398
+    },
+    {
+      "item_id": "FRESH-U0-07",
+      "message_id": "t14u",
+      "seq": 87,
+      "timestamp_iso": "2026-09-10T00:02:55.253000+02:00",
+      "content_sha256": "6ae51fbf853d436bafe208d3fe5d32ec951db047c44d22cad4d1d947cda1abb8",
+      "char_len": 15
+    },
+    {
+      "item_id": "FRESH-U0-08",
+      "message_id": "t15u",
+      "seq": 92,
+      "timestamp_iso": "2026-09-10T00:22:07.264000+02:00",
+      "content_sha256": "34a89b98e908cb7397b619b96dd80b70c3fdb811ff50dcd54f178336fee64f4a",
+      "char_len": 6031
+    },
+    {
+      "item_id": "FRESH-U0-09",
+      "message_id": "t16u",
+      "seq": 98,
+      "timestamp_iso": "2026-09-10T00:31:32.276000+02:00",
+      "content_sha256": "8e6825a78d42266e15f1c0e9ce6cfd9273d21e941d41c3f963f601fbaca0a90e",
+      "char_len": 8824
+    },
+    {
+      "item_id": "FRESH-U0-10",
+      "message_id": "t17u",
+      "seq": 104,
+      "timestamp_iso": "2026-09-10T08:12:14.202000+02:00",
+      "content_sha256": "0fe6182eebc64480cca52402525553433fb68d138ac32ae9360802bffc730eee",
+      "char_len": 10239
+    },
+    {
+      "item_id": "FRESH-U0-11",
+      "message_id": "t18u",
+      "seq": 110,
+      "timestamp_iso": "2026-09-10T09:53:16.990000+02:00",
+      "content_sha256": "f7bde9dcf5fd85b9de63c645611599a2f16149982c6b544f1b1b6829dfe3bd88",
+      "char_len": 400
+    },
+    {
+      "item_id": "FRESH-U0-12",
+      "message_id": "t19u",
+      "seq": 116,
+      "timestamp_iso": "2026-09-10T10:05:01.915000+02:00",
+      "content_sha256": "70f913fbc2d1504fd8e083119da5d103cf07cb4abd8c002692efc92a6bbce388",
+      "char_len": 5834
+    },
+    {
+      "item_id": "FRESH-U0-13",
+      "message_id": "t20u",
+      "seq": 120,
+      "timestamp_iso": "2026-09-10T10:14:22.306000+02:00",
+      "content_sha256": "00578238ce44a2b0bb4c33cceba0f257b8b63ddb51bbdd196d5ad35df0d7d5e0",
+      "char_len": 9546
+    },
+    {
+      "item_id": "FRESH-U0-14",
+      "message_id": "t21u",
+      "seq": 126,
+      "timestamp_iso": "2026-09-10T10:40:35.091000+02:00",
+      "content_sha256": "d4d943099355764b1fbe963618856c17d1cd224b260cbd8a4d238c1d80efa006",
+      "char_len": 9178
+    },
+    {
+      "item_id": "FRESH-U0-15",
+      "message_id": "t22u",
+      "seq": 132,
+      "timestamp_iso": "2026-09-10T10:53:12.696000+02:00",
+      "content_sha256": "ce41d0ea3d1525fc41e3d260fb25cc299a3c47c1320fc6c93d399dac863fb398",
+      "char_len": 15492
+    },
+    {
+      "item_id": "FRESH-U0-16",
+      "message_id": "t23u",
+      "seq": 137,
+      "timestamp_iso": "2026-09-10T11:02:50.381000+02:00",
+      "content_sha256": "8a5006fb42e8a672f8d5e6ed9824a5c2789890624d0380086dcc758afca88229",
+      "char_len": 1486
+    },
+    {
+      "item_id": "FRESH-U0-17",
+      "message_id": "t24u",
+      "seq": 145,
+      "timestamp_iso": "2026-09-10T11:11:41.752000+02:00",
+      "content_sha256": "415e84b17f365afd825396d021d57b57fb41c7b6b125d2882b53122293b96c5c",
+      "char_len": 3620
+    },
+    {
+      "item_id": "FRESH-U0-18",
+      "message_id": "t25u",
+      "seq": 151,
+      "timestamp_iso": "2026-09-10T11:40:22.647000+02:00",
+      "content_sha256": "03639b7057fad3f7a3cd4a86eebd3cc71d7a142049a2670c3f027a02479378fc",
+      "char_len": 22746
+    },
+    {
+      "item_id": "FRESH-U0-19",
+      "message_id": "t26u",
+      "seq": 158,
+      "timestamp_iso": "2026-09-10T12:01:13.978000+02:00",
+      "content_sha256": "a7b33ffefa970767e73716c0b5270fce172b8a97716d2e5c0cdad7ffd8eeb421",
+      "char_len": 21503
+    },
+    {
+      "item_id": "FRESH-U0-20",
+      "message_id": "t27u",
+      "seq": 165,
+      "timestamp_iso": "2026-09-10T16:03:14.100000+02:00",
+      "content_sha256": "173beca31e8fc45bffc04ad9f792c8ab23d52212e56911451cc60421842af8c6",
+      "char_len": 24917
+    },
+    {
+      "item_id": "FRESH-U0-21",
+      "message_id": "t28u",
+      "seq": 171,
+      "timestamp_iso": "2026-09-10T16:51:39.851000+02:00",
+      "content_sha256": "e4a8bbae3d62e9b0e2593dd28a000067d7dcbe16ec18031658b4066a33fb7129",
+      "char_len": 41240
+    },
+    {
+      "item_id": "FRESH-U0-22",
+      "message_id": "t29u",
+      "seq": 175,
+      "timestamp_iso": "2026-09-11T10:04:32.621000+02:00",
+      "content_sha256": "0c0c43cc07473e833d98fae9c665a168fb15800bcb0a60224014c28622e88f44",
+      "char_len": 36
+    },
+    {
+      "item_id": "FRESH-U0-23",
+      "message_id": "t30u",
+      "seq": 182,
+      "timestamp_iso": "2026-09-11T11:03:06.941000+02:00",
+      "content_sha256": "a320f179d1c8967b222a6d846978f854e769aaaf52362088786ae31cba2387d9",
+      "char_len": 9083
+    },
+    {
+      "item_id": "FRESH-U0-24",
+      "message_id": "t31u",
+      "seq": 186,
+      "timestamp_iso": "2026-09-11T11:09:14.590000+02:00",
+      "content_sha256": "e7eefd2bcc2013cce17f94ed7b1a61d991c2c4d06e93b3d06399ab2b225730a5",
+      "char_len": 10895
+    },
+    {
+      "item_id": "FRESH-U0-25",
+      "message_id": "t32u",
+      "seq": 194,
+      "timestamp_iso": "2026-09-11T13:13:02.828000+02:00",
+      "content_sha256": "9805d9e7f65ddc79fad1331d82d445b6ca8ef22c7611c24e87211dfdd233db04",
+      "char_len": 10380
+    },
+    {
+      "item_id": "FRESH-U0-26",
+      "message_id": "t33u",
+      "seq": 202,
+      "timestamp_iso": "2026-09-11T13:25:46.946000+02:00",
+      "content_sha256": "55dc4edb8f6c437f0aa2d29829b8042ae112dd558e8dc7aa72c63e3bf9b6c56e",
+      "char_len": 14013
+    },
+    {
+      "item_id": "FRESH-U0-27",
+      "message_id": "t34u",
+      "seq": 210,
+      "timestamp_iso": "2026-09-11T13:55:56.224000+02:00",
+      "content_sha256": "b469caa29904aee2f93c1d97abea2e1fd65f39502c0982e569a2e56bbd69801a",
+      "char_len": 21448
+    },
+    {
+      "item_id": "FRESH-U0-28",
+      "message_id": "t35u",
+      "seq": 215,
+      "timestamp_iso": "2026-09-11T14:53:30.369000+02:00",
+      "content_sha256": "e11ada7a0b12d8e65da674659a4c12731512270096d5a92bb426b4455a198556",
+      "char_len": 21081
+    },
+    {
+      "item_id": "FRESH-U0-29",
+      "message_id": "t36u",
+      "seq": 222,
+      "timestamp_iso": "2026-09-11T15:58:53.256000+02:00",
+      "content_sha256": "6dfcfb3124432ba69a00929f735d69398d3be7e242f96f87e99c35e8e44a812b",
+      "char_len": 27555
+    },
+    {
+      "item_id": "FRESH-U0-30",
+      "message_id": "t37u",
+      "seq": 227,
+      "timestamp_iso": "2026-09-11T16:42:51.293000+02:00",
+      "content_sha256": "69fae996a9d9fa9c687151779a78754da44a6a78073882ab2dcb042569ddce4c",
+      "char_len": 25949
+    }
+  ],
+  "HUMAN_SEGMENTATION_REFERENCE": "NOT_CREATED",
+  "GENERALIZATION_HUMAN_GOLD": "NOT_CREATED",
+  "A0_A1_B": "NOT_RUN",
+  "manifest_content_sha256": "9bcce7c2327bf14d81fd9af0761ee7940f450328ecd7445a88144483a6385ed5",
+  "u0_packet_json_sha256": "fbec1af53068c3bbd0ab37913006e414d3b8ce3bdbbb0a47729bca68c29da8b3",
+  "u0_packet_md_sha256": "4967a19818069b8cd99918e55201e873fae114390292beb6c9d63eb847181767"
+}

@@ -1,0 +1,623 @@
+{
+  "schema": "E0B_MARKER_BASELINE_V1",
+  "role": "AUXILIARY_ONLY",
+  "note": "Marker miss != semantic absence. Do not treat as gold.",
+  "patterns": [
+    "PROPOSAL_LET_US",
+    "REQUEST_PLEASE",
+    "QUESTION_MARK",
+    "CONSTRAINT_ONLY_EXACT",
+    "CONDITIONAL_IF",
+    "BECAUSE",
+    "PREFERENCE_ALWAYS",
+    "OPTIONAL_CAN"
+  ],
+  "atoms": [
+    {
+      "atom_id": "E0B-V04",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": false,
+          "EXPLICIT_MARKER_TYPE": "NONE",
+          "EXPLICIT_MARKER_SPAN": null,
+          "EXPLICIT_MARKER_TEXT": null,
+          "note": "Marker miss != semantic absence"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V07",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            17,
+            18
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V13",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            71,
+            76
+          ],
+          "EXPLICIT_MARKER_TEXT": "Скажи"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            168,
+            169
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V08.1.1",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            13,
+            18
+          ],
+          "EXPLICIT_MARKER_TEXT": "скажи"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            80,
+            88
+          ],
+          "EXPLICIT_MARKER_TEXT": "посмотри"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            146,
+            151
+          ],
+          "EXPLICIT_MARKER_TEXT": "скажи"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            70,
+            71
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            201,
+            202
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "OPTIONAL_CAN",
+          "EXPLICIT_MARKER_SPAN": [
+            153,
+            158
+          ],
+          "EXPLICIT_MARKER_TEXT": "можно"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V08.1.2",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            41,
+            45
+          ],
+          "EXPLICIT_MARKER_TEXT": "Если"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            144,
+            149
+          ],
+          "EXPLICIT_MARKER_TEXT": "чтобы"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V08.2",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            6,
+            11
+          ],
+          "EXPLICIT_MARKER_TEXT": "скажи"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONSTRAINT_ONLY_EXACT",
+          "EXPLICIT_MARKER_SPAN": [
+            12,
+            24
+          ],
+          "EXPLICIT_MARKER_TEXT": "только точно"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONSTRAINT_ONLY_EXACT",
+          "EXPLICIT_MARKER_SPAN": [
+            26,
+            38
+          ],
+          "EXPLICIT_MARKER_TEXT": "не выдумывай"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONSTRAINT_ONLY_EXACT",
+          "EXPLICIT_MARKER_SPAN": [
+            45,
+            56
+          ],
+          "EXPLICIT_MARKER_TEXT": "не галицини"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V17.1",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            0,
+            19
+          ],
+          "EXPLICIT_MARKER_TEXT": "Хочу тебя попросить"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            148,
+            149
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "BECAUSE",
+          "EXPLICIT_MARKER_SPAN": [
+            80,
+            90
+          ],
+          "EXPLICIT_MARKER_TEXT": "Потому что"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "PREFERENCE_ALWAYS",
+          "EXPLICIT_MARKER_SPAN": [
+            45,
+            59
+          ],
+          "EXPLICIT_MARKER_TEXT": "всегда отвечай"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V17.2",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            0,
+            7
+          ],
+          "EXPLICIT_MARKER_TEXT": "Запомни"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            28,
+            33
+          ],
+          "EXPLICIT_MARKER_TEXT": "чтобы"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V18.1",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            28,
+            29
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "BECAUSE",
+          "EXPLICIT_MARKER_SPAN": [
+            124,
+            134
+          ],
+          "EXPLICIT_MARKER_TEXT": "потому что"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "OPTIONAL_CAN",
+          "EXPLICIT_MARKER_SPAN": [
+            52,
+            60
+          ],
+          "EXPLICIT_MARKER_TEXT": "Можно же"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "OPTIONAL_CAN",
+          "EXPLICIT_MARKER_SPAN": [
+            61,
+            72
+          ],
+          "EXPLICIT_MARKER_TEXT": "опционально"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V18.2",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": false,
+          "EXPLICIT_MARKER_TYPE": "NONE",
+          "EXPLICIT_MARKER_SPAN": null,
+          "EXPLICIT_MARKER_TEXT": null,
+          "note": "Marker miss != semantic absence"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V18.3",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "OPTIONAL_CAN",
+          "EXPLICIT_MARKER_SPAN": [
+            13,
+            18
+          ],
+          "EXPLICIT_MARKER_TEXT": "можно"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V18.4",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            32,
+            37
+          ],
+          "EXPLICIT_MARKER_TEXT": "скажи"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            23,
+            24
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            69,
+            70
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V21.1",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "PROPOSAL_LET_US",
+          "EXPLICIT_MARKER_SPAN": [
+            0,
+            7
+          ],
+          "EXPLICIT_MARKER_TEXT": "А давай"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "PROPOSAL_LET_US",
+          "EXPLICIT_MARKER_SPAN": [
+            32,
+            37
+          ],
+          "EXPLICIT_MARKER_TEXT": "Давай"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            30,
+            31
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V21.2.1",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            20,
+            25
+          ],
+          "EXPLICIT_MARKER_TEXT": "чтобы"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            151,
+            156
+          ],
+          "EXPLICIT_MARKER_TEXT": "чтобы"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V21.2.2",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONSTRAINT_ONLY_EXACT",
+          "EXPLICIT_MARKER_SPAN": [
+            88,
+            96
+          ],
+          "EXPLICIT_MARKER_TEXT": "не меняя"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "BECAUSE",
+          "EXPLICIT_MARKER_SPAN": [
+            119,
+            129
+          ],
+          "EXPLICIT_MARKER_TEXT": "Потому что"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V31.1",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "PROPOSAL_LET_US",
+          "EXPLICIT_MARKER_SPAN": [
+            7,
+            16
+          ],
+          "EXPLICIT_MARKER_TEXT": "предлагаю"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            29,
+            37
+          ],
+          "EXPLICIT_MARKER_TEXT": "Посмотри"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            130,
+            138
+          ],
+          "EXPLICIT_MARKER_TEXT": "Посмотри"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            27,
+            28
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            103,
+            104
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V31.2",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            267,
+            268
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            8,
+            13
+          ],
+          "EXPLICIT_MARKER_TEXT": "чтобы"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "PREFERENCE_ALWAYS",
+          "EXPLICIT_MARKER_SPAN": [
+            0,
+            13
+          ],
+          "EXPLICIT_MARKER_TEXT": "Я хочу, чтобы"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V34.1",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": false,
+          "EXPLICIT_MARKER_TYPE": "NONE",
+          "EXPLICIT_MARKER_SPAN": null,
+          "EXPLICIT_MARKER_TEXT": null,
+          "note": "Marker miss != semantic absence"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V34.2",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            65,
+            66
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V38.1",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": false,
+          "EXPLICIT_MARKER_TYPE": "NONE",
+          "EXPLICIT_MARKER_SPAN": null,
+          "EXPLICIT_MARKER_TEXT": null,
+          "note": "Marker miss != semantic absence"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V38.2",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "PROPOSAL_LET_US",
+          "EXPLICIT_MARKER_SPAN": [
+            0,
+            24
+          ],
+          "EXPLICIT_MARKER_TEXT": "поэтому я тебе предлагаю"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            37,
+            42
+          ],
+          "EXPLICIT_MARKER_TEXT": "изучи"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "OPTIONAL_CAN",
+          "EXPLICIT_MARKER_SPAN": [
+            101,
+            106
+          ],
+          "EXPLICIT_MARKER_TEXT": "можно"
+        }
+      ]
+    },
+    {
+      "atom_id": "E0B-V38.3",
+      "markers": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            72,
+            80
+          ],
+          "EXPLICIT_MARKER_TEXT": "запускай"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            0,
+            5
+          ],
+          "EXPLICIT_MARKER_TEXT": "чтобы"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            19,
+            23
+          ],
+          "EXPLICIT_MARKER_TEXT": "если"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "OPTIONAL_CAN",
+          "EXPLICIT_MARKER_SPAN": [
+            6,
+            11
+          ],
+          "EXPLICIT_MARKER_TEXT": "можно"
+        }
+      ]
+    }
+  ]
+}

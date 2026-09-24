@@ -1,0 +1,250 @@
+{
+  "recovery_event": "E0B_LOCAL_ARTIFACT_RECOVERY_2026-09-24",
+  "repository": "velantrian/Eiti-Wizard-Lab",
+  "branch": "exp/e0b-typing-reliability",
+  "recovery_date": "2026-09-24",
+  "recovered_at": "2026-09-24T08:18:03+02:00",
+  "backdated": false,
+  "historical_git_reconstruction": false,
+  "preregistration_claim": "NOT_ESTABLISHED_BY_THIS_RECOVERY",
+  "A0/A1/B": "NOT_RUN",
+  "F8_STATUS": "HASH_SEMANTICS_AMBIGUITY_RESOLVED_TO_SELF_HASH_PATTERN_CANDIDATE",
+  "U0B_WORKING_CHECKPOINT_PRE_CONTINUATION": "9bcc60e86e67f3a739894f4d499c6c0a3a9bdbd7f144cb5b6e7fcbde9b56e039",
+  "historical_remote_preregistration": "NOT_PROVEN",
+  "parent_tip_at_recovery_start": "8a8557706a5a73bf9d177052104129e5020aa88f",
+  "artifacts_recovered": "13/13",
+  "triage_versions": {
+    "recovered": "0/3",
+    "expected": [
+      {
+        "name": "u0b_triage_v1.0.0.py",
+        "sha256": "708a778956063dc429de03cf72e38fa50ee13dd469ca4261db95f9f479efebac",
+        "status": "NOT_RECOVERED"
+      },
+      {
+        "name": "u0b_triage_v1.0.1.py",
+        "sha256": "9cc87f025c47d37e33bf3761680da4907707a26afd84da9ddc7a09108bae04ac",
+        "status": "NOT_RECOVERED"
+      },
+      {
+        "name": "u0b_triage_v1.0.2.py",
+        "sha256": "410aa7fd34aa6591c6ad5a3d89ee04abea47d141250041f1cea63755dba861ad",
+        "status": "NOT_RECOVERED"
+      }
+    ],
+    "note": "Searched /workspace and /home/box by basename and by recorded SHA; none found. Prior forensic reports also recorded NOT_RECOVERED. Do NOT invent."
+  },
+  "f8": {
+    "full_file_sha256_of_fresh_collection_manifest_v1_json": "9e6f2c29f483619f9953256c7a64b465dd79915723fdb6a359baa4bd1dfeee60",
+    "embedded_manifest_content_sha256": "9bcce7c2327bf14d81fd9af0761ee7940f450328ecd7445a88144483a6385ed5",
+    "freeze_manifest_sha256": "9bcce7c2327bf14d81fd9af0761ee7940f450328ecd7445a88144483a6385ed5",
+    "interpretation": "self-hash-excluding-content semantics candidate; NOT claimed as missing alternate full file; do NOT rewrite originals",
+    "F8_STATUS": "HASH_SEMANTICS_AMBIGUITY_RESOLVED_TO_SELF_HASH_PATTERN_CANDIDATE"
+  },
+  "frozen_human_u0": {
+    "HUMAN_SEGMENTATION_REFERENCE.json": "UNCHANGED",
+    "HUMAN_SEGMENTATION_REFERENCE_FREEZE_RECEIPT.json": "UNCHANGED",
+    "modified_by_this_recovery": false
+  },
+  "scope": {
+    "write_surface": "experiments/memory-governance-e0b/recovery/2026-09-24/",
+    "did_not_continue_u0b": true,
+    "did_not_write_FRESH_U0_05": true,
+    "did_not_run_triage": true,
+    "did_not_freeze_u0b": true,
+    "did_not_create_HUMAN_GOLD": true,
+    "did_not_run_A0_A1_B": true
+  },
+  "artifacts": [
+    {
+      "artifact_name": "PHASE_1J_FINAL_PRECOLLECTION_PATCH.md",
+      "recovered_at": "2026-09-24T08:18:03+02:00",
+      "source_path": "/workspace/e0b-prepare/experiments/memory-governance-e0b/PHASE_1J_FINAL_PRECOLLECTION_PATCH.md",
+      "quarantine_path": "/workspace/e0b-prepare/recovery_quarantine_READONLY_2026-09-24/from_primary/from__workspace_e0b-prepare_experiments_memory-governance-e0b__PHASE_1J_FINAL_PRECOLLECTION_PATCH.md",
+      "recovery_destination": "experiments/memory-governance-e0b/recovery/2026-09-24/recovered_artifacts/PHASE_1J_FINAL_PRECOLLECTION_PATCH.md",
+      "sha256": "592ba9c1f169ceafb407528890fbfef39ab04fe77040f3780d07724c163dc373",
+      "bytes": 1623,
+      "historical_git_presence": "NO",
+      "historical_remote_preregistration": "NOT_PROVEN",
+      "recovery_status": "RECOVERED_LOCAL_WORKSPACE_ARTIFACT",
+      "content_modified_during_recovery": false,
+      "byte_copy_verified": true
+    },
+    {
+      "artifact_name": "segmentation_evaluation_contract_v1.md",
+      "recovered_at": "2026-09-24T08:18:03+02:00",
+      "source_path": "/workspace/e0b-prepare/experiments/memory-governance-e0b/segmentation_evaluation_contract_v1.md",
+      "quarantine_path": "/workspace/e0b-prepare/recovery_quarantine_READONLY_2026-09-24/from_primary/from__workspace_e0b-prepare_experiments_memory-governance-e0b__segmentation_evaluation_contract_v1.md",
+      "recovery_destination": "experiments/memory-governance-e0b/recovery/2026-09-24/recovered_artifacts/segmentation_evaluation_contract_v1.md",
+      "sha256": "d4b40b3fe804e75f31e79d08870a190eeec9d6779027c4c90d77852e52612c37",
+      "bytes": 2099,
+      "historical_git_presence": "NO",
+      "historical_remote_preregistration": "NOT_PROVEN",
+      "recovery_status": "RECOVERED_LOCAL_WORKSPACE_ARTIFACT",
+      "content_modified_during_recovery": false,
+      "byte_copy_verified": true
+    },
+    {
+      "artifact_name": "fresh_untouched_dataset_protocol_v1.md",
+      "recovered_at": "2026-09-24T08:18:03+02:00",
+      "source_path": "/workspace/e0b-prepare/experiments/memory-governance-e0b/fresh_untouched_dataset_protocol_v1.md",
+      "quarantine_path": "/workspace/e0b-prepare/recovery_quarantine_READONLY_2026-09-24/from_primary/from__workspace_e0b-prepare_experiments_memory-governance-e0b__fresh_untouched_dataset_protocol_v1.md",
+      "recovery_destination": "experiments/memory-governance-e0b/recovery/2026-09-24/recovered_artifacts/fresh_untouched_dataset_protocol_v1.md",
+      "sha256": "3f056518762d310caff2f18c30bfab8731178465bd5ef66edaf0a5029f687f89",
+      "bytes": 2733,
+      "historical_git_presence": "NO",
+      "historical_remote_preregistration": "NOT_PROVEN",
+      "recovery_status": "RECOVERED_LOCAL_WORKSPACE_ARTIFACT",
+      "content_modified_during_recovery": false,
+      "byte_copy_verified": true
+    },
+    {
+      "artifact_name": "evaluation_contract_v1.md",
+      "recovered_at": "2026-09-24T08:18:03+02:00",
+      "source_path": "/workspace/e0b-prepare/experiments/memory-governance-e0b/evaluation_contract_v1.md",
+      "quarantine_path": "/workspace/e0b-prepare/recovery_quarantine_READONLY_2026-09-24/from_primary/from__workspace_e0b-prepare_experiments_memory-governance-e0b__evaluation_contract_v1.md",
+      "recovery_destination": "experiments/memory-governance-e0b/recovery/2026-09-24/recovered_artifacts/evaluation_contract_v1.md",
+      "sha256": "b4d22cf58b7b29b7442f6c428b97b6e69f57cc655182b9a8265f6a7d42aabf9b",
+      "bytes": 2888,
+      "historical_git_presence": "NO",
+      "historical_remote_preregistration": "NOT_PROVEN",
+      "recovery_status": "RECOVERED_LOCAL_WORKSPACE_ARTIFACT",
+      "content_modified_during_recovery": false,
+      "byte_copy_verified": true
+    },
+    {
+      "artifact_name": "classifier_input_A0_raw_v1.json",
+      "recovered_at": "2026-09-24T08:18:03+02:00",
+      "source_path": "/workspace/e0b-prepare/experiments/memory-governance-e0b/classifier_input_A0_raw_v1.json",
+      "quarantine_path": "/workspace/e0b-prepare/recovery_quarantine_READONLY_2026-09-24/from_primary/from__workspace_e0b-prepare_experiments_memory-governance-e0b__classifier_input_A0_raw_v1.json",
+      "recovery_destination": "experiments/memory-governance-e0b/recovery/2026-09-24/recovered_artifacts/classifier_input_A0_raw_v1.json",
+      "sha256": "a689669714d441193ad3c8f89b33173d3727fa3871cb0fc4cfd3c63a05a1959d",
+      "bytes": 21519,
+      "historical_git_presence": "NO",
+      "historical_remote_preregistration": "NOT_PROVEN",
+      "recovery_status": "RECOVERED_LOCAL_WORKSPACE_ARTIFACT",
+      "content_modified_during_recovery": false,
+      "byte_copy_verified": true
+    },
+    {
+      "artifact_name": "classifier_input_A1_presegmented_raw_v1.json",
+      "recovered_at": "2026-09-24T08:18:03+02:00",
+      "source_path": "/workspace/e0b-prepare/experiments/memory-governance-e0b/classifier_input_A1_presegmented_raw_v1.json",
+      "quarantine_path": "/workspace/e0b-prepare/recovery_quarantine_READONLY_2026-09-24/from_primary/from__workspace_e0b-prepare_experiments_memory-governance-e0b__classifier_input_A1_presegmented_raw_v1.json",
+      "recovery_destination": "experiments/memory-governance-e0b/recovery/2026-09-24/recovered_artifacts/classifier_input_A1_presegmented_raw_v1.json",
+      "sha256": "a168753d73149958e7b538b0035c0ccb2f618d263da771c729e3188fd114a852",
+      "bytes": 54233,
+      "historical_git_presence": "NO",
+      "historical_remote_preregistration": "NOT_PROVEN",
+      "recovery_status": "RECOVERED_LOCAL_WORKSPACE_ARTIFACT",
+      "content_modified_during_recovery": false,
+      "byte_copy_verified": true
+    },
+    {
+      "artifact_name": "classifier_input_B_augmented_v1.json",
+      "recovered_at": "2026-09-24T08:18:03+02:00",
+      "source_path": "/workspace/e0b-prepare/experiments/memory-governance-e0b/classifier_input_B_augmented_v1.json",
+      "quarantine_path": "/workspace/e0b-prepare/recovery_quarantine_READONLY_2026-09-24/from_primary/from__workspace_e0b-prepare_experiments_memory-governance-e0b__classifier_input_B_augmented_v1.json",
+      "recovery_destination": "experiments/memory-governance-e0b/recovery/2026-09-24/recovered_artifacts/classifier_input_B_augmented_v1.json",
+      "sha256": "d3b93f743be1add13a46aa1e10820ff880a5225979f691c01176e62cec87dcf7",
+      "bytes": 91067,
+      "historical_git_presence": "NO",
+      "historical_remote_preregistration": "NOT_PROVEN",
+      "recovery_status": "RECOVERED_LOCAL_WORKSPACE_ARTIFACT",
+      "content_modified_during_recovery": false,
+      "byte_copy_verified": true
+    },
+    {
+      "artifact_name": "classifier_input_contract_v1.json",
+      "recovered_at": "2026-09-24T08:18:03+02:00",
+      "source_path": "/workspace/e0b-prepare/experiments/memory-governance-e0b/classifier_input_contract_v1.json",
+      "quarantine_path": "/workspace/e0b-prepare/recovery_quarantine_READONLY_2026-09-24/from_primary/from__workspace_e0b-prepare_experiments_memory-governance-e0b__classifier_input_contract_v1.json",
+      "recovery_destination": "experiments/memory-governance-e0b/recovery/2026-09-24/recovered_artifacts/classifier_input_contract_v1.json",
+      "sha256": "ec5892a17fd18512f92fa0def4a9efe948aa5204470027e02fff111793514f47",
+      "bytes": 69626,
+      "historical_git_presence": "NO",
+      "historical_remote_preregistration": "NOT_PROVEN",
+      "recovery_status": "RECOVERED_LOCAL_WORKSPACE_ARTIFACT",
+      "content_modified_during_recovery": false,
+      "byte_copy_verified": true
+    },
+    {
+      "artifact_name": "fresh_U0_packet_v1.json",
+      "recovered_at": "2026-09-24T08:18:03+02:00",
+      "source_path": "/workspace/e0b-prepare/experiments/memory-governance-e0b/fresh_U0_packet_v1.json",
+      "quarantine_path": "/workspace/e0b-prepare/recovery_quarantine_READONLY_2026-09-24/from_primary/from__workspace_e0b-prepare_experiments_memory-governance-e0b__fresh_U0_packet_v1.json",
+      "recovery_destination": "experiments/memory-governance-e0b/recovery/2026-09-24/recovered_artifacts/fresh_U0_packet_v1.json",
+      "sha256": "fbec1af53068c3bbd0ab37913006e414d3b8ce3bdbbb0a47729bca68c29da8b3",
+      "bytes": 455365,
+      "historical_git_presence": "NO",
+      "historical_remote_preregistration": "NOT_PROVEN",
+      "recovery_status": "RECOVERED_LOCAL_WORKSPACE_ARTIFACT",
+      "content_modified_during_recovery": false,
+      "byte_copy_verified": true
+    },
+    {
+      "artifact_name": "human_U0_annotations_in_progress.json",
+      "recovered_at": "2026-09-24T08:18:03+02:00",
+      "source_path": "/workspace/e0b-prepare/experiments/memory-governance-e0b/human_U0_annotations_in_progress.json",
+      "quarantine_path": "/workspace/e0b-prepare/recovery_quarantine_READONLY_2026-09-24/from_primary/from__workspace_e0b-prepare_experiments_memory-governance-e0b__human_U0_annotations_in_progress.json",
+      "recovery_destination": "experiments/memory-governance-e0b/recovery/2026-09-24/recovered_artifacts/human_U0_annotations_in_progress.json",
+      "sha256": "0ea83d9029ffb3f821fe7e844dbab236cd19e29951a4a74f63723d8d72714c07",
+      "bytes": 484472,
+      "historical_git_presence": "NO",
+      "historical_remote_preregistration": "NOT_PROVEN",
+      "recovery_status": "RECOVERED_LOCAL_WORKSPACE_ARTIFACT",
+      "content_modified_during_recovery": false,
+      "byte_copy_verified": true
+    },
+    {
+      "artifact_name": "HUMAN_BOUNDARY_REFERENCE_U0b.in_progress.json",
+      "recovered_at": "2026-09-24T08:18:03+02:00",
+      "source_path": "/workspace/e0b-prepare/experiments/memory-governance-e0b/HUMAN_BOUNDARY_REFERENCE_U0b.in_progress.json",
+      "quarantine_path": "/workspace/e0b-prepare/recovery_quarantine_READONLY_2026-09-24/from_primary/from__workspace_e0b-prepare_experiments_memory-governance-e0b__HUMAN_BOUNDARY_REFERENCE_U0b.in_progress.json",
+      "recovery_destination": "experiments/memory-governance-e0b/recovery/2026-09-24/recovered_artifacts/HUMAN_BOUNDARY_REFERENCE_U0b.in_progress.json",
+      "sha256": "9bcc60e86e67f3a739894f4d499c6c0a3a9bdbd7f144cb5b6e7fcbde9b56e039",
+      "bytes": 59552,
+      "historical_git_presence": "NO",
+      "historical_remote_preregistration": "NOT_PROVEN",
+      "recovery_status": "RECOVERED_LOCAL_WORKSPACE_ARTIFACT",
+      "content_modified_during_recovery": false,
+      "byte_copy_verified": true,
+      "checkpoint_label": "U0B_WORKING_CHECKPOINT_PRE_CONTINUATION",
+      "notes": "Working checkpoint only; NOT final gold; U0b not complete."
+    },
+    {
+      "artifact_name": "fresh_collection_2A_freeze.json",
+      "recovered_at": "2026-09-24T08:18:03+02:00",
+      "source_path": "/workspace/e0b-prepare/experiments/memory-governance-e0b/fresh_collection_2A_freeze.json",
+      "quarantine_path": "/workspace/e0b-prepare/recovery_quarantine_READONLY_2026-09-24/from_primary/from__workspace_e0b-prepare_experiments_memory-governance-e0b__fresh_collection_2A_freeze.json",
+      "recovery_destination": "experiments/memory-governance-e0b/recovery/2026-09-24/recovered_artifacts/fresh_collection_2A_freeze.json",
+      "sha256": "5dd9f85f981b230816a3013802788d6a2f85bbd237d16236d880f2821011cfee",
+      "bytes": 991,
+      "historical_git_presence": "NO",
+      "historical_remote_preregistration": "NOT_PROVEN",
+      "recovery_status": "RECOVERED_LOCAL_WORKSPACE_ARTIFACT",
+      "content_modified_during_recovery": false,
+      "byte_copy_verified": true
+    },
+    {
+      "artifact_name": "fresh_collection_manifest_v1.json",
+      "recovered_at": "2026-09-24T08:18:03+02:00",
+      "source_path": "/workspace/e0b-prepare/experiments/memory-governance-e0b/fresh_collection_manifest_v1.json",
+      "quarantine_path": "/workspace/e0b-prepare/recovery_quarantine_READONLY_2026-09-24/from_primary/from__workspace_e0b-prepare_experiments_memory-governance-e0b__fresh_collection_manifest_v1.json",
+      "recovery_destination": "experiments/memory-governance-e0b/recovery/2026-09-24/recovered_artifacts/fresh_collection_manifest_v1.json",
+      "sha256": "9e6f2c29f483619f9953256c7a64b465dd79915723fdb6a359baa4bd1dfeee60",
+      "bytes": 9872,
+      "historical_git_presence": "NO",
+      "historical_remote_preregistration": "NOT_PROVEN",
+      "recovery_status": "RECOVERED_LOCAL_WORKSPACE_ARTIFACT",
+      "content_modified_during_recovery": false,
+      "byte_copy_verified": true,
+      "f8_note": {
+        "full_file_sha256": "9e6f2c29f483619f9953256c7a64b465dd79915723fdb6a359baa4bd1dfeee60",
+        "embedded_manifest_content_sha256": "9bcce7c2327bf14d81fd9af0761ee7940f450328ecd7445a88144483a6385ed5",
+        "freeze_manifest_sha256": "9bcce7c2327bf14d81fd9af0761ee7940f450328ecd7445a88144483a6385ed5",
+        "interpretation": "self-hash-excluding-content semantics candidate; NOT claimed as missing alternate full file; do NOT rewrite originals"
+      }
+    }
+  ]
+}

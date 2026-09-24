@@ -1,0 +1,1160 @@
+{
+  "schema": "E0B_CLASSIFIER_INPUT_A1_PRESEGMENTED_RAW_V1",
+  "condition": "A1_PRESEGMENTED_RAW",
+  "measures": "TYPING GIVEN SEGMENTATION",
+  "dataset_role": "CALIBRATION_PROTOCOL_DEVELOPMENT",
+  "annotation_exposure": "CANDIDATE_LABELS_SEEN",
+  "package_sha256": "745af6f39f2a2781553d8a289a7bd3a48d70773c27d9d74be04bbf975c3d9352",
+  "created_at": "2026-09-22T00:38:27.250146+02:00",
+  "HUMAN_GOLD": "NOT_CREATED",
+  "BLIND_RUN": "NOT_RUN",
+  "n_spans": 22,
+  "spans": [
+    {
+      "atom_id": "E0B-V04",
+      "exact_target_span": {
+        "raw_text": "Phase 1 will proceed without Graphiti.",
+        "content_sha256": "715dfde8cdf783b3675f1ba3fa7e94ee68688e2446fe8fc2ad4466b7c8071fc0",
+        "exact_span": {
+          "parent_message_id": "evt-002",
+          "parent_atom_id": null,
+          "start": 0,
+          "end": 38,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "Phase 1 will proceed without Graphiti.",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "evt-002",
+        "parent_atom_id": null,
+        "source_id": "LAB-E0A-FIXTURE",
+        "source_turn_id": "evt-002",
+        "source_artifact": "experiments/memory-governance-e0a/fixture.json",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V07",
+      "exact_target_span": {
+        "raw_text": "Where did we stop?",
+        "content_sha256": "781bf08ee761eae968f4d2014cafa11cb5e01312c24ccd5af6bbee7bc6a2abea",
+        "exact_span": {
+          "parent_message_id": "evt-005",
+          "parent_atom_id": null,
+          "start": 0,
+          "end": 18,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "Where did we stop?",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "evt-005",
+        "parent_atom_id": null,
+        "source_id": "LAB-E0A-FIXTURE",
+        "source_turn_id": "evt-005",
+        "source_artifact": "experiments/memory-governance-e0a/fixture.json",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V08.1.1",
+      "exact_target_span": {
+        "raw_text": "Слу- слушай, скажи мне, ты можешь здесь запустить, а, как тебе сказать? Вот, э, посмотри, а, при- другие мои чат-боты, да, что там обсуждалось, и скажи, можно здесь, а, мою систему запустить полноценно?",
+        "content_sha256": "5061a2016abfca9adc834b75959a1f5a29c6d7a8c7ad32f9e692f008d7d6f02c",
+        "exact_span": {
+          "parent_message_id": "t0u",
+          "parent_atom_id": "E0B-V08",
+          "start": 0,
+          "end": 202,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "Слу- слушай, скажи мне, ты можешь здесь запустить, а, как тебе сказать? Вот, э, посмотри, а, при- другие мои чат-боты, да, что там обсуждалось, и скажи, можно здесь, а, мою систему запустить полноценно? Ты, у тебя же есть доступ к компьютеру. Если у тебя есть доступ к компьютеру, то ты, по идее, можешь то же самое, что на компьютере запустить, чтобы тестировать мою систему. Ну ты скажи только точно, не выдумывай, а, и не галицини.",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t0u",
+        "parent_atom_id": "E0B-V08",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t0u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V08.1.2",
+      "exact_target_span": {
+        "raw_text": " Ты, у тебя же есть доступ к компьютеру. Если у тебя есть доступ к компьютеру, то ты, по идее, можешь то же самое, что на компьютере запустить, чтобы тестировать мою систему. ",
+        "content_sha256": "a88acb7ab557263be0886f62f96ff2cc797950cb8e9f310cb2303835c1f8c26d",
+        "exact_span": {
+          "parent_message_id": "t0u",
+          "parent_atom_id": "E0B-V08",
+          "start": 202,
+          "end": 377,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "Слу- слушай, скажи мне, ты можешь здесь запустить, а, как тебе сказать? Вот, э, посмотри, а, при- другие мои чат-боты, да, что там обсуждалось, и скажи, можно здесь, а, мою систему запустить полноценно? Ты, у тебя же есть доступ к компьютеру. Если у тебя есть доступ к компьютеру, то ты, по идее, можешь то же самое, что на компьютере запустить, чтобы тестировать мою систему. Ну ты скажи только точно, не выдумывай, а, и не галицини.",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t0u",
+        "parent_atom_id": "E0B-V08",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t0u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V08.2",
+      "exact_target_span": {
+        "raw_text": "Ну ты скажи только точно, не выдумывай, а, и не галицини.",
+        "content_sha256": "7741b7d0bec4b600ed0328429d281b81b0f4185848a84451cebcca2e5f3866a0",
+        "exact_span": {
+          "parent_message_id": "t0u",
+          "parent_atom_id": "E0B-V08",
+          "start": 377,
+          "end": 434,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "Слу- слушай, скажи мне, ты можешь здесь запустить, а, как тебе сказать? Вот, э, посмотри, а, при- другие мои чат-боты, да, что там обсуждалось, и скажи, можно здесь, а, мою систему запустить полноценно? Ты, у тебя же есть доступ к компьютеру. Если у тебя есть доступ к компьютеру, то ты, по идее, можешь то же самое, что на компьютере запустить, чтобы тестировать мою систему. Ну ты скажи только точно, не выдумывай, а, и не галицини.",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t0u",
+        "parent_atom_id": "E0B-V08",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t0u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V13",
+      "exact_target_span": {
+        "raw_text": "Смотри, там есть ещё один репозиторий, он называется graphiti-fractal. Скажи, а, вот он уже в принципе как собранный, проект. А, как ты думаешь, его ты можешь запустить?",
+        "content_sha256": "94698e03d0f8d981c9ee2b67c78a9a0aaafa03f3962ff8588090e2ce9f7bd04c",
+        "exact_span": {
+          "parent_message_id": "t1u",
+          "parent_atom_id": null,
+          "start": 0,
+          "end": 169,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "Смотри, там есть ещё один репозиторий, он называется graphiti-fractal. Скажи, а, вот он уже в принципе как собранный, проект. А, как ты думаешь, его ты можешь запустить?",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t1u",
+        "parent_atom_id": null,
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t1u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V17.1",
+      "exact_target_span": {
+        "raw_text": "Хочу тебя попросить, когда ты мне отвечаешь, всегда отвечай с эмодзи по смыслу. Потому что я визуально лучше понимаю, чем просто сухой текст. Хорошо? ",
+        "content_sha256": "73b2bd171fde96a270d58f722cbbc2b84ad84935d12f680b4b73588e55dd72f4",
+        "exact_span": {
+          "parent_message_id": "t2u",
+          "parent_atom_id": "E0B-V17",
+          "start": 0,
+          "end": 150,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "Хочу тебя попросить, когда ты мне отвечаешь, всегда отвечай с эмодзи по смыслу. Потому что я визуально лучше понимаю, чем просто сухой текст. Хорошо? Запомни это в своей памяти, чтобы это не просто су- сухой текст был.",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t2u",
+        "parent_atom_id": "E0B-V17",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t2u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V17.2",
+      "exact_target_span": {
+        "raw_text": "Запомни это в своей памяти, чтобы это не просто су- сухой текст был.",
+        "content_sha256": "75eac394c976a4e5587742ae44ed5ab3d1169c02f71c484fe488330b1770f0bb",
+        "exact_span": {
+          "parent_message_id": "t2u",
+          "parent_atom_id": "E0B-V17",
+          "start": 150,
+          "end": 218,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "Хочу тебя попросить, когда ты мне отвечаешь, всегда отвечай с эмодзи по смыслу. Потому что я визуально лучше понимаю, чем просто сухой текст. Хорошо? Запомни это в своей памяти, чтобы это не просто су- сухой текст был.",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t2u",
+        "parent_atom_id": "E0B-V17",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t2u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V18.1",
+      "exact_target_span": {
+        "raw_text": "Слушай, а я знаешь, чё думаю? Просто у меня вопрос. Можно же опционально ещё, а, например, Ladybug и Kuzu туда вместить, и, потому что для них не нужен сервер. ",
+        "content_sha256": "d47f24a81966ef6f37b350decd73cee55542dbbd987eacfa68e808600b2625a8",
+        "exact_span": {
+          "parent_message_id": "t3u",
+          "parent_atom_id": "E0B-V18",
+          "start": 0,
+          "end": 160,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "Слушай, а я знаешь, чё думаю? Просто у меня вопрос. Можно же опционально ещё, а, например, Ladybug и Kuzu туда вместить, и, потому что для них не нужен сервер. Я думаю, его легче будет установить, а он также по функционалу подойдёт. Вдобавок ещё можно, а, использовать, э, SQLite и PostgreSQL. Ты их сможешь запустить? Просто скажи мне, это легче будет, чем Neo4j?",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t3u",
+        "parent_atom_id": "E0B-V18",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t3u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V18.2",
+      "exact_target_span": {
+        "raw_text": "Я думаю, его легче будет установить, а он также по функционалу подойдёт. ",
+        "content_sha256": "0bee6fd6d8fb765601ebfa017848adc784705cd42e0d14426c232c380bf3c1fa",
+        "exact_span": {
+          "parent_message_id": "t3u",
+          "parent_atom_id": "E0B-V18",
+          "start": 160,
+          "end": 233,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "Слушай, а я знаешь, чё думаю? Просто у меня вопрос. Можно же опционально ещё, а, например, Ladybug и Kuzu туда вместить, и, потому что для них не нужен сервер. Я думаю, его легче будет установить, а он также по функционалу подойдёт. Вдобавок ещё можно, а, использовать, э, SQLite и PostgreSQL. Ты их сможешь запустить? Просто скажи мне, это легче будет, чем Neo4j?",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t3u",
+        "parent_atom_id": "E0B-V18",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t3u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V18.3",
+      "exact_target_span": {
+        "raw_text": "Вдобавок ещё можно, а, использовать, э, SQLite и PostgreSQL. ",
+        "content_sha256": "1f1416315932a5b75bd6677412cacfa0f1faefbde14cd5ea868d427f147f84cf",
+        "exact_span": {
+          "parent_message_id": "t3u",
+          "parent_atom_id": "E0B-V18",
+          "start": 233,
+          "end": 294,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "Слушай, а я знаешь, чё думаю? Просто у меня вопрос. Можно же опционально ещё, а, например, Ladybug и Kuzu туда вместить, и, потому что для них не нужен сервер. Я думаю, его легче будет установить, а он также по функционалу подойдёт. Вдобавок ещё можно, а, использовать, э, SQLite и PostgreSQL. Ты их сможешь запустить? Просто скажи мне, это легче будет, чем Neo4j?",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t3u",
+        "parent_atom_id": "E0B-V18",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t3u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V18.4",
+      "exact_target_span": {
+        "raw_text": "Ты их сможешь запустить? Просто скажи мне, это легче будет, чем Neo4j?",
+        "content_sha256": "7b177a82f666a5b440eb61684a109befadf2cbefd122726652b66569458df815",
+        "exact_span": {
+          "parent_message_id": "t3u",
+          "parent_atom_id": "E0B-V18",
+          "start": 294,
+          "end": 364,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "Слушай, а я знаешь, чё думаю? Просто у меня вопрос. Можно же опционально ещё, а, например, Ladybug и Kuzu туда вместить, и, потому что для них не нужен сервер. Я думаю, его легче будет установить, а он также по функционалу подойдёт. Вдобавок ещё можно, а, использовать, э, SQLite и PostgreSQL. Ты их сможешь запустить? Просто скажи мне, это легче будет, чем Neo4j?",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t3u",
+        "parent_atom_id": "E0B-V18",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t3u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V21.1",
+      "exact_target_span": {
+        "raw_text": "А давай знаешь, что мы сделаем? Давай мы сделаем второй репозиторий с таким же названием, просто назовем исследовательский, и всё оттуда перенесем во второй. Всё, что необходимо. ",
+        "content_sha256": "6d67794bebda251158e1524b5c75f0793a034279041cfc1de099afc3e2e8d17d",
+        "exact_span": {
+          "parent_message_id": "t4u",
+          "parent_atom_id": "E0B-V21",
+          "start": 0,
+          "end": 179,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "А давай знаешь, что мы сделаем? Давай мы сделаем второй репозиторий с таким же названием, просто назовем исследовательский, и всё оттуда перенесем во второй. Всё, что необходимо. Но так сделаем его, чтобы он был заточен под kuzu, Ladybugdb, SQLite, PostgreSQL, и ещё под что-то, что ты считаешь нужным, что ты сможешь запустить и чтобы мы протестировали её. Там же есть уже готовый код, документация и так далее. Мы просто можем её адаптировать, не меняя основной репозиторий. Потому что",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t4u",
+        "parent_atom_id": "E0B-V21",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t4u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V21.2.1",
+      "exact_target_span": {
+        "raw_text": "Но так сделаем его, чтобы он был заточен под kuzu, Ladybugdb, SQLite, PostgreSQL, и ещё под что-то, что ты считаешь нужным, что ты сможешь запустить и чтобы мы протестировали её. ",
+        "content_sha256": "358903b5d253e98071a5c077782b69ad023a2a3a683952837c3c088ff8f4a08d",
+        "exact_span": {
+          "parent_message_id": "t4u",
+          "parent_atom_id": "E0B-V21",
+          "start": 179,
+          "end": 358,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "А давай знаешь, что мы сделаем? Давай мы сделаем второй репозиторий с таким же названием, просто назовем исследовательский, и всё оттуда перенесем во второй. Всё, что необходимо. Но так сделаем его, чтобы он был заточен под kuzu, Ladybugdb, SQLite, PostgreSQL, и ещё под что-то, что ты считаешь нужным, что ты сможешь запустить и чтобы мы протестировали её. Там же есть уже готовый код, документация и так далее. Мы просто можем её адаптировать, не меняя основной репозиторий. Потому что",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t4u",
+        "parent_atom_id": "E0B-V21",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t4u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V21.2.2",
+      "exact_target_span": {
+        "raw_text": "Там же есть уже готовый код, документация и так далее. Мы просто можем её адаптировать, не меняя основной репозиторий. Потому что",
+        "content_sha256": "3d931a40521c1646b10ec330b65c93e9c226ccde602d926e79555dc31c333249",
+        "exact_span": {
+          "parent_message_id": "t4u",
+          "parent_atom_id": "E0B-V21",
+          "start": 358,
+          "end": 487,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "А давай знаешь, что мы сделаем? Давай мы сделаем второй репозиторий с таким же названием, просто назовем исследовательский, и всё оттуда перенесем во второй. Всё, что необходимо. Но так сделаем его, чтобы он был заточен под kuzu, Ladybugdb, SQLite, PostgreSQL, и ещё под что-то, что ты считаешь нужным, что ты сможешь запустить и чтобы мы протестировали её. Там же есть уже готовый код, документация и так далее. Мы просто можем её адаптировать, не меняя основной репозиторий. Потому что",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t4u",
+        "parent_atom_id": "E0B-V21",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t4u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V31.1",
+      "exact_target_span": {
+        "raw_text": "Так, а предлагаю знаешь что? Посмотри, как устроены другие мои проекты, которые ты здесь перечислил, да? Они в других ботах есть. Посмотри ихний README, как устроен. ",
+        "content_sha256": "12f2cc8a0849f5265d06dc78167416c618c4a0fbbf64636e8f2b1f151f0bc0ac",
+        "exact_span": {
+          "parent_message_id": "t5u",
+          "parent_atom_id": "E0B-V31",
+          "start": 0,
+          "end": 166,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "Так, а предлагаю знаешь что? Посмотри, как устроены другие мои проекты, которые ты здесь перечислил, да? Они в других ботах есть. Посмотри ихний README, как устроен. Я хочу, чтобы ты тоже так сделал: с эмодзи, красиво, с оформлением. Такое же оформление, документы README, текстовый и ещё какие-то там документы, красиво оформленные, и читабельно, да, для машины и для человека, для ИИ и для человека. Ты можешь изучить и сделать так?",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t5u",
+        "parent_atom_id": "E0B-V31",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t5u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V31.2",
+      "exact_target_span": {
+        "raw_text": "Я хочу, чтобы ты тоже так сделал: с эмодзи, красиво, с оформлением. Такое же оформление, документы README, текстовый и ещё какие-то там документы, красиво оформленные, и читабельно, да, для машины и для человека, для ИИ и для человека. Ты можешь изучить и сделать так?",
+        "content_sha256": "ba9e3c942f3132d8cd15da3c5690def3b2f8e39d68fd1d453a9336773cf0838e",
+        "exact_span": {
+          "parent_message_id": "t5u",
+          "parent_atom_id": "E0B-V31",
+          "start": 166,
+          "end": 434,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "Так, а предлагаю знаешь что? Посмотри, как устроены другие мои проекты, которые ты здесь перечислил, да? Они в других ботах есть. Посмотри ихний README, как устроен. Я хочу, чтобы ты тоже так сделал: с эмодзи, красиво, с оформлением. Такое же оформление, документы README, текстовый и ещё какие-то там документы, красиво оформленные, и читабельно, да, для машины и для человека, для ИИ и для человека. Ты можешь изучить и сделать так?",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t5u",
+        "parent_atom_id": "E0B-V31",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t5u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V34.1",
+      "exact_target_span": {
+        "raw_text": "А теперь можешь основного всё туда переносить, а потом будем думать, что заменять, что убирать, что переделывать. Мы же здесь можем экспериментировать, как хотим. ",
+        "content_sha256": "21c0163bcca05fbdb1428f12654bab7646fa723fdc34e6eb244058e02147bb1f",
+        "exact_span": {
+          "parent_message_id": "t6u",
+          "parent_atom_id": "E0B-V34",
+          "start": 0,
+          "end": 163,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "А теперь можешь основного всё туда переносить, а потом будем думать, что заменять, что убирать, что переделывать. Мы же здесь можем экспериментировать, как хотим. Тебя можем, да, туда весь код и документацию перенести с фрактала?",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t6u",
+        "parent_atom_id": "E0B-V34",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t6u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V34.2",
+      "exact_target_span": {
+        "raw_text": "Тебя можем, да, туда весь код и документацию перенести с фрактала?",
+        "content_sha256": "4ca4b22597962a4e805065a4c9a6429fa3297808c3b625227b715982259bb330",
+        "exact_span": {
+          "parent_message_id": "t6u",
+          "parent_atom_id": "E0B-V34",
+          "start": 163,
+          "end": 229,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "А теперь можешь основного всё туда переносить, а потом будем думать, что заменять, что убирать, что переделывать. Мы же здесь можем экспериментировать, как хотим. Тебя можем, да, туда весь код и документацию перенести с фрактала?",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t6u",
+        "parent_atom_id": "E0B-V34",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t6u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V38.1",
+      "exact_target_span": {
+        "raw_text": "смотри ladybugdb это как бы как kuzu но не замороженные а адаптированный в отличие от  kuzu который с прошлого года за архивированные ",
+        "content_sha256": "0ae8e8cdebdb69a82303670d06b39e4bb9bcb231d8acc11a4017bd0724e52229",
+        "exact_span": {
+          "parent_message_id": "t7u",
+          "parent_atom_id": "E0B-V38",
+          "start": 0,
+          "end": 134,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "смотри ladybugdb это как бы как kuzu но не замороженные а адаптированный в отличие от  kuzu который с прошлого года за архивированные поэтому я тебе предлагаю вот что , ￼ изучи подробнее как они все устроены включая и другие db, и что можно перенести в этот проект чтобы можно знаешь если например ну в песочнице запускаем точнее у тебя запускай мне в песочнице а у тебя на компьютере что адаптирование всего из этого бы у тебя работало бы лучше всего как бы сам проект был адаптированный вот нужно",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t7u",
+        "parent_atom_id": "E0B-V38",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t7u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V38.2",
+      "exact_target_span": {
+        "raw_text": "поэтому я тебе предлагаю вот что , ￼ изучи подробнее как они все устроены включая и другие db, и что можно перенести в этот проект ",
+        "content_sha256": "df04aa7dcab7f1c97db7fb9927a2ff9a215df61a0f56b44e7168d3b8d83633ee",
+        "exact_span": {
+          "parent_message_id": "t7u",
+          "parent_atom_id": "E0B-V38",
+          "start": 134,
+          "end": 265,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "смотри ladybugdb это как бы как kuzu но не замороженные а адаптированный в отличие от  kuzu который с прошлого года за архивированные поэтому я тебе предлагаю вот что , ￼ изучи подробнее как они все устроены включая и другие db, и что можно перенести в этот проект чтобы можно знаешь если например ну в песочнице запускаем точнее у тебя запускай мне в песочнице а у тебя на компьютере что адаптирование всего из этого бы у тебя работало бы лучше всего как бы сам проект был адаптированный вот нужно",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t7u",
+        "parent_atom_id": "E0B-V38",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t7u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    },
+    {
+      "atom_id": "E0B-V38.3",
+      "exact_target_span": {
+        "raw_text": "чтобы можно знаешь если например ну в песочнице запускаем точнее у тебя запускай мне в песочнице а у тебя на компьютере что адаптирование всего из этого бы у тебя работало бы лучше всего как бы сам проект был адаптированный вот нужно",
+        "content_sha256": "c477e297907d43f7ab7a34f74cfc3a89d724d1caf038caf668c783754764d07f",
+        "exact_span": {
+          "parent_message_id": "t7u",
+          "parent_atom_id": "E0B-V38",
+          "start": 265,
+          "end": 498,
+          "encoding": "utf-8 Unicode code points"
+        },
+        "raw_text_provenance": "SOURCE_TEXT",
+        "offset_hash_id_provenance": "PURE_STRUCTURAL"
+      },
+      "parent_raw_text": "смотри ladybugdb это как бы как kuzu но не замороженные а адаптированный в отличие от  kuzu который с прошлого года за архивированные поэтому я тебе предлагаю вот что , ￼ изучи подробнее как они все устроены включая и другие db, и что можно перенести в этот проект чтобы можно знаешь если например ну в песочнице запускаем точнее у тебя запускай мне в песочнице а у тебя на компьютере что адаптирование всего из этого бы у тебя работало бы лучше всего как бы сам проект был адаптированный вот нужно",
+      "structural_metadata": {
+        "sender_actor": "USER",
+        "parent_message_id": "t7u",
+        "parent_atom_id": "E0B-V38",
+        "source_id": "AGENT_CHAT:Labs",
+        "source_turn_id": "t7u",
+        "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+        "provenance_class": "PURE_STRUCTURAL",
+        "allowed_provenance": [
+          "PURE_STRUCTURAL"
+        ],
+        "note_1J": "No relation.target_atom_id in A1."
+      },
+      "forbidden": [
+        "HUMAN_GOLD",
+        "MODEL_MEDIATED_INTERVIEW_SUMMARY",
+        "candidate_labels",
+        "compound_reason",
+        "condition_field",
+        "content_origin",
+        "derived_condition",
+        "intentionally_compound",
+        "interview",
+        "presence_fields",
+        "relation.target_atom_id",
+        "relation.type",
+        "scope",
+        "target"
+      ],
+      "classifier_must_output": [
+        "PRIMARY_ACT",
+        "SECONDARY_ACTS",
+        "other_requested_axes"
+      ],
+      "parent_raw_text_provenance": "SOURCE_TEXT"
+    }
+  ],
+  "contract_patch": "1J",
+  "patched_at": "2026-09-22T00:43:04.217576+02:00"
+}

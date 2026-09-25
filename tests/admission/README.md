@@ -39,15 +39,17 @@ constraints) · **A1** (valid prepare: independent wiz_ref dump + fingerprint un
 (similar ≠ duplicate → UNCERTAIN) · **A3** (P1-2: exact ITEM_ID + compatible content → DUPLICATE; identical text
 without ITEM_ID → UNCERTAIN; differing WHEN / PROVENANCE / source revision / as_of / content_hash / source / status
 → not DUPLICATE; *apply half deferred to step 2*) · `P1-3` (authority spoof: declared_by / authority need a
-matching trusted caller context and non-model WHO) · **A10** (scope → OUT_OF_SCOPE) · **A11** (ambiguous
+matching trusted caller context and non-model WHO) · `P1-3b` (USER_INTERACTION ≠ USER_AUTHORITY) · **A10** (scope → OUT_OF_SCOPE) · **A11** (ambiguous
 candidates → UNCERTAIN, nothing added) · `passport` (invalid/non-REVIEW → nothing staged, DB byte-identical) ·
 `HR` (hard rules block) · `WP` (declarative write plans; random, non-content-derived new-item id; existing ITEM_ID
 + ADD_ITEM → UNCERTAIN) · `iso` (staging invisible to ref_search/mem_search, wiz_facts unchanged) · `persist`
 (staged review survives save → reload) · `noref` · `ui/sw` (asset cached, CACHE_NAME bumped, button passes event).
 
 Browser suite (`browser.test.mjs`): **B1** boot (0 new page errors vs main, REVIEW-only API) · **B2** genuine UI
-activation of Prepare → trusted USER context, packet (UNCERTAIN, AWAITING_REVIEW, write plan), verified persist,
-wiz_ref_* + personal memory unchanged, independent IndexedDB read-back · **B3** reload → pending review present,
-no ref item, Reference UI + ref_search + mem_add/mem_search work, no leak · **B4** invalid passport rejected; no
-Apply/Dismiss/Auto-approve controls · **B5** (P1-3) script call / forged event / dispatched click / wrapper with
-caller → UNTRUSTED → not DUPLICATE; genuine activation → DUPLICATE; `hostCallerContext` absent in the browser.
+activation of Prepare → `USER_INTERACTION` recorded, semantic authority NONE, packet (UNCERTAIN, AWAITING_REVIEW,
+write plan), verified persist, wiz_ref_* + personal memory unchanged, independent IndexedDB read-back · **B3**
+reload → pending review present, no ref item, Reference UI + ref_search + mem_add/mem_search work, no leak · **B4**
+invalid passport rejected; no Apply/Dismiss/Auto-approve controls · **B5** (P1-3/P1-3b) script call / forged event /
+dispatched click / wrapper with caller → no interaction, UNTRUSTED; genuine activation → USER_INTERACTION but NOT
+authority: EQUIVALENT_TO declared_by=USER, STATUS USER_DECISION, PROPOSED_STATUS_CHANGE.authority=USER all stay
+UNCERTAIN; `hostCallerContext` / `hostInteractionContext` absent in the browser.

@@ -128,24 +128,43 @@ collapse whitespace; case, punctuation and wording are **not** normalized.
 `adm:<created_at base36><12 random hex>` — review-derived and random, **never derived from content**
 (`write_plan.proposed_new_logical_item_id`). Step 2 may still assign the final id at apply time.
 
-### 5a. Trusted caller context (authority is never taken from the passport)
+### 5a. Caller context — semantic authority vs. user interaction (authority is never taken from the passport)
 
-`prepare(db, incoming, { caller })` — `caller` counts only if it is an **unforgeable token minted inside the
-module** (module-private `WeakSet`); anything else (plain object, string, a `CALLER` passport key, a look-alike
-frozen object) is ignored → `{kind: 'UNTRUSTED'}` (the default). Tokens are minted:
+**USER_INTERACTION ≠ USER_AUTHORITY · PREPARE_REVIEW ≠ CONFIRM_EQUIVALENCE ≠ AUTHORIZE_STATUS_CHANGE** (audit rev 2).
 
-* **Browser:** only in the click handler of `#wizAdmPrepareBtn` from a **genuine user event** — `isTrusted`
-  read via the brand-checked getter captured at load time, `type === 'click'`, target = the button. Script
-  calls of `wizAdmUiPrepare()`, prototype-forged events and `dispatchEvent(new MouseEvent('click'))` are
-  untrusted (browser test B5). `window.wizAdmissionPrepare(incoming, opts)` always drops `opts.caller`.
-  `hostCallerContext` is **not** exported in the browser. No agent tool exists; none can reach the token.
-* **Non-DOM host** (node tests / a future host integration): `WizAdmission.hostCallerContext('USER' |
-  'EXTERNAL_SYSTEM')`. `MODEL` or any other kind throws.
+Two structurally separate, unforgeable token kinds, each in its own module-private `WeakSet`:
+
+* **Authority token** — `prepare(db, incoming, { caller })`. The only thing the authority checks accept. Minted
+  **only** by `WizAdmission.hostCallerContext('USER' | 'EXTERNAL_SYSTEM')`, which exists **only in a non-DOM host**
+  (node tests / a future host integration); `MODEL` or any other kind throws. Anything else passed as `caller`
+  (plain object, string, a `CALLER` passport key, a look-alike frozen object, an interaction token) is ignored →
+  `{kind: 'UNTRUSTED', trusted: false}` (the default).
+* **Interaction token** — `prepare(db, incoming, { interaction })`. Audit/UI only: "a user clicked *Prepare
+  review*". It has no `kind`, is never added to the authority set and is never read by the authority checks.
+  In the browser it is minted only in the click handler of `#wizAdmPrepareBtn` from a **genuine user event**
+  (`isTrusted` via the brand-checked getter captured at load time, `type === 'click'`, target = the button).
+  Script calls of `wizAdmUiPrepare()`, prototype-forged events and `dispatchEvent(new MouseEvent('click'))` get
+  no interaction token (browser test B5). Node test seam: `hostInteractionContext()`.
+
+**Browser mode has NO positive semantic-authority path in step 1.** The browser glue never mints an authority
+token and never sets `opts.caller`; `window.wizAdmissionPrepare(incoming, opts)` drops both `caller` and
+`interaction`; `hostCallerContext` / `hostInteractionContext` are not exported in the browser. So a pasted
+`EQUIVALENT_TO.declared_by = USER`, `STATUS: USER_DECISION` or `PROPOSED_STATUS_CHANGE.authority = USER` stays
+`UNCERTAIN` even after a genuine click. There is no confirmation UI.
+
+**Host seam — the module does not authenticate the host.** `hostCallerContext('USER')` is a test / host
+integration seam. Any code that can call it must already be trusted; a future real host owns the authority
+boundary. Future trusted USER authority may come only from (1) a separately verified user-authored event supplied
+by the host, or (2) a dedicated explicit confirmation action whose semantics name exactly what is confirmed
+(e.g. "confirm equivalence of X with version V"). Neither is implemented in step 1.
 
 Rules (conservative): `EQUIVALENT_TO.declared_by = X` and `PROPOSED_STATUS_CHANGE.authority = X` are accepted
-only if X ∈ {USER, EXTERNAL_SYSTEM}, the trusted caller kind **equals** X, and `WHO` is not model-like.
-Otherwise → `UNCERTAIN` + hard rule `LLM OUTPUT ≠ MEMORY DECISION` (+ `AUTHORITY_NOT_PROVEN` warning for status
-changes). The packet records `caller: {kind, via, trusted}` and, for STATUS_CHANGE, `authority_proof`.
+only if X ∈ {USER, EXTERNAL_SYSTEM}, a trusted **authority** token of kind **equal** to X is present, and `WHO` is
+not model-like. Otherwise → `UNCERTAIN` + hard rule `LLM OUTPUT ≠ MEMORY DECISION` (+ `AUTHORITY_NOT_PROVEN`
+warning for status changes; warnings note "user interaction ≠ user authority" when an interaction is present).
+The packet records `caller: {kind, via, trusted, interaction, interaction_via}` and, for STATUS_CHANGE,
+`authority_proof`. UI line: `CALLER CONTEXT: USER_INTERACTION (review initiated by user click; NOT semantic
+authority) · semantic authority: NONE (…)`.
 
 ## 6. Candidate retrieval
 
@@ -210,9 +229,9 @@ addition to the spec's column list so a staged packet can be shown exactly as pr
 `AWAITING_REVIEW`; `APPLIED` / `DISMISSED` are reserved for step 2. Staged reviews are **not** memory: they
 never appear in `ref_search` / `mem_search` and are never injected into any context.
 
-API: `WizAdmission.prepare(db, incoming, opts)` (async; `opts.review_scope`, `opts.caller` = trusted token, §5a) ·
+API: `WizAdmission.prepare(db, incoming, opts)` (async; `opts.review_scope`, `opts.caller` = authority token, `opts.interaction` = interaction token, §5a) ·
 `getReview(db, id)` · `listPending(db)` · `initSchema(db)` · `refReadiness(db)` · `refSnapshot(db)` ·
-`refFingerprint(db)` · `formatPacket(packet)` · node-only `hostCallerContext(kind)`. Browser:
+`refFingerprint(db)` · `formatPacket(packet)` · node-only `hostCallerContext(kind)` / `hostInteractionContext()`. Browser:
 `wizAdmissionPrepare(incoming, opts)` (prepare + verified persist; always untrusted) · `wizAdmissionGetReview(id)`
 · `wizAdmissionListPending()`.
 
@@ -277,8 +296,8 @@ survives reload (browser test B3). Same documented residual risk as Reference Me
 Memory panel → separate card **🧠 Admission review** (below 📖 Reference memory, not mixed with it or with
 personal memory): passport textarea, review-scope field, `Example` and `Prepare review` buttons, the pending
 list and the full packet (incoming, caller context, reference-memory readiness, provenance, candidates, proposed
-outcome, rationale, affected records, exact write plan, warnings). A genuine click on `Prepare review` supplies
-the trusted USER caller context (§5a). Rendered with `textContent` only. **No Apply / Dismiss / Auto-approve controls
+outcome, rationale, affected records, exact write plan, warnings). A genuine click on `Prepare review` is recorded
+as `USER_INTERACTION` only — it is **not** semantic authority (§5a). Rendered with `textContent` only. **No Apply / Dismiss / Auto-approve controls
 in step 1.** No agent tool is registered and nothing is injected into chat context.
 
 ## 13. Not in step 1 (step 2)
@@ -303,8 +322,8 @@ tests A4–A9, A12, A14, A15, the apply half of A3, browser apply/reload tests.
 * Any `PROPOSED_STATUS_CHANGE` (not only promotions) needs authority proven by a trusted caller context;
   `STATUS: USER_DECISION` in a passport needs trusted USER context. Deliberately conservative.
 * `NEEDS_REPAIR` (v3 but repair-needing) → always `UNCERTAIN`, even if the readable part would allow a decision.
-* Browser trust relies on `Event.isTrusted`; external browser automation (e.g. CDP, as the tests use) produces
-  trusted input by design — that is equivalent to a user at the keyboard and is outside the app's agent tools.
+* The browser interaction marker relies on `Event.isTrusted`; external browser automation (e.g. CDP, as the tests
+  use) produces trusted input by design. Since audit rev 2 this only affects the audit marker, never authority.
 * Typed inputs `ITEM_ID`, `REFINES`, `EQUIVALENT_TO`, `PROPOSED_STATUS_CHANGE` extend the passport.
 * Extra staging column `packet_json`; the PRIMARY KEY autoindex is SQLite's own.
 
@@ -322,3 +341,16 @@ tests A4–A9, A12, A14, A15, the apply half of A3, browser apply/reload tests.
   click; node host via `hostCallerContext`); `declared_by` / `authority` must match it and `WHO` must not be
   model-like. Tests `P1-3`, `HR`, browser `B5`.
 * Still step 1 of 2: **no `apply()` / `dismiss()`**, no Apply / Dismiss buttons.
+
+## 16. Audit revision 2 (PR #10 @ a434561) — P1-3b
+
+* **Prepare click ≠ USER semantic authority** — fixed: a genuine *Prepare review* click now mints only a
+  `USER_INTERACTION` token (separate field `opts.interaction`, separate `WeakSet`, no `kind`), which the
+  authority checks never read. The browser has no path to an authority token; `hostCallerContext` stays a
+  non-DOM host seam and is documented as unauthenticated (§5a). UI shows `USER_INTERACTION (review initiated by
+  user click; NOT semantic authority)`. `CACHE_NAME` → `…-admission3`.
+* Tests: DB `P1-3b` (interaction never satisfies authority, as `interaction` or as `caller`; static: browser glue
+  mints interaction only, `_mintAuthority` reachable only from the non-DOM seam); browser `B5` rewritten (genuine
+  click + EQUIVALENT_TO declared_by=USER / STATUS USER_DECISION / PROPOSED_STATUS_CHANGE.authority=USER → all
+  `UNCERTAIN`; forged / script / dispatched / wrapper negatives kept); `B2` expects the new caller text.
+* Still step 1 of 2: **no `apply()` / `dismiss()`**, no Apply / Dismiss / confirmation controls.

@@ -109,11 +109,12 @@ try {
     await P.page.evaluate(() => { switchPanel('memory'); });
     await P.page.waitForSelector('#wizAdmCard #wizAdmIncoming', { visible: true, timeout: 10000 });
     await P.page.evaluate(t => { document.getElementById('wizAdmIncoming').value = t; document.getElementById('wizAdmScope').value = 'demo-project-adm'; }, JSON.stringify(INC.ambiguous));
-    // GENUINE user activation (CDP keyboard → trusted click event on the real button → trusted USER caller context)
+    // GENUINE user activation (CDP keyboard → trusted click on the real button) → USER_INTERACTION only, NOT authority (P1-3b)
     await userActivatePrepare(P.page);
-    const ui = await P.page.evaluate(() => { const o = document.getElementById('wizAdmResult'); return { t: o.textContent, outcome: o.dataset.outcome, persisted: o.dataset.persisted, id: o.dataset.reviewId, caller: o.dataset.caller, pending: document.getElementById('wizAdmPending').dataset.count }; });
-    assert.strictEqual(ui.caller, 'USER', 'real user activation must yield the trusted USER caller context');
-    assert(ui.t.includes('CALLER CONTEXT: USER (trusted, via ui-click:#wizAdmPrepareBtn)') && ui.t.includes('REFERENCE MEMORY: READY · read-only'), ui.t.slice(0, 600));
+    const ui = await P.page.evaluate(() => { const o = document.getElementById('wizAdmResult'); return { t: o.textContent, outcome: o.dataset.outcome, persisted: o.dataset.persisted, id: o.dataset.reviewId, caller: o.dataset.caller, interaction: o.dataset.interaction, pending: document.getElementById('wizAdmPending').dataset.count }; });
+    assert.strictEqual(ui.interaction, 'USER_INTERACTION', 'real user activation is recorded as interaction');
+    assert.strictEqual(ui.caller, 'UNTRUSTED', 'a click is never semantic authority');
+    assert(ui.t.includes('CALLER CONTEXT: USER_INTERACTION (review initiated by user click; NOT semantic authority) · semantic authority: NONE') && ui.t.includes('REFERENCE MEMORY: READY · read-only'), ui.t.slice(0, 700));
     assert.strictEqual(ui.outcome, 'UNCERTAIN', ui.t.slice(0, 400));
     assert.strictEqual(ui.persisted, 'true', ui.t.slice(-300));
     for (const s of ['mode=REVIEW', 'state=AWAITING_REVIEW', 'PROPOSED OUTCOME: UNCERTAIN', 'REASON:', 'PROVENANCE:', 'CANDIDATES (', 'AFFECTED RECORDS:', 'WRITE PLAN (not executed):', '"executes": false', 'WARNINGS:', 'REVIEW_PERSISTED = TRUE']) assert(ui.t.includes(s), 'missing in UI: ' + s);
@@ -169,15 +170,15 @@ try {
     assert.deepStrictEqual(r.buttons, ['↻', 'Example', 'Prepare review']);
   });
 
-  await T('B5', 'P1-3 in the page: script-invoked / forged-event / script-dispatched-click / wrapper-with-caller paths are UNTRUSTED → EQUIVALENT_TO declared_by=USER is NOT DUPLICATE; only a genuine user activation of the button gives USER context → DUPLICATE; hostCallerContext absent in the browser; wiz_ref_* unchanged', async () => {
+  await T('B5', 'P1-3/P1-3b in the page: script-invoked / forged-event / script-dispatched-click / wrapper-with-caller paths get no interaction and no authority; a GENUINE Prepare activation records USER_INTERACTION but is NOT semantic authority → EQUIVALENT_TO declared_by=USER, STATUS USER_DECISION and PROPOSED_STATUS_CHANGE.authority=USER all stay UNCERTAIN; hostCallerContext absent in the browser; wiz_ref_* and personal memory unchanged', async () => {
     const before = await P.page.evaluate(DUMPS);
-    const vid = await P.page.evaluate(() => window._wizDB.exec("SELECT version_id FROM wiz_ref_items WHERE item_id='fx:adm:cache-cold'")[0].values[0][0]);
-    const inc = Object.assign(JSON.parse(JSON.stringify(INC.similar_not_identical)), { EQUIVALENT_TO: { version_id: vid, declared_by: 'USER', basis: 'same observation, reworded' } });
+    const ids = await P.page.evaluate(() => { const v = id => window._wizDB.exec(`SELECT version_id FROM wiz_ref_items WHERE item_id='${id}'`)[0].values[0][0]; return { cold: v('fx:adm:cache-cold'), q: v('fx:adm:index-q') }; });
+    const eqInc = Object.assign(JSON.parse(JSON.stringify(INC.similar_not_identical)), { EQUIVALENT_TO: { version_id: ids.cold, declared_by: 'USER', basis: 'same observation, reworded' } });
     const r = await P.page.evaluate(async (incTxt) => {
       const out = document.getElementById('wizAdmResult'), btn = document.getElementById('wizAdmPrepareBtn');
       document.getElementById('wizAdmIncoming').value = incTxt; document.getElementById('wizAdmScope').value = '';
       const res = {};
-      const grab = () => ({ outcome: out.dataset.outcome, caller: out.dataset.caller });
+      const grab = () => ({ outcome: out.dataset.outcome, caller: out.dataset.caller, interaction: out.dataset.interaction });
       await wizAdmUiPrepare(); res.scriptCall = grab();
       await wizAdmUiPrepare({ isTrusted: true, type: 'click', target: btn, currentTarget: btn }); res.forgedObject = grab();
       const fake = Object.create(MouseEvent.prototype, { isTrusted: { value: true }, type: { value: 'click' }, target: { value: btn } }); // prototype-forged look-alike (isTrusted on a real event is unforgeable)
@@ -185,18 +186,37 @@ try {
       out.dataset.state = 'idle'; btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       for (let i = 0; i < 100 && out.dataset.state !== 'done'; i++) await new Promise(r => setTimeout(r, 50));
       res.dispatched = grab();
-      const w = await window.wizAdmissionPrepare(JSON.parse(incTxt), { caller: { kind: 'USER' } }); res.wrapper = { outcome: w.packet.proposed_outcome, caller: w.packet.caller.kind };
-      res.hostCtx = typeof window.WizAdmission.hostCallerContext;
+      const w = await window.wizAdmissionPrepare(JSON.parse(incTxt), { caller: { kind: 'USER' }, interaction: { interaction: 'USER_INTERACTION' } });
+      res.wrapper = { outcome: w.packet.proposed_outcome, caller: w.packet.caller.kind, interaction: w.packet.caller.interaction };
+      res.hostCtx = typeof window.WizAdmission.hostCallerContext; res.hostIx = typeof window.WizAdmission.hostInteractionContext;
       return res;
-    }, JSON.stringify(inc));
+    }, JSON.stringify(eqInc));
     for (const k of ['scriptCall', 'forgedObject', 'shadowedEvent', 'dispatched', 'wrapper']) {
       assert.strictEqual(r[k].outcome, 'UNCERTAIN', k + ' ' + JSON.stringify(r[k]));
       assert.strictEqual(r[k].caller, 'UNTRUSTED', k + ' ' + JSON.stringify(r[k]));
+      assert.strictEqual(r[k].interaction, 'NONE', k + ' ' + JSON.stringify(r[k]));
     }
-    assert.strictEqual(r.hostCtx, 'undefined');
-    await userActivatePrepare(P.page); // genuine activation, same passport still in the textarea
-    const real = await P.page.evaluate(() => { const o = document.getElementById('wizAdmResult'); return { outcome: o.dataset.outcome, caller: o.dataset.caller, t: o.textContent }; });
-    assert.strictEqual(real.caller, 'USER'); assert.strictEqual(real.outcome, 'DUPLICATE', real.t.slice(0, 500));
+    assert.strictEqual(r.hostCtx, 'undefined'); assert.strictEqual(r.hostIx, 'undefined');
+    // GENUINE activations: USER_INTERACTION recorded, semantic authority NONE, every authority claim stays UNCERTAIN
+    const genuine = async (inc) => {
+      await P.page.evaluate(t => { document.getElementById('wizAdmIncoming').value = t; }, JSON.stringify(inc));
+      await userActivatePrepare(P.page);
+      return P.page.evaluate(async () => { const o = document.getElementById('wizAdmResult'); const g = window.wizAdmissionGetReview(o.dataset.reviewId);
+        return { outcome: o.dataset.outcome, caller: o.dataset.caller, interaction: o.dataset.interaction, t: o.textContent, pc: g.packet.caller, hard: g.packet.hard_rules_triggered, warnings: g.packet.warnings }; });
+    };
+    const checkGenuine = (x, label) => {
+      assert.strictEqual(x.interaction, 'USER_INTERACTION', label); assert.strictEqual(x.caller, 'UNTRUSTED', label);
+      assert.strictEqual(x.pc.interaction, 'USER_INTERACTION', label); assert.strictEqual(x.pc.trusted, false, label); assert.strictEqual(x.pc.kind, 'UNTRUSTED', label);
+      assert.notStrictEqual(x.outcome, 'DUPLICATE', label); assert.strictEqual(x.outcome, 'UNCERTAIN', label + ' ' + x.t.slice(0, 400));
+      assert(x.t.includes('USER_INTERACTION (review initiated by user click; NOT semantic authority)'), label);
+    };
+    const g1 = await genuine(eqInc); checkGenuine(g1, 'genuine + EQUIVALENT_TO declared_by=USER');
+    assert(g1.hard.includes('LLM OUTPUT ≠ MEMORY DECISION'));
+    const g2 = await genuine(Object.assign(JSON.parse(JSON.stringify(INC.valid_new)), { STATUS: 'USER_DECISION' })); checkGenuine(g2, 'genuine + STATUS USER_DECISION');
+    assert(g2.hard.includes('LLM OUTPUT ≠ MEMORY DECISION'));
+    const g3 = await genuine(Object.assign(JSON.parse(JSON.stringify(INC.valid_new)), { PROPOSED_STATUS_CHANGE: { target_version_id: ids.q, from_status: 'UNKNOWN', to_status: 'ANSWERED_BY_SOURCE', authority: 'USER', evidence: 'synthetic evidence', rationale: 'synthetic rationale' } }));
+    checkGenuine(g3, 'genuine + PROPOSED_STATUS_CHANGE.authority=USER');
+    assert(g3.warnings.some(w => /AUTHORITY_NOT_PROVEN/.test(w)), JSON.stringify(g3.warnings));
     const after = await P.page.evaluate(DUMPS);
     assert.strictEqual(after.ref, before.ref, 'wiz_ref_* changed'); assert.strictEqual(after.pers, before.pers, 'personal memory changed');
     assert.strictEqual(P.errors.length, 0, JSON.stringify(P.errors));

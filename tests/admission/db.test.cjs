@@ -344,6 +344,43 @@ const deq = (a, b, m) => assert.deepStrictEqual(JSON.parse(JSON.stringify(a)), J
     assert.strictEqual(refDump(db), ref0);
   });
 
+  await T('P1-3b', 'USER_INTERACTION ≠ USER_AUTHORITY: an interaction context (what a genuine Prepare click yields) never satisfies semantic authority — EQUIVALENT_TO declared_by=USER, STATUS USER_DECISION and PROPOSED_STATUS_CHANGE.authority=USER stay UNCERTAIN; interaction token passed as caller is ignored; no API mints authority from an interaction; browser glue mints interaction only', async () => {
+    const { db, A, W } = await seeded();
+    const ref0 = refDump(db);
+    const vid = W.trace(db, 'fx:adm:cache-cold').version_id, q = W.trace(db, 'fx:adm:index-q').version_id; // test-side lookups
+    const IX = A.hostInteractionContext();
+    assert.deepStrictEqual(Object.keys(IX).sort(), ['interaction', 'via']); assert(!('kind' in IX) && Object.isFrozen(IX));
+    const eq = Object.assign(clone(INC.similar_not_identical), { EQUIVALENT_TO: { version_id: vid, declared_by: 'USER', basis: 'same observation, reworded' } });
+    const ud = Object.assign(clone(INC.valid_new), { STATUS: 'USER_DECISION' });
+    const sc = Object.assign(clone(INC.valid_new), { PROPOSED_STATUS_CHANGE: { target_version_id: q, from_status: 'UNKNOWN', to_status: 'ANSWERED_BY_SOURCE', authority: 'USER', evidence: 'synthetic evidence', rationale: 'synthetic rationale' } });
+    for (const opts of [{ interaction: IX }, { caller: IX }, { caller: IX, interaction: IX }, { interaction: A.hostInteractionContext(), caller: { kind: 'USER' } }]) {
+      const label = JSON.stringify(Object.keys(opts));
+      let r = await A.prepare(db, clone(eq), opts);
+      assert.strictEqual(r.packet.proposed_outcome, 'UNCERTAIN', 'EQUIVALENT_TO ' + label); assert(r.packet.hard_rules_triggered.includes('LLM OUTPUT ≠ MEMORY DECISION'));
+      assert.strictEqual(r.packet.caller.trusted, false); assert.strictEqual(r.packet.caller.kind, 'UNTRUSTED');
+      if (opts.interaction) { assert.strictEqual(r.packet.caller.interaction, 'USER_INTERACTION'); assert(r.packet.warnings.some(w => /user interaction ≠ user authority/.test(w)), JSON.stringify(r.packet.warnings)); }
+      r = await A.prepare(db, clone(ud), opts);
+      assert.strictEqual(r.packet.proposed_outcome, 'UNCERTAIN', 'USER_DECISION ' + label); assert(r.packet.hard_rules_triggered.includes('LLM OUTPUT ≠ MEMORY DECISION'));
+      r = await A.prepare(db, clone(sc), opts);
+      assert.strictEqual(r.packet.proposed_outcome, 'UNCERTAIN', 'STATUS_CHANGE ' + label); assert(r.packet.warnings.some(w => /AUTHORITY_NOT_PROVEN/.test(w)));
+    }
+    // formatted caller line: interaction shown, authority NONE
+    const r1 = await A.prepare(db, clone(eq), { interaction: IX });
+    assert(A.formatPacket(r1.packet).includes('CALLER CONTEXT: USER_INTERACTION (review initiated by user click; NOT semantic authority) · semantic authority: NONE'));
+    // host seam still works (and is labelled as unauthenticated host context); an interaction alongside does not change it
+    const r2 = await A.prepare(db, clone(eq), { caller: A.hostCallerContext('USER'), interaction: IX });
+    assert.strictEqual(r2.packet.proposed_outcome, 'DUPLICATE'); assert(/module does not authenticate the host/.test(A.formatPacket(r2.packet)));
+    // static: the browser glue can only mint interaction; authority minting is reachable only via the non-DOM host seam
+    const code = ADMJS.split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+    const glue = code.slice(code.indexOf('if (IS_DOM) {\n    const db'));
+    assert(glue.length > 1000 && !/_mintAuthority\(|hostCallerContext|opts\.caller\s*=/.test(glue), 'browser glue must not mint or set authority');
+    assert(/_mintInteraction\('ui-click:#wizAdmPrepareBtn'\)/.test(glue));
+    deq(code.match(/_mintAuthority\(/g).length, 2); // definition + the single non-DOM hostCallerContext seam
+    assert(/if \(!IS_DOM\) \{\n\s*api\.hostCallerContext = kind => _mintAuthority\(/.test(code));
+    assert(!/_authTokens\.add\(/.test(code.slice(code.indexOf('function _mintInteraction'), code.indexOf('function callerOf'))), 'interaction minting never adds to the authority set');
+    assert.strictEqual(refDump(db), ref0);
+  });
+
   await T('A10', 'incoming scope differs from controller review scope → OUT_OF_SCOPE, no candidates, empty write plan, no ref write', async () => {
     const { db, A } = await seeded();
     const ref0 = refDump(db);
@@ -474,7 +511,7 @@ const deq = (a, b, m) => assert.deepStrictEqual(JSON.parse(JSON.stringify(a)), J
     let mainName = 'eiti-wizard-lab-v1.8.9-refmem3';
     try { mainName = require('child_process').execSync('git show origin/main:sw.js', { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().match(/const CACHE_NAME = '([^']+)'/)[1]; } catch (e) {}
     assert.notStrictEqual(cur, mainName);
-    assert.notStrictEqual(cur, 'eiti-wizard-lab-v1.8.9-admission1', 'CACHE_NAME must be bumped for audit rev 1 (wiz-memory-admission.js changed)');
+    for (const prev of ['eiti-wizard-lab-v1.8.9-admission1', 'eiti-wizard-lab-v1.8.9-admission2']) assert.notStrictEqual(cur, prev, 'CACHE_NAME must be bumped (wiz-memory-admission.js changed in audit rev 1 and 2)');
     assert(/id="wizAdmPrepareBtn" onclick="wizAdmUiPrepare\(event\)"/.test(INDEX), 'Prepare button passes the click event (trusted USER context)');
     const iRef = INDEX.indexOf('<script src="wiz-ref-memory.js"></script>'), iAdm = INDEX.indexOf('<script src="wiz-memory-admission.js"></script>');
     assert(iRef > 0 && iAdm > iRef);

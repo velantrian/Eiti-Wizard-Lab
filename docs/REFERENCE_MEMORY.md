@@ -32,7 +32,7 @@ Personal memory (`wiz_facts`, `wiz_facts_fts`, `wiz_l2_digests`, `wiz_notes_fts`
 * can never become `Validated` through `mem_validate` (it only calls `wizMemSetState` → `UPDATE wiz_facts`; tested);
 * are never injected into the chat context automatically — retrieval is explicit only.
 
-## 2. Schema (schema_version 2)
+## 2. Schema (schema_version 3)
 
 ```sql
 wiz_ref_sources(source_id PK, title NOT NULL, surface NOT NULL, source_kind NOT NULL, authority_class,
@@ -45,10 +45,14 @@ wiz_ref_items(item_id PK, source_id NOT NULL → wiz_ref_sources, project_id, it
               -- v2: capture provenance (snapshot of the source record when this item content was captured)
               source_title_at_capture, source_surface_at_capture, source_kind_at_capture,
               source_authority_class_at_capture, source_revision_at_capture, source_as_of_at_capture,
-              source_currentness_at_capture, source_content_hash_at_capture, capture_backfilled DEFAULT 0)
+              source_currentness_at_capture, source_content_hash_at_capture, capture_backfilled DEFAULT 0,
+              -- v3: immutable item versions
+              logical_item_id, version_id)          -- version_id = '<logical_item_id>@<record_hash>'
 wiz_ref_relations(relation_id PK, from_item_id NOT NULL, to_item_id NOT NULL, relation_type NOT NULL,
                   epistemic_status NOT NULL, source_id, scope, rationale, seed_id, created_at,
-                  record_hash)   -- v2
+                  record_hash,                          -- v2
+                  from_version_id, to_version_id,       -- v3: endpoints pinned to immutable item versions
+                  pin_backfilled DEFAULT 0)             -- v3: 1 = pin set by the v2→v3 migration
 wiz_ref_items_fts USING fts5(item_id UNINDEXED, claim, project_id, item_type, tokenize='unicode61')
 wiz_ref_meta(key PK, value)   -- schema_version, seed_id, seed_version, seed_as_of, seed_hash,
                               -- seed.<seed_id> (JSON), last_import_at
@@ -77,6 +81,62 @@ v1 → v2 (audit revision 1): adds the `*_at_capture` columns and `capture_backf
 time and marked `capture_backfilled=1` (retrieval shows “CAPTURE PROVENANCE BACKFILLED”); existing relations
 get their `record_hash`; items missing from the FTS index are indexed; `migrated_from_schema_1` is recorded in
 `wiz_ref_meta`.
+
+v2 → v3 (audit revision 2): adds `logical_item_id`, `version_id` on items and `from_version_id`,
+`to_version_id`, `pin_backfilled` on relations (+ indexes). Deterministic backfill:
+
+* archived rows (`item_id` matching `<logical>@<14 hex>` and `lifecycle='SUPERSEDED'`) get
+  `logical_item_id=<logical>`, `version_id=item_id`;
+* every other row gets `logical_item_id=item_id`, `version_id=item_id@record_hash` (hash computed if missing);
+* every relation without pins is pinned to the `version_id` of the row whose `item_id` equals its
+  `from_item_id` / `to_item_id` **at migration time**, and marked `pin_backfilled=1` (a v2 DB had no
+  version history for relations, so "the version current at migration time" is the only deterministic
+  choice — this is documented as backfilled, not as original). An endpoint that cannot be resolved stays
+  `NULL` (reported by `trace` as *unpinned*, by `resolveRelation` as `unresolved`);
+* `migrated_from_schema_2` in `wiz_ref_meta` records `items_versioned` and `relations_pinned`.
+  Re-running `initSchema` is a no-op (tested). A v1 DB migrates v1→v2→v3 in one boot.
+
+### Item versions and relation pins (audit revision 2)
+
+**Chosen model: RELATIONS POINT TO IMMUTABLE ITEM VERSIONS.**
+ITEM VERSION CHANGED ≠ RELATION TARGET VERSION CHANGED; ITEM REVISION ≠ RETROACTIVE RELATION REBINDING.
+
+* A logical item `X` has versions `X@<hash1>`, `X@<hash2>`, … (`version_id = <logical_item_id>@<record_hash>`,
+  a 14-hex content hash). A version is immutable: its content never changes.
+* The **current** version lives in the row `item_id = X` (the logical id is the current-item pointer).
+  When `X` is revised (same `item_id`, different content) the old row is copied to an **archived row**
+  `item_id = version_id = X@<old_hash>` (SUPERSEDED, `superseded_by = X`, own capture provenance), and the
+  row `X` gets the new content and the new `version_id`.
+* Relations store `from_version_id` / `to_version_id`, fixed when the relation is first stored.
+  `from_item_id` / `to_item_id` stay as human-readable labels; **the pins decide what a relation refers to**.
+  A relation created before a revision keeps pointing to the old version; a new relation to `X` points to
+  the version current when it is imported. Nothing is ever re-pinned automatically.
+* `WizRef.resolveRelation(db, relation_id)` returns both endpoints as
+  `{version_id, logical_item_id, row_item_id, claim, lifecycle, is_current_version}` (or `{unresolved:true}`).
+* Retrieval blocks show `version: X@… (current)` or `version: X@… (archived version of X)`.
+
+**How an import bundle expresses a relation endpoint:**
+
+1. `from_item_id` / `to_item_id` = a **logical id** `X` → resolves to the version of `X` that is current
+   *after this bundle's items are applied* (if the same bundle revises `X`, that is the new version).
+2. `from_item_id` / `to_item_id` = an **archived id** `X@<hash>` → exactly that version.
+3. Optional **explicit** `from_version_id` / `to_version_id` → exactly that version; it must exist in the DB
+   or be produced by the same bundle, otherwise the bundle is rejected ("not a known item version").
+   Exports always write explicit pins, so backup/restore round-trips preserve them (tested).
+4. An existing `relation_id` re-imported with the same content → *unchanged*, **keeps its original pins**
+   (it is not rebound to the now-current version). Different content → rejected (as in revision 1);
+   different explicit pins → rejected ("re-pinning is rejected; use a new relation_id").
+5. An item record carrying a `version_id` that does not match its content is rejected.
+
+**trace semantics:** `trace(db, X)` traces the **current** version of `X`; `trace(db, 'X@<hash>')` (an
+archived id or any `version_id`) traces **that** version. `relations.outgoing` / `relations.incoming` contain
+only relations pinned to exactly that version; `relations.unpinned` lists relations whose pin is `NULL`
+(unresolvable after migration). The result also carries `version_id`, `logical_item_id`,
+`is_current_version`, `versions[]` (all versions of the logical item, archived first, current last) and
+`lineage`.
+
+Alternatives considered: rewriting old relations to the archived id at revision time was rejected — it is an
+implicit mutation of existing relation records; pins make the binding explicit and leave relations immutable.
 
 ### Capture provenance (why option B)
 
@@ -122,8 +182,10 @@ Importer rules:
 3. **Supersession without deletion.**
    * `supersedes_item_id` marks the older item `lifecycle='SUPERSEDED'`, `superseded_by=<new>` and adds a
      `SUPERSEDES` relation; the old row stays.
-   * Same `item_id` with different content (new seed revision) → the previous version is kept as
-     `<item_id>@<old_record_hash>` with `lifecycle='SUPERSEDED'`, then the current row is updated.
+   * Same `item_id` with different content (new seed revision) → the previous version is kept as the
+     immutable archived version `<item_id>@<old_record_hash>` with `lifecycle='SUPERSEDED'`, then the current
+     row is updated. Relations pinned to the old version keep referring to it (see “Item versions and
+     relation pins”).
    * Items missing from a new revision of the same seed are **not deleted**; they are counted
      (`not_in_this_seed`) and keep their `last_seed_version`.
    * An import can never move an item back from SUPERSEDED to ACTIVE.
@@ -135,7 +197,9 @@ Importer rules:
 6. **Relations.** `record_hash` covers relation_type, from/to, epistemic_status, source_id, scope, rationale.
    Same `relation_id` + same content → unchanged. Same `relation_id` + different content → **rejected**
    (validation error → nothing is written); a changed relation must use a new `relation_id`. Both endpoints
-   must exist in the DB or in the same bundle; external/dangling references are rejected.
+   must exist in the DB or in the same bundle; external/dangling references are rejected. Endpoints are
+   pinned to item versions (rules in §2 “Item versions and relation pins”); the pins are not part of
+   `record_hash`, but a re-import with different explicit pins is rejected.
 
 ## 4. Retrieval (explicit only)
 
@@ -144,7 +208,8 @@ Importer rules:
 | `wizRefSearch(query, filters)` | `WizRef.search(db, query, filters)` | `ref_search` |
 | `wizRefGetSource(sourceId)` | `WizRef.getSource(db, sourceId)` | `ref_source` |
 | `wizRefProject(projectId)` | `WizRef.project(db, projectId)` | `ref_project` |
-| `wizRefTrace(itemId)` | `WizRef.trace(db, itemId)` | `ref_trace` |
+| `wizRefTrace(itemId)` | `WizRef.trace(db, itemId)` (logical id → current version; `X@hash` → that version) | `ref_trace` |
+| — | `WizRef.resolveRelation(db, relationId)` (pinned endpoint versions + claims) | — |
 
 Filters: `project_id`, `item_type`, `authority_class`, `source_kind`, `surface`, `source_id`,
 `include_superseded` (default false), `implementation_evidence_only`, `limit`.
@@ -171,7 +236,13 @@ different tables and return disjoint datasets.
 
 `_wizSaveDB()` (personal memory, unchanged) writes to IndexedDB fire-and-forget. Reference import / clear /
 restore use `_wizSaveDBAsync()` instead, which resolves only after the IndexedDB transaction's `oncomplete`
-and a read-back of the stored byte length, and rejects on `onerror` / `onabort` / `onblocked`.
+and an **exact read-back verification**: the stored bytes must be byte-for-byte equal to the exported
+bytes **and** `SHA-256(exported) === SHA-256(read-back)` (`crypto.subtle`; if unavailable, byte equality
+alone). It resolves `{bytes, sha256, verified: true, method}` and rejects with
+`IndexedDB read-back mismatch (…)` on any difference, and on `onerror` / `onabort` / `onblocked`.
+The UI ack reports the hash: `IMPORT_PERSISTED = TRUE — IndexedDB write confirmed (N bytes read back,
+byte-identical, sha256 <hex>)`. A same-length-but-different read-back yields `IMPORT_PERSISTED = FALSE`
+(tested with a stubbed IndexedDB `get`).
 `wizRefImportJSONL()` returns `persisted: true` only after that promise resolved; the UI then shows
 `IMPORT_PERSISTED = TRUE … The local file can be deleted now` and sets `data-persisted="true"` on
 `#wizRefResult` and `window.WIZ_REF_IMPORT_PERSISTED = true`. On failure it shows
@@ -185,8 +256,8 @@ personal saves export the current DB, which already contains the reference rows.
 ## 4c. Service worker update strategy
 
 `sw.js` caches `wiz-ref-memory.js` as a static asset (cache-first). **Any change to `wiz-ref-memory.js` (or
-any other cached static asset) must bump `CACHE_NAME` in `sw.js`** (current: `eiti-wizard-lab-v1.8.9-refmem1`
-→ e.g. `…-refmem2`), otherwise installed clients keep the old file. The old cache is deleted on activate.
+any other cached static asset) must bump `CACHE_NAME` in `sw.js`** (current: `eiti-wizard-lab-v1.8.9-refmem2`
+→ next e.g. `…-refmem3`), otherwise installed clients keep the old file. The old cache is deleted on activate.
 A static test checks that the asset is listed and that `CACHE_NAME` differs from `main`.
 
 ## 5. Epistemic contract

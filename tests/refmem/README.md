@@ -3,7 +3,7 @@
 All fixtures in `fixtures/` (and records built inline in the tests) are **synthetic** (surface `fixture`,
 titles `[SYNTHETIC FIXTURE] …`, projects `demo-project-*`). They are not Velantrim corpus.
 
-## Tested environment (audit revision 1)
+## Tested environment (audit revisions 1–2)
 
 | Component | Version / expectation |
 |---|---|
@@ -44,3 +44,12 @@ round-trip without promotion (db + browser UI export).
 Audit revision 1: P1-1a/b (all-or-nothing import), P1-2a/b/c (capture provenance, no retroactive promotion,
 v1→v2 backfill), P1-3s (awaitable save, db) + browser #6/#17/P1-3f (ack, read-back, abort path),
 P1-4a/b/c (relation idempotency, revision rejection, dangling endpoints), P2-1 (service worker).
+
+Audit revision 2: P1-5a (item revision never retargets existing relations: R stays on X-v1 “A is UNKNOWN”,
+R2 on X-v2 “A is SUPPORTED”; trace per version; no rebinding on re-import; re-pin rejected; export round-trip
+preserves pins), P1-5b (bundle endpoint expression: logical id / archived id / explicit version id; unknown
+or tampered version rejected), P1-5c (v2→v3 migration: pins backfilled to the version current at migration,
+`pin_backfilled=1`, idempotent, not moved by a later revision), P2-h (db static + browser: exact byte +
+SHA-256 read-back verification; same-length different bytes → IMPORT_PERSISTED = FALSE; ack sha256 equals
+SHA-256 of the stored bytes in browser #17). Browser #16 checks `ref_trace` shows pinned versions; #18 compares
+versions and relation pins across profiles.

@@ -512,7 +512,7 @@ const deq = (a, b, m) => assert.deepStrictEqual(JSON.parse(JSON.stringify(a)), J
     try { mainName = require('child_process').execSync('git show origin/main:sw.js', { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().match(/const CACHE_NAME = '([^']+)'/)[1]; } catch (e) {}
     assert.notStrictEqual(cur, mainName);
     for (const prev of ['eiti-wizard-lab-v1.8.9-admission1', 'eiti-wizard-lab-v1.8.9-admission2']) assert.notStrictEqual(cur, prev, 'CACHE_NAME must be bumped (wiz-memory-admission.js changed in audit rev 1 and 2)');
-    assert(/id="wizAdmPrepareBtn" onclick="wizAdmUiPrepare\(event\)"/.test(INDEX), 'Prepare button passes the click event (trusted USER context)');
+    assert(/id="wizAdmPrepareBtn" onclick="wizAdmUiPrepare\(event\)"/.test(INDEX), 'Prepare button passes the click event (USER_INTERACTION context only, not authority)');
     const iRef = INDEX.indexOf('<script src="wiz-ref-memory.js"></script>'), iAdm = INDEX.indexOf('<script src="wiz-memory-admission.js"></script>');
     assert(iRef > 0 && iAdm > iRef);
     const card = INDEX.slice(INDEX.indexOf('id="wizAdmCard"'), INDEX.indexOf('id="wizAdmResult"'));

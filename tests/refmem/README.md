@@ -53,3 +53,8 @@ or tampered version rejected), P1-5c (v2→v3 migration: pins backfilled to the 
 SHA-256 read-back verification; same-length different bytes → IMPORT_PERSISTED = FALSE; ack sha256 equals
 SHA-256 of the stored bytes in browser #17). Browser #16 checks `ref_trace` shows pinned versions; #18 compares
 versions and relation pins across profiles.
+
+Audit revision 4: P1-5d checks that an explicit pin must match the declared endpoint. Rejected, all with zero
+DB delta: `to_item_id=X` + a version of Y (and the `from_` mirror); endpoint `X@v1` + pin X-v2; a
+bundle-produced version of Y pinned under X; an item claiming another item's `logical_item_id`. Accepted:
+`to_item_id=X` + archived pin X-v1, which resolves to v1. Exports with archived pins re-import cleanly.

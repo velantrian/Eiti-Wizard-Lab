@@ -126,7 +126,19 @@ ITEM VERSION CHANGED ≠ RELATION TARGET VERSION CHANGED; ITEM REVISION ≠ RETR
 4. An existing `relation_id` re-imported with the same content → *unchanged*, **keeps its original pins**
    (it is not rebound to the now-current version). Different content → rejected (as in revision 1);
    different explicit pins → rejected ("re-pinning is rejected; use a new relation_id").
-5. An item record carrying a `version_id` that does not match its content is rejected.
+5. An item record carrying a `version_id` that does not match its content is rejected, and so is one whose
+   `logical_item_id` does not match its `item_id` (current row: `logical_item_id = item_id`; archived row
+   `X@<hash>`: `logical_item_id = X`).
+6. **Declared endpoint == logical identity of the pinned version** (audit revision 4, P1-5d). An explicit pin
+   must be consistent with the endpoint it accompanies. This is checked in phase 1 (rejection → `committed=false`,
+   zero DB delta) for versions in the DB and for versions produced by the same bundle:
+   * endpoint = logical id `X` → the pinned version must have `logical_item_id = X`. That is the current version
+     of X or an archived `X@<old>`; e.g. `to_item_id=X` + `to_version_id=X@old` is accepted and resolves to the
+     old version, which is exactly what exports write.
+   * endpoint = immutable version id `X@<hash>` → the pin must be exactly `X@<hash>`, not another version of X.
+   * a valid version belonging to another logical item `Y` is rejected (`to_item_id=X` + `to_version_id=Y@…`).
+   Relations without explicit pins are resolved from the endpoint itself and are consistent by construction,
+   as are migration-backfilled pins and the automatic `SUPERSEDES` relations.
 
 **trace semantics:** `trace(db, X)` traces the **current** version of `X`; `trace(db, 'X@<hash>')` (an
 archived id or any `version_id`) traces **that** version. `relations.outgoing` / `relations.incoming` contain
@@ -269,8 +281,8 @@ fire-and-forget save), but if in doubt keep the file or an `Export backup` until
 ## 4c. Service worker update strategy
 
 `sw.js` caches `wiz-ref-memory.js` as a static asset (cache-first). **Any change to `wiz-ref-memory.js` (or
-any other cached static asset) must bump `CACHE_NAME` in `sw.js`** (current: `eiti-wizard-lab-v1.8.9-refmem2`
-→ next e.g. `…-refmem3`), otherwise installed clients keep the old file. The old cache is deleted on activate.
+any other cached static asset) must bump `CACHE_NAME` in `sw.js`** (current: `eiti-wizard-lab-v1.8.9-refmem3`
+→ next e.g. `…-refmem4`), otherwise installed clients keep the old file. The old cache is deleted on activate.
 A static test checks that the asset is listed and that `CACHE_NAME` differs from `main`.
 
 ## 5. Epistemic contract

@@ -640,6 +640,54 @@ const MAIN_WIZ_FACTS_COLS = ['id', 'claim', 'tag', 'source', 'confidence', 'stab
     assert.deepStrictEqual(ids(W.trace(db, 'fx:X').relations.incoming), []);
   });
 
+
+  await T('P1-5d', 'explicit pin must match the declared endpoint (DECLARED ENDPOINT == LOGICAL IDENTITY OF PINNED VERSION): foreign-item pin and wrong-version pin rejected with zero delta; archived pin under logical label accepted', async () => {
+    const { db } = await bootApp();
+    let r = await W.importJSONL(db, [itemRec('fx:E', 'Synthetic evidence E', { item_type: 'RESEARCH_RESULT' }), itemRec('fx:X', 'A is UNKNOWN'), itemRec('fx:Y', 'B is UNKNOWN')].join('\n'));
+    assert(r.committed, JSON.stringify(r.errors));
+    const x1 = W.trace(db, 'fx:X').version_id, y1 = W.trace(db, 'fx:Y').version_id, e1 = W.trace(db, 'fx:E').version_id;
+    await W.importJSONL(db, itemRec('fx:X', 'A is SUPPORTED'));
+    const x2 = W.trace(db, 'fx:X').version_id;
+    assert(x1 !== x2 && W.trace(db, x1).is_current_version === false);
+    const rejects = async (rec, re) => {
+      const before = fullSnap(db);
+      const res = await W.importJSONL(db, rec);
+      assert(!res.committed && res.errors.some(e => re.test(e.msg)), JSON.stringify(res.errors));
+      assert.strictEqual(fullSnap(db), before, 'rejected import must leave zero DB delta');
+    };
+    // A) endpoint X pinned to a valid version of Y → rejected (to_ side and from_ side)
+    await rejects(relRec('fx:Rbad-to', 'fx:E', 'fx:X', { to_version_id: y1 }), /belongs to logical item "fx:Y", not to the declared endpoint "fx:X"/);
+    await rejects(relRec('fx:Rbad-from', 'fx:X', 'fx:E', { from_version_id: y1 }), /from_item_id\/from_version_id inconsistent — pinned version .* belongs to logical item "fx:Y"/);
+    // … even when the other side is correctly pinned, and even inside a bundle that also carries valid records
+    await rejects([itemRec('fx:Z', 'C is UNKNOWN'), relRec('fx:Rbad-mix', 'fx:E', 'fx:X', { from_version_id: e1, to_version_id: y1 })].join('\n'), /belongs to logical item "fx:Y"/);
+    // B) endpoint names the immutable version X-v1 but pins X-v2 → rejected
+    await rejects(relRec('fx:Rbad-ver', 'fx:E', x1, { to_version_id: x2 }), new RegExp(`endpoint "${x1.replace(/[$^]/g, '\\$&')}" is an immutable version; the pin must be exactly`));
+    // optional) a version produced in the same bundle for Y, pinned under endpoint X → rejected
+    const yNewRec = itemRec('fx:Y', 'B is SUPPORTED');
+    const tmp = await bootApp(); await W.importJSONL(tmp.db, yNewRec); const yNewVer = W.trace(tmp.db, 'fx:Y').version_id; // same content → same version id
+    assert(yNewVer !== y1);
+    await rejects([yNewRec, relRec('fx:Rbad-bundle', 'fx:E', 'fx:X', { to_version_id: yNewVer })].join('\n'), /belongs to logical item "fx:Y", not to the declared endpoint "fx:X"/);
+    // a bundle item may not claim another item's logical identity (so a produced version cannot masquerade as X)
+    await rejects(line({ source: VS, item: { item_id: 'fx:Q', source_id: 'fx:src:ver', item_type: 'HYPOTHESIS', claim: 'q', logical_item_id: 'fx:X' } }), /logical_item_id "fx:X" does not match its item_id/);
+    // C) endpoint label X + pin X-v1 (archived) → ACCEPTED, resolves to v1
+    r = await W.importJSONL(db, relRec('fx:Rok-arch', 'fx:E', 'fx:X', { to_version_id: x1 }));
+    assert(r.committed && r.relations_inserted === 1, JSON.stringify(r.errors));
+    let R = W.resolveRelation(db, 'fx:Rok-arch');
+    assert.strictEqual(R.to.version_id, x1); assert.strictEqual(R.to.claim, 'A is UNKNOWN'); assert.strictEqual(R.to.logical_item_id, 'fx:X'); assert.strictEqual(R.to.is_current_version, false);
+    // endpoint X@v1 + pin X@v1 and endpoint X + pin X-v2 (current) → accepted
+    r = await W.importJSONL(db, [relRec('fx:Rok-self', 'fx:E', x1, { to_version_id: x1 }), relRec('fx:Rok-cur', 'fx:E', 'fx:X', { to_version_id: x2 })].join('\n'));
+    assert(r.committed && r.relations_inserted === 2, JSON.stringify(r.errors));
+    assert.strictEqual(W.resolveRelation(db, 'fx:Rok-cur').to.claim, 'A is SUPPORTED');
+    // existing exports (explicit pins, incl. relations pinned to archived versions) still re-import cleanly
+    const b = await bootApp(); const rr = await W.importJSONL(b.db, W.exportJSONL(db));
+    assert(rr.ok && rr.committed, JSON.stringify(rr.errors));
+    R = W.resolveRelation(b.db, 'fx:Rok-arch'); assert.strictEqual(R.to.version_id, x1); assert.strictEqual(R.to.claim, 'A is UNKNOWN');
+    assert.strictEqual(W.resolveRelation(b.db, 'fx:Rok-self').to.version_id, x1);
+    // and re-importing the export into the same DB is all-unchanged
+    const again = await W.importJSONL(db, W.exportJSONL(db));
+    assert(again.committed && again.relations_inserted === 0 && again.items_inserted === 0 && again.items_revised === 0, JSON.stringify(again));
+  });
+
   await T('P2-h', '_wizSaveDBAsync verifies exact bytes + SHA-256 of the read-back and reports the hash (static)', async () => {
     const fn = fnBody('_wizSaveDBAsync');
     assert(/crypto\.subtle\.digest\('SHA-256'/.test(fn) && /sha256/.test(fn) && /read-back mismatch/.test(fn) && /for \(let i = 0; i < a\.length; i\+\+\) if \(a\[i\] !== b\[i\]\)/.test(fn), 'hash/byte verification missing');

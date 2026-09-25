@@ -20,6 +20,7 @@
   'use strict';
 
   const SCHEMA_VERSION = '3'; // v2: capture provenance, relation record_hash · v3: immutable item versions + pinned relation endpoints
+  const VERSION_ID_RE = /^(.*)@([0-9a-f]{14})$/; // immutable version id '<logical_item_id>@<14-hex record_hash>'
   const FORMAT = 'wiz-ref-jsonl/1';
 
   const ENUMS = {
@@ -377,7 +378,12 @@
             // immutable version identity of this record: '<logical>@<content hash>'
             const logical = it.logical_item_id || it.item_id;
             const version = logical + '@' + h;
-            if (it.version_id && it.version_id !== version) errs.push({ line, msg: `item ${it.item_id}: version_id "${it.version_id}" does not match its content (expected ${version})` });
+            // P1-5d: a record's logical identity is tied to its item_id (current row: logical = item_id;
+            // archived row '<X>@<hash>': logical = X), so a produced version can never claim another item's identity
+            const archM = VERSION_ID_RE.exec(it.item_id);
+            const expectLogical = archM ? archM[1] : it.item_id;
+            if (logical !== expectLogical) errs.push({ line, msg: `item ${it.item_id}: logical_item_id "${logical}" does not match its item_id (expected ${expectLogical})` });
+            else if (it.version_id && it.version_id !== version) errs.push({ line, msg: `item ${it.item_id}: version_id "${it.version_id}" does not match its content (expected ${version})` });
             else if (prev && prev.h !== h) errs.push({ line, msg: `conflicting records for item ${it.item_id} within one bundle` });
             else if (!prev) {
               it.capture = it.capture || _captureFromSource(srcRow);
@@ -412,7 +418,18 @@
     // from_version_id/to_version_id pin an explicit version, which must exist in the DB or be produced by this bundle.
     // Existing relation_id: same content → unchanged and KEEPS ITS ORIGINAL PINS (never rebound to a newer version);
     // different content or different explicit pins → rejected.
-    const bundleVersions = new Set([...bItems.values()].map(x => x.it.version_id));
+    const bundleVersions = new Map([...bItems.values()].map(x => [x.it.version_id, x.it.logical_item_id]));
+    // P1-5d: DECLARED ENDPOINT == LOGICAL IDENTITY OF PINNED VERSION.
+    // endpoint = logical id X → the pinned version must belong to X (logical_item_id = X);
+    // endpoint = immutable version id X@hash → the pin must be exactly that version.
+    const pinnedLogical = (v) => bundleVersions.has(v) ? bundleVersions.get(v) : ((_getVersionRow(db, v) || {}).logical_item_id || null);
+    const pinMismatch = (ref, v) => {
+      const b = bItems.get(ref), row = b ? b.it : _getItemRowRaw(db, ref);
+      const isVersionRef = row ? (row.logical_item_id && row.item_id !== row.logical_item_id) : VERSION_ID_RE.test(ref);
+      if (isVersionRef) { const own = row ? row.version_id : ref; return v === own ? null : `endpoint "${ref}" is an immutable version; the pin must be exactly "${own}", not "${v}"`; }
+      const logical = row ? (row.logical_item_id || row.item_id) : ref, pl = pinnedLogical(v);
+      return pl === logical ? null : `pinned version "${v}" belongs to logical item "${pl}", not to the declared endpoint "${logical}"`;
+    };
     const resolveEnd = (ref) => {
       if (bItems.has(ref)) return bItems.get(ref).it.version_id;
       const row = _getItemRowRaw(db, ref);
@@ -423,6 +440,7 @@
         if (explicit) {
           if (!bundleVersions.has(rel[vkey]) && !_getVersionRow(db, rel[vkey]))
             errs.push({ line, msg: `relation ${rel.relation_id}: ${vkey} "${rel[vkey]}" is not a known item version (DB or bundle)` });
+          else { const bad = pinMismatch(rel[end], rel[vkey]); if (bad) errs.push({ line, msg: `relation ${rel.relation_id}: ${end}/${vkey} inconsistent — ${bad}` }); }
         } else {
           const v = resolveEnd(rel[end]);
           if (!v) errs.push({ line, msg: `relation ${rel.relation_id}: ${end} "${rel[end]}" not found in DB or bundle (external references are not supported)` });

@@ -7,6 +7,7 @@
 # string per line) via env:
 #   PRIVATE_IDS=/local/private-ids.txt PRIVATE_TITLES=/local/private-titles.txt \
 #   BASE=origin/main bash tests/refmem/scan-private.sh
+# Optional: EXTRA_FILES="/local/pr-body.md …" also scans untracked files (e.g. a PR body before posting).
 # Without them only the generic checks run (and the script says so).
 set -u
 BASE="${BASE:-origin/main}"
@@ -39,6 +40,17 @@ scan_file() { # $1=label $2=file $3=grep flags
 }
 scan_file ids "${PRIVATE_IDS:-}" ""
 scan_file titles "${PRIVATE_TITLES:-}" "-i"
+
+# 3b. optional EXTRA_FILES (space-separated, e.g. a PR body file before posting): URLs, 32-hex ids, private IDs/titles
+for x in ${EXTRA_FILES:-}; do
+  [ -f "$x" ] || { hit "EXTRA_FILES: $x not found"; continue; }
+  xb=$(basename "$x"); xf=0
+  grep -E -q "$URLRE" "$x" && { hit "extra $xb: private-surface URL"; xf=1; }
+  grep -E -i -q '\b[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}\b' "$x" && { hit "extra $xb: 32-hex id pattern"; xf=1; }
+  [ -n "${PRIVATE_IDS:-}" ] && [ -s "${PRIVATE_IDS:-}" ] && grep -F -q -f "$PRIVATE_IDS" "$x" && { hit "extra $xb: private id (match not printed)"; xf=1; }
+  [ -n "${PRIVATE_TITLES:-}" ] && [ -s "${PRIVATE_TITLES:-}" ] && grep -i -F -q -f "$PRIVATE_TITLES" "$x" && { hit "extra $xb: private title (match not printed)"; xf=1; }
+  [ $xf = 0 ] && say "PASS  extra file $xb: 0 private hits (URLs, 32-hex ids, ids, titles)"
+done
 
 # 4. no private bundle files tracked
 if git ls-files | grep -E -q '\.private\.(jsonl|sqlite)$|velantrim-reference-private|^private-memory/'; then hit "private bundle file tracked"; else say "PASS  no *.private.jsonl / *.private.sqlite / private-memory files tracked"; fi

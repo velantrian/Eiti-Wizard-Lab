@@ -1,0 +1,89 @@
+{
+ "_note": "SYNTHETIC TEST FIXTURE — incoming memory passports for admission review tests",
+ "valid_new": {
+  "SOURCE": {
+   "source_id": "fx:adm:src-b",
+   "title": "[SYNTHETIC FIXTURE] incoming note (synthetic)",
+   "surface": "fixture"
+  },
+  "WHO": "USER",
+  "WHEN": "2026-09-25",
+  "SCOPE": "demo-project-adm",
+  "TYPE": "HYPOTHESIS",
+  "STATUS": "SOURCE_ASSERTION",
+  "PROVENANCE": {
+   "method": "synthetic test fixture",
+   "captured_by": "test-suite"
+  },
+  "WHAT": "[SYNTHETIC FIXTURE] The demo exporter writes one file per synthetic project."
+ },
+ "similar_not_identical": {
+  "SOURCE": {
+   "source_id": "fx:adm:src-b",
+   "title": "[SYNTHETIC FIXTURE] incoming note (synthetic)",
+   "surface": "fixture"
+  },
+  "WHO": "USER",
+  "WHEN": "2026-09-25",
+  "SCOPE": "demo-project-adm",
+  "TYPE": "HYPOTHESIS",
+  "STATUS": "SOURCE_ASSERTION",
+  "PROVENANCE": {
+   "method": "synthetic test fixture",
+   "captured_by": "test-suite"
+  },
+  "WHAT": "[SYNTHETIC FIXTURE] The demo cache layer lowers cold start latency of the demo widget."
+ },
+ "exact_duplicate": {
+  "SOURCE": {
+   "source_id": "fx:adm:src-a",
+   "title": "[SYNTHETIC FIXTURE] admission reference base (synthetic)",
+   "surface": "fixture"
+  },
+  "WHO": "USER",
+  "WHEN": "2026-09-25",
+  "SCOPE": "demo-project-adm",
+  "TYPE": "HYPOTHESIS",
+  "STATUS": "SOURCE_ASSERTION",
+  "PROVENANCE": {
+   "method": "synthetic test fixture",
+   "captured_by": "test-suite"
+  },
+  "WHAT": "[SYNTHETIC FIXTURE]  The demo cache layer reduces cold start latency   of the demo widget.",
+  "ITEM_ID": "fx:adm:cache-cold"
+ },
+ "out_of_scope": {
+  "SOURCE": {
+   "source_id": "fx:adm:src-b",
+   "title": "[SYNTHETIC FIXTURE] incoming note (synthetic)",
+   "surface": "fixture"
+  },
+  "WHO": "USER",
+  "WHEN": "2026-09-25",
+  "SCOPE": "demo-project-other",
+  "TYPE": "HYPOTHESIS",
+  "STATUS": "SOURCE_ASSERTION",
+  "PROVENANCE": {
+   "method": "synthetic test fixture",
+   "captured_by": "test-suite"
+  },
+  "WHAT": "[SYNTHETIC FIXTURE] The other demo project uses a different cache layer."
+ },
+ "ambiguous": {
+  "SOURCE": {
+   "source_id": "fx:adm:src-b",
+   "title": "[SYNTHETIC FIXTURE] incoming note (synthetic)",
+   "surface": "fixture"
+  },
+  "WHO": "USER",
+  "WHEN": "2026-09-25",
+  "SCOPE": "demo-project-adm",
+  "TYPE": "HYPOTHESIS",
+  "STATUS": "SOURCE_ASSERTION",
+  "PROVENANCE": {
+   "method": "synthetic test fixture",
+   "captured_by": "test-suite"
+  },
+  "WHAT": "[SYNTHETIC FIXTURE] The demo cache layer changes start latency of the demo widget."
+ }
+}

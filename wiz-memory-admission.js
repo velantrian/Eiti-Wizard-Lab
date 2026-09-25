@@ -730,7 +730,6 @@
     const mt = _diff(before.wiz_ref_meta, after.wiz_ref_meta);
     const badMeta = mt.added.concat(mt.changed, mt.removed).filter(k => !IMPORT_META_KEYS.includes(k));
     if (badMeta.length) errs.push('unexpected wiz_ref_meta change: ' + badMeta.join(', '));
-    // FTS (derived): removed rows = old rows of revised items; added rows = rows of every added / revised item
     // FTS (derived): expected = before − old rows of revised items + rows of every added / revised item (as multisets)
     const ftsRow = r => JSON.stringify([r.item_id, r.claim, r.project_id || '', r.item_type]);
     const expFts = _multisetMinus(before.fts, before.fts.filter(x => eff.items_revised.includes(JSON.parse(x)[0])))

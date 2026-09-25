@@ -1,11 +1,14 @@
-# Memory Admission Controller v0.1 — REVIEW MODE FIRST (lab, step 1 of 2)
+# Memory Admission Controller v0.1 — REVIEW MODE FIRST (lab; step 1 Prepare + step 2 Apply/Dismiss)
 
 > **Status: RESEARCH / LAB.** NOT CANON · NOT RUNTIME AUTHORIZATION · NOT A GLOBAL MEMORY OWNER ·
 > NOT AN AUTOMATIC MEMORY WRITER · NOT AN E0-A REPLACEMENT. It claims no semantic authority, is no
 > TruthGate, and decides nothing: it **proposes** and **waits for an explicit user decision**.
 >
-> **This build is step 1 of 2.** It prepares and stages review packets. `apply()` / `dismiss()` do not
-> exist yet (step 2). Nothing in this build writes Reference Memory (`wiz_ref_*`) or personal memory.
+> **Step 1** prepares and stages review packets (zero writes to `wiz_ref_*`). **Step 2** (§17) adds exactly two
+> explicit, human-gated review actions: **Apply** (executes exactly the prepared and shown write plan through
+> the existing `WizRef.importJSONL`, after an integrity + stale-plan check, all-or-nothing) and **Dismiss** (zero
+> writes to `wiz_ref_*`). There is no automatic admission of any kind; `ADMISSION_MODE` stays `REVIEW`. Nothing
+> writes personal memory (`wiz_facts`).
 >
 > **Audit revision 1** (see §15): read-only retrieval (no WizRef db function is called — they all run
 > `WizRef.initSchema`), strict DUPLICATE identity rule, and trusted caller context for authority claims.
@@ -26,8 +29,8 @@ incoming information object (a **memory passport**) it:
    affected records, epistemic/status effect, exact write plan) and
 5. stages it in the lab-only table `wiz_admission_reviews` with `review_state = 'AWAITING_REVIEW'`.
 
-It does **not** implement a second reference store. The later apply step (step 2) will go through the existing
-`WizRef.importJSONL`. No consolidation, engrafting, vector DB, graph engine, embeddings or LLM retrieval
+It does **not** implement a second reference store. The apply step (step 2, §17) goes through the existing
+`WizRef.importJSONL` (unchanged). No consolidation, engrafting, vector DB, graph engine, embeddings or LLM retrieval
 injection. E0-A (PR #6) is only a donor of invariant-test ideas; its Python is not a dependency and its
 ACCEPT/HOLD/REJECT enum belongs to a different layer.
 
@@ -225,8 +228,9 @@ Created by `WizAdmission.initSchema(db)` from the guarded hook in `_wizInitMemSc
 `prepare()`); purely additive, idempotent, never alters `wiz_ref_*` or personal-memory tables (tested on a DB
 created by `main`). `packet_json` (the full packet, incl. warnings / proposed relations / status effect) is an
 addition to the spec's column list so a staged packet can be shown exactly as prepared. `review_state` is a
-**workflow** state, never an epistemic status (no VERIFIED / ACTIVE / CANON). Step 1 only writes
-`AWAITING_REVIEW`; `APPLIED` / `DISMISSED` are reserved for step 2. Staged reviews are **not** memory: they
+**workflow** state, never an epistemic status (no VERIFIED / ACTIVE / CANON). Prepare writes
+`AWAITING_REVIEW`; only an explicit Apply / Dismiss (§17) sets `APPLIED` / `DISMISSED`. Step 2 adds the column
+`packet_sha256` (seal) and the table `wiz_admission_actions` (§17.6). Staged reviews are **not** memory: they
 never appear in `ref_search` / `mem_search` and are never injected into any context.
 
 API: `WizAdmission.prepare(db, incoming, opts)` (async; `opts.review_scope`, `opts.caller` = authority token, `opts.interaction` = interaction token, §5a) ·
@@ -297,10 +301,12 @@ Memory panel → separate card **🧠 Admission review** (below 📖 Reference m
 personal memory): passport textarea, review-scope field, `Example` and `Prepare review` buttons, the pending
 list and the full packet (incoming, caller context, reference-memory readiness, provenance, candidates, proposed
 outcome, rationale, affected records, exact write plan, warnings). A genuine click on `Prepare review` is recorded
-as `USER_INTERACTION` only — it is **not** semantic authority (§5a). Rendered with `textContent` only. **No Apply / Dismiss / Auto-approve controls
-in step 1.** No agent tool is registered and nothing is injected into chat context.
+as `USER_INTERACTION` only — it is **not** semantic authority (§5a). Rendered with `textContent` only. Step 2 adds
+a pending-review selector, **Apply shown plan**, **Dismiss** (+ optional reason) and an action-result area (§17.8).
+There is **no Auto-approve / Apply-all control**. No agent tool is registered and nothing is injected into chat
+context.
 
-## 13. Not in step 1 (step 2)
+## 13. Not in step 1 (step 2) — implemented in §17
 
 `apply()` / `dismiss()` through `WizRef.importJSONL` (DUPLICATE apply = no ref mutation; REFINEMENT = same
 item_id new version; NEW_EVIDENCE = separate item + SUPPORTS/COUNTEREVIDENCE only with explicit direction;
@@ -340,7 +346,7 @@ tests A4–A9, A12, A14, A15, the apply half of A3, browser apply/reload tests.
 * **P1-3 authority spoof** — fixed: trusted caller context (module-minted token; browser only from a genuine
   click; node host via `hostCallerContext`); `declared_by` / `authority` must match it and `WHO` must not be
   model-like. Tests `P1-3`, `HR`, browser `B5`.
-* Still step 1 of 2: **no `apply()` / `dismiss()`**, no Apply / Dismiss buttons.
+* At that revision still step 1 of 2 (historical): **no `apply()` / `dismiss()`**, no Apply / Dismiss buttons.
 
 ## 16. Audit revision 2 (PR #10 @ a434561) — P1-3b
 
@@ -353,4 +359,153 @@ tests A4–A9, A12, A14, A15, the apply half of A3, browser apply/reload tests.
   mints interaction only, `_mintAuthority` reachable only from the non-DOM seam); browser `B5` rewritten (genuine
   click + EQUIVALENT_TO declared_by=USER / STATUS USER_DECISION / PROPOSED_STATUS_CHANGE.authority=USER → all
   `UNCERTAIN`; forged / script / dispatched / wrapper negatives kept); `B2` expects the new caller text.
-* Still step 1 of 2: **no `apply()` / `dismiss()`**, no Apply / Dismiss / confirmation controls.
+* At that revision still step 1 of 2 (historical): **no `apply()` / `dismiss()`**, no Apply / Dismiss / confirmation controls.
+
+## 17. Step 2 — Apply / Dismiss (bounded; PR #10)
+
+Workflow: `PREPARE → AWAITING_REVIEW → APPLY | DISMISS` (terminal: `APPLIED` / `DISMISSED`). Nothing else was added:
+no automatic admission, background memory, meaning extraction, relevance scoring, retrieval controller, context
+injection or consolidation. `wiz-ref-memory.js` and `wiz_facts` are unchanged.
+
+### 17.1 The write plan is executable data, fixed at prepare
+
+`prepare()` now builds, inside the read-only phase, a complete plan (`write_plan`):
+`import_bundle` (the EXACT `wiz-ref-jsonl/1` records Apply will import, seed `wiz-admission`, seed_version =
+review id), `preconditions` (reference fingerprint, targets with version id / logical id / must-be-current /
+epistemic state, ids that must stay absent, source records with their `record_hash`), `expected_effect` (items
+added / revised, archived versions, relations added with exact pins, sources added), `requires_authority`,
+`resolved` / `unresolved`. The packet is sealed: `packet_sha256 = sha256(packet_json)` is stored with it.
+UNCERTAIN / OUT_OF_SCOPE (and anything not deterministically resolvable) yields `resolved: false`.
+
+Per outcome: DUPLICATE → no records (Apply records the decision, zero reference writes) · REFINEMENT → one item
+record with the SAME logical item id → the importer creates a new immutable version, the old one stays as an
+archived row (`item@hash`, SUPERSEDED), relations stay pinned to it · STATUS_CHANGE → same, `epistemic_state` =
+the proposed status, capture provenance carried verbatim, requires the host USER authority token · CONTRADICTION /
+NEW_EVIDENCE / NEW_RELATED_ITEM → one new item + exactly the declared relation(s) with explicit `to_version_id` =
+the typed target version (candidates from similarity are never used). Existing sources are only referenced (a
+passport whose SOURCE fields differ from the stored source → unresolved); a new source needs title/surface/kind.
+
+### 17.2 APPLY semantics (`apply` / `applyPersisted`)
+
+In order (`_applyTx`):
+1. review missing → `REFUSED NOT_FOUND`; review not `AWAITING_REVIEW` → `REFUSED ALREADY_TERMINAL` (no write, not
+   even an action row; terminal states are never reversed or re-applied).
+2. **Integrity (tamper) check**: `sha256(packet_json) == packet_sha256`; `write_plan_json`, `proposed_outcome`,
+   `incoming_json` equal the sealed packet; id / mode; plan has the step-2 fields; if the UI passes
+   `expected_packet_sha256` (the packet it showed) it must equal the stored seal → else `INTEGRITY_FAILED`
+   + `REPREPARE_REQUIRED`.
+3. UNCERTAIN / OUT_OF_SCOPE / unresolved → `REFUSED NO_EXECUTABLE_PLAN`.
+4. Plan needs semantic authority (`requires_authority`: DECLARED_EQUIVALENCE, TYPED_STATUS_CHANGE, a
+   USER_DECISION record) → only a matching **host authority token** (`opts.caller`, §5a) satisfies it, else
+   `REFUSED AUTHORITY_NOT_PROVEN`. VERIFIED-like statuses, or USER_DECISION without a required authority →
+   `REFUSED EPISTEMIC_PROMOTION_BLOCKED`.
+5. **Stale-plan guard** (§17.3) → `STALE_REVIEW` + `REPREPARE_REQUIRED`.
+6. **Atomic write** (§17.4): exactly one call `W.importJSONL(bundle of the stored plan)` → exact-effect
+   verification → `review_state='APPLIED'`, `reviewed_at` → action row with the exact operation result
+   (`applied.items[]` / `archived_versions` / `relations[]` / `sources`, importer counts, fingerprint before/after,
+   `authority_used`).
+
+Apply never recomputes a plan: the bundle is read from the sealed packet. New meaning = new Prepare.
+
+### 17.3 Stale-plan guard (`_staleCheck`, read-only)
+
+Reference Memory must be `READY`; every target version still exists; `must_be_current` targets are still current
+(if not, also reports whether the current status differs → "from_status no longer matches"); the target's
+epistemic state equals the one recorded at prepare; every proposed new logical item id and relation id is still
+absent; every referenced source still has the same `record_hash` and no planned new source appeared; and the
+**full reference fingerprint** (`sha256(refSnapshot)`: schema + every `wiz_ref*` row incl. meta, pins and FTS)
+equals the one sealed at prepare. Any difference aborts before any write; the review stays `AWAITING_REVIEW` and
+the attempt is recorded as an action row `STALE_REVIEW`.
+
+### 17.4 Atomicity (SQLite + persistence)
+
+* **SQLite level** — outer `SAVEPOINT wiz_adm_apply`. `importJSONL` runs its own `BEGIN/COMMIT/ROLLBACK`; it is
+  called with `_nestedTxDb(db)`, a Proxy that maps exactly those three statements to `SAVEPOINT / RELEASE /
+  ROLLBACK TO wiz_ref_import` (any other transaction statement throws). The importer code is unchanged. Import +
+  exact-effect check (`_verifyEffect`: only the planned rows added/changed, no existing relation or pin changed,
+  sources/meta/FTS as planned, new version ids really new, archived versions verbatim) + review UPDATE (must
+  modify exactly 1 row) + action INSERT either all `RELEASE` together or all `ROLLBACK TO wiz_adm_apply` →
+  `FAILED` (`rolled_back`, `reference_unchanged` reported). Importer validation failures write nothing (its
+  phase 1 is read-only).
+* **Persistence level** (`applyPersisted` / `dismissPersisted`, used by the UI) — the action runs on a byte copy
+  (`new SQL.Database(live.export())`). On failure the copy is discarded and the failure is recorded on the
+  untouched live DB. On success the live DB must still be byte-identical to the snapshot (else `FAILED
+  CONCURRENT_MODIFICATION`); then `window._wizDB` is swapped to the copy and the verified `_wizSaveDBAsync()` runs;
+  if it fails, the original live DB is swapped back (`FAILED PERSIST_FAILED`, recorded). So the live DB never holds
+  an applied-but-unpersisted state and a retry cannot double-write (it re-runs the full checks; after success the
+  review is terminal).
+* A module-level lock refuses a concurrent second apply/dismiss (`REFUSED BUSY`); Prepare is refused while an
+  action runs.
+
+### 17.5 DISMISS semantics
+
+Only from `AWAITING_REVIEW`. Inside `SAVEPOINT wiz_adm_dismiss`: `review_state='DISMISSED'`, `reviewed_at`, action
+row with the optional reason (≤ 2000 chars). WizRef is never called; the `wiz_ref*` snapshot must be identical
+before/after (else rollback). Terminal → `REFUSED ALREADY_TERMINAL`, no write.
+
+### 17.6 Review record / history
+
+The prepared packet (`packet_json`, `write_plan_json`, `incoming_json`, seal) is **never rewritten** — it shows what
+was proposed THEN. What happened NOW is in `wiz_admission_actions` (`action_id, review_id, action APPLY|DISMISS,
+requested_at, result APPLIED|DISMISSED|REFUSED|STALE_REVIEW|INTEGRITY_FAILED|FAILED, review_state_after,
+result_json`) plus `review_state` / `reviewed_at` on the review row. Failed / stale / refused non-terminal attempts
+are recorded; terminal-state refusals and UI-gate refusals write nothing. `getReview()` returns `actions` and
+`last_action`.
+
+### 17.7 Authority boundary (closed invariant, unchanged)
+
+USER_INTERACTION ≠ USER_AUTHORITY · PREPARE ≠ APPLY · APPLY ≠ AUTHORSHIP · APPLY ≠ USER_DECISION · APPLY ≠
+VERIFIED. An Apply / Dismiss click mints only a `USER_INTERACTION` token (`via: ui-click:#wizAdmApplyBtn` /
+`#wizAdmDismissBtn`); in the browser it is the **human gate** (script calls, dispatched clicks, direct
+`WizAdmission.apply/dismiss` without a genuine click → `REFUSED USER_INTERACTION_REQUIRED`), never authority. The
+browser has no path to an authority token (`hostCallerContext` is node-only). Apply keeps the incoming
+`epistemic_state` verbatim and never writes USER_DECISION / VERIFIED on its own. `authority_used` in the result is
+`NONE — Apply executes the shown plan only` unless a plan-required host token was presented.
+
+### 17.8 UI
+
+`#wizAdmPendingSelect` (show a stored review), `#wizAdmApplyBtn` "Apply shown plan", `#wizAdmDismissBtn`
+"Dismiss" + `#wizAdmDismissReason`, `#wizAdmActionResult`. Apply acts on the review currently shown and passes its
+`packet_sha256`. `CACHE_NAME` → `…-admission4`.
+
+### 17.9 Every place Apply can write `wiz_ref_*`
+
+Single path: `apply()` / `applyPersisted()` → `_applyTx()` → `W.importJSONL(_nestedTxDb(db), …)` (the only
+`importJSONL` call site in the module; test `zw-static` enforces exactly one, inside `_applyTx`). The proxy only
+forwards the importer's statements. `applyPersisted` additionally swaps the whole DB object (`host.setDb`) and
+persists it (`host.persist` = `_wizSaveDBAsync`) — that moves the already-imported copy, it creates no new
+`wiz_ref` content. The module contains no `INSERT/UPDATE/DELETE/ALTER … wiz_ref*` statement.
+
+### 17.10 Tests (step 2)
+
+DB: `S2-A` (valid ADD_ITEM via NEW_RELATED_ITEM) · `S2-B` A5 REFINEMENT · `S2-C` A8 STATUS_CHANGE · `S2-D` A6/A7
+CONTRADICTION / NEW_EVIDENCE / NEW_RELATED_ITEM · `S2-E` A4 DUPLICATE · `S2-F` OUT_OF_SCOPE / UNCERTAIN refused ·
+`S2-G` A9 Dismiss zero-write · `S2-H` A12 stale plan · `S2-I` tamper · `S2-J` A14 terminal states / double
+invocation · `S2-K` A15 atomicity (importer / review-update / persistence failure) · `S2-L` authority boundary.
+Browser: `B6` gate + authority · `B7` genuine Apply + reload + independent reads · `B8` Dismiss + reload · `B9`
+stale in the page.
+
+### 17.11 Judgment calls (step 2, flagged)
+
+* SPEC.md lists A4–A9 / A12 / A14 / A15 without definitions; the mapping above is inferred.
+* `_nestedTxDb` remaps the importer's own BEGIN/COMMIT/ROLLBACK to a nested savepoint (importer code unchanged);
+  needed so import + review update commit together.
+* The fingerprint precondition is strict and global: applying (or any import) makes every other pending review
+  stale → re-prepare. Conservative by design.
+* The importer updates its bookkeeping meta keys (`seed_id`, `seed_version`, `seed.wiz-admission`,
+  `last_import_at`, …) — allowed and checked explicitly.
+* The enum has no standalone ADD_ITEM outcome (UNCERTAIN since step 1), so "Apply valid ADD_ITEM" is tested with
+  NEW_RELATED_ITEM (ADD_ITEM + ADD_RELATION).
+* The seal detects inconsistency / tampering of the staged row, not an attacker with full DB write access (who
+  could recompute it).
+* In the browser Apply/Dismiss require a genuine click (a node host may call them directly — it owns that
+  boundary).
+* Copy-then-swap persistence: a non-admission write landing on the live DB during the action is detected
+  (`CONCURRENT_MODIFICATION`) before the swap; one landing during the persist window after the swap goes to the
+  new DB — if that persist then fails, the swap back to the original DB loses that write (narrow window,
+  documented residual risk, same family as §10).
+* Existing sources are never revised by admission; a status-change version carries the base version's capture
+  provenance.
+* Relation / target deletion can't be exercised: Reference Memory never deletes; "target missing" is covered by
+  the check code and by collision / non-current / fingerprint cases.
+

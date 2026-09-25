@@ -5625,6 +5625,41 @@ function _wizIDBSet(key, val) {
   } catch(e) {}
 }
 
+// lab/sqlite-reference-memory: AWAITABLE save — resolves only after the IndexedDB transaction
+// completed (oncomplete) and the stored bytes were read back; rejects on error/abort/blocked.
+// Used ONLY by reference import/clear/restore. _wizSaveDB/_wizIDBSet above are unchanged.
+function _wizSaveDBAsync() {
+  return new Promise((resolve, reject) => {
+    if (!window._wizDB) return reject(new Error('SQLite not initialised'));
+    let buf, req;
+    try { buf = window._wizDB.export().buffer; req = indexedDB.open('wiz_lab_mem_store', 1); }
+    catch(e) { return reject(e); }
+    req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
+    req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
+    req.onblocked = () => reject(new Error('IndexedDB open blocked'));
+    req.onsuccess = e => {
+      const idb = e.target.result;
+      let tx;
+      try { tx = idb.transaction('kv', 'readwrite'); tx.objectStore('kv').put(buf, 'wiz_lab_sqlite_db'); }
+      catch(err) { idb.close(); return reject(err); }
+      tx.onabort = () => { idb.close(); reject(tx.error || new Error('IndexedDB write aborted')); };
+      tx.onerror = () => reject(tx.error || new Error('IndexedDB write failed'));
+      tx.oncomplete = () => {
+        try {
+          const rb = idb.transaction('kv', 'readonly').objectStore('kv').get('wiz_lab_sqlite_db');
+          rb.onsuccess = () => {
+            idb.close();
+            const n = rb.result && rb.result.byteLength;
+            n === buf.byteLength ? resolve({ bytes: n, verified: true })
+                                 : reject(new Error('IndexedDB read-back mismatch'));
+          };
+          rb.onerror = () => { idb.close(); reject(rb.error || new Error('IndexedDB read-back failed')); };
+        } catch(err) { idb.close(); reject(err); }
+      };
+    };
+  });
+}
+
 // ── DDL: схема памяти ─────────────────────────────────────────
 function _wizInitMemSchema() {
   const db = window._wizDB;
@@ -6055,7 +6090,7 @@ async function executeAgentTool(name, args) {
           const r = W.getSource(db, String(args.source_id||''));
           if (!r) return `Reference source not found: "${args.source_id}"`;
           const s = r.source;
-          return `${W.HEADER}\nSOURCE ${s.source_id}: ${s.title} (${s.surface}/${s.source_kind}; authority=${s.authority_class||'UNSPECIFIED'}; rev=${s.revision||'—'}; as_of=${s.as_of||'UNKNOWN'}; currentness=${s.currentness||'UNKNOWN'}; privacy=${s.privacy})\n\n` +
+          return `${W.HEADER}\nSOURCE (current record) ${s.source_id}: ${s.title} (${s.surface}/${s.source_kind}; authority=${s.authority_class||'UNSPECIFIED'}; rev=${s.revision||'—'}; as_of=${s.as_of||'UNKNOWN'}; currentness=${s.currentness||'UNKNOWN'}; privacy=${s.privacy})\n\n` +
             (r.items.length ? r.items.map(b => b.block).join('\n\n') : '(no items)');
         }
         if (name === 'ref_project') {
@@ -6066,7 +6101,8 @@ async function executeAgentTool(name, args) {
         if (!t) return `Reference item not found: "${args.item_id}"`;
         const rel = [...t.relations.outgoing.map(r => `→ ${r.relation_type} ${r.to_item_id} [${r.epistemic_status}]`),
                      ...t.relations.incoming.map(r => `← ${r.relation_type} from ${r.from_item_id} [${r.epistemic_status}]`)];
-        return `${t.item.block}\nrelations:\n${rel.join('\n') || '(none)'}\nlineage: newer=[${t.lineage.newer.map(x=>x.item_id).join(', ')}] older=[${t.lineage.older.map(x=>x.item_id).join(', ')}]`;
+        const sc = t.source_current || {};
+        return `${t.item.block}\ncurrent source record: rev=${sc.revision||'—'} · as_of ${sc.as_of||'—'} · currentness=${sc.currentness||'—'}${t.item.source_changed_since_capture ? ' (DIFFERS from capture)' : ''}\nrelations:\n${rel.join('\n') || '(none)'}\nlineage: newer=[${t.lineage.newer.map(x=>x.item_id).join(', ')}] older=[${t.lineage.older.map(x=>x.item_id).join(', ')}]`;
       }
 
       case 'task_add': {

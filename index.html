@@ -35,6 +35,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" defer></script>
   <!-- v1.8.0: SQLite WASM для памяти L1/L2/L3 + FTS5/BM25 -->
   <script src="sql-wasm.js"></script>
+  <!-- lab/sqlite-reference-memory: separate reference namespace (wiz_ref_*) in the same SQLite DB -->
+  <script src="wiz-ref-memory.js"></script>
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1703,6 +1705,26 @@ main {
           <div class="card-title" data-i18n="mem_l2_title">📚 L2 Дайджесты сессий</div>
           <p data-i18n="mem_l2_hint" style="font-size:.8rem;color:var(--text-dim);margin-bottom:8px">После каждого чата AI создаёт краткий дайджест. Это даёт межсессионную память.</p>
           <div id="memL2List" style="display:flex;flex-direction:column;gap:5px"></div>
+        </div>
+
+        <!-- lab/sqlite-reference-memory: REFERENCE namespace (separate from personal memory above) -->
+        <div class="card" id="wizRefCard" style="margin:8px 16px">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>📖 Reference memory (wiz_ref)</span>
+            <button onclick="wizRefUiRender()" style="padding:4px 10px;border-radius:8px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);font-size:.78rem;cursor:pointer">↻</button>
+          </div>
+          <p style="font-size:.78rem;color:var(--text-dim);margin-bottom:6px">Source-bound project/reference knowledge — not personal facts, no decay, no auto-injection. Import a local JSONL bundle; it stays in this browser (SQLite → IndexedDB).</p>
+          <div id="wizRefStats" style="font-size:.78rem;opacity:.8;margin-bottom:6px">—</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+            <label style="padding:5px 10px;border-radius:8px;border:1px solid var(--gold-dim);color:var(--gold);font-size:.78rem;cursor:pointer">⬆ Import JSONL<input type="file" id="wizRefFile" accept=".jsonl,.ndjson,.json,application/x-ndjson" style="display:none" onchange="wizRefUiImportFile(this)"></label>
+            <button onclick="wizRefUiExport()" style="padding:5px 10px;border-radius:8px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);font-size:.78rem;cursor:pointer">⬇ Export backup</button>
+            <button onclick="wizRefUiClear()" style="padding:5px 10px;border-radius:8px;border:1px solid rgba(255,107,107,.4);background:transparent;color:#ff6b6b;font-size:.78rem;cursor:pointer">🗑 Clear reference</button>
+          </div>
+          <div style="display:flex;gap:6px">
+            <input id="wizRefQuery" placeholder="🔍 ref_search…" onkeydown="if(event.key==='Enter')wizRefUiSearch()" style="flex:1;padding:6px 10px;border-radius:9px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.8rem;box-sizing:border-box">
+            <button onclick="wizRefUiSearch()" style="padding:5px 10px;border-radius:8px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);font-size:.78rem;cursor:pointer">Search</button>
+          </div>
+          <pre id="wizRefResult" style="white-space:pre-wrap;font-size:.72rem;line-height:1.4;max-height:320px;overflow-y:auto;margin-top:6px;color:var(--text-dim)"></pre>
         </div>
 
         <!-- Clear all -->
@@ -5235,6 +5257,18 @@ const AGENT_TOOLS_SPEC = [
     parameters:{ type:'object', properties:{
       text:{type:'string', description:'Часть текста факта для поиска'}
     }, required:['text']}},
+  // lab/sqlite-reference-memory: REFERENCE namespace (read-only, explicit retrieval; separate from personal mem_*)
+  { name:'ref_search', description:'Search the REFERENCE memory (project/source knowledge, NOT personal user memory). Returns source-bound items with provenance (project, type, epistemic status, authority, source, as_of). Results are not verified truth; cached implementation state must be verified live on GitHub.',
+    parameters:{ type:'object', properties:{
+      query:{type:'string'}, project_id:{type:'string'}, item_type:{type:'string'},
+      authority_class:{type:'string'}, limit:{type:'number'}
+    }, required:['query']}},
+  { name:'ref_source', description:'Get a REFERENCE source record (title, surface, kind, authority, revision, as_of) and its items.',
+    parameters:{ type:'object', properties:{ source_id:{type:'string'}}, required:['source_id']}},
+  { name:'ref_project', description:'List REFERENCE items for a project_id, grouped by item type, with provenance.',
+    parameters:{ type:'object', properties:{ project_id:{type:'string'}}, required:['project_id']}},
+  { name:'ref_trace', description:'Trace a REFERENCE item: source, relations, supersession lineage.',
+    parameters:{ type:'object', properties:{ item_id:{type:'string'}}, required:['item_id']}},
 
   { name:'task_add', description:'Добавить задачу в Доску. status: To Do|In Progress|Done|Blocked, priority: low|medium|high',
     parameters:{ type:'object', properties:{
@@ -5615,6 +5649,8 @@ function _wizInitMemSchema() {
   // v1.8.1: FTS5-индекс заметок (порт идеи из Velantrim — BM25-поиск вместо includes)
   db.run(`CREATE VIRTUAL TABLE IF NOT EXISTS wiz_notes_fts
     USING fts5(id UNINDEXED, title, body, tokenize='unicode61')`);
+  // lab/sqlite-reference-memory: additive, idempotent wiz_ref_* schema (does not touch wiz_facts)
+  if (window.WizRef) { try { window.WizRef.initSchema(db); } catch(e) { console.warn('[WizRef] schema', e); } }
   _wizSaveDB();
 }
 
@@ -6002,6 +6038,35 @@ async function executeAgentTool(name, args) {
         if (!window._wizDB) return 'Функция недоступна (SQLite не инициализирован).';
         const m = wizMemSetState(String(args.text||''), 'Validated');
         return m ? `Факт подтверждён (Validated): ${m.claim.slice(0,80)}` : `Факт не найден: "${args.text}"`;
+      }
+
+      // ── lab/sqlite-reference-memory: read-only REFERENCE namespace tools ──
+      case 'ref_search': case 'ref_source': case 'ref_project': case 'ref_trace': {
+        await wizInitSQLite();
+        if (!window._wizDB || !window.WizRef) return 'Reference memory unavailable (SQLite not initialised).';
+        const W = window.WizRef, db = window._wizDB;
+        if (name === 'ref_search') {
+          const q = String(args.query||'').trim();
+          if (!q) return 'Provide a query.';
+          return W.formatBlocks(W.search(db, q, { project_id: args.project_id||null, item_type: args.item_type||null,
+            authority_class: args.authority_class||null, limit: args.limit||10 }));
+        }
+        if (name === 'ref_source') {
+          const r = W.getSource(db, String(args.source_id||''));
+          if (!r) return `Reference source not found: "${args.source_id}"`;
+          const s = r.source;
+          return `${W.HEADER}\nSOURCE ${s.source_id}: ${s.title} (${s.surface}/${s.source_kind}; authority=${s.authority_class||'UNSPECIFIED'}; rev=${s.revision||'—'}; as_of=${s.as_of||'UNKNOWN'}; currentness=${s.currentness||'UNKNOWN'}; privacy=${s.privacy})\n\n` +
+            (r.items.length ? r.items.map(b => b.block).join('\n\n') : '(no items)');
+        }
+        if (name === 'ref_project') {
+          const r = W.project(db, String(args.project_id||''));
+          return r && r.items.length ? W.formatBlocks(r.items) : `No reference items for project "${args.project_id}".`;
+        }
+        const t = W.trace(db, String(args.item_id||''));
+        if (!t) return `Reference item not found: "${args.item_id}"`;
+        const rel = [...t.relations.outgoing.map(r => `→ ${r.relation_type} ${r.to_item_id} [${r.epistemic_status}]`),
+                     ...t.relations.incoming.map(r => `← ${r.relation_type} from ${r.from_item_id} [${r.epistemic_status}]`)];
+        return `${t.item.block}\nrelations:\n${rel.join('\n') || '(none)'}\nlineage: newer=[${t.lineage.newer.map(x=>x.item_id).join(', ')}] older=[${t.lineage.older.map(x=>x.item_id).join(', ')}]`;
       }
 
       case 'task_add': {
@@ -11863,6 +11928,7 @@ async function memPanelLoad() {
   document.getElementById('mem-stat-l2-n').textContent      = l2.length;
   document.getElementById('mem-stat-personal-n').textContent = l3.length;
   memPanelRender();
+  if (typeof wizRefUiRender === 'function') wizRefUiRender();
 }
 
 async function memPanelRender() {

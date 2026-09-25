@@ -59,6 +59,16 @@ const IDB_REF_COUNT = async () => {
   let n = 0; try { n = d.exec('SELECT count(*) FROM wiz_ref_items')[0].values[0][0]; } catch (e) { n = 0; }
   d.close(); return n;
 };
+const IDB_SHA256 = async () => { // independent connection: SHA-256 of the stored SQLite bytes
+  const buf = await new Promise((res, rej) => {
+    const q = indexedDB.open('wiz_lab_mem_store', 1);
+    q.onerror = () => rej(q.error);
+    q.onsuccess = e => { const d = e.target.result; const g = d.transaction('kv', 'readonly').objectStore('kv').get('wiz_lab_sqlite_db');
+      g.onsuccess = () => { d.close(); res(g.result); }; g.onerror = () => { d.close(); rej(g.error); }; };
+  });
+  const h = await crypto.subtle.digest('SHA-256', new Uint8Array(buf));
+  return Array.from(new Uint8Array(h), x => x.toString(16).padStart(2, '0')).join('');
+};
 const srv = serve(ROOT, Number(process.env.REFMEM_PORT || 18791));
 const mainSrv = process.env.MAIN_ROOT ? serve(path.resolve(process.env.MAIN_ROOT), Number(process.env.REFMEM_PORT || 18791) + 1) : null;
 // readiness poll for the static servers (not a persistence wait)
@@ -76,7 +86,7 @@ try {
       ref: !!window.WizRef, tables: window._wizDB.exec("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")[0].values.flat(),
       schema: window.WizRef.getMeta(window._wizDB, 'schema_version'),
     }));
-    assert(st.ref && st.schema === '2');
+    assert(st.ref && st.schema === '3');
     for (const t of ['wiz_facts', 'wiz_l2_digests', 'wiz_ref_items', 'wiz_ref_sources', 'wiz_ref_relations', 'wiz_ref_meta']) assert(st.tables.includes(t), t);
     assert(P.logs.some(l => l.includes('[WizMem] SQLite')), 'SQLite boot log missing');
     if (mainSrv) {
@@ -99,7 +109,7 @@ try {
         active: document.getElementById('panel-memory').classList.contains('active') || getComputedStyle(document.getElementById('panel-memory')).display !== 'none' };
     });
     assert(r.list.includes('UI test personal fact'), 'quick-add not rendered');
-    assert(r.l3 && r.l2 && r.card && /schema v2/.test(r.stats) && Number(r.eitiN) >= 1, JSON.stringify(r));
+    assert(r.l3 && r.l2 && r.card && /schema v3/.test(r.stats) && Number(r.eitiN) >= 1, JSON.stringify(r));
   });
 
   await T(4, 'agent tools mem_add / mem_search / mem_validate work in the page; ref_* registered alongside', async () => {
@@ -126,6 +136,7 @@ try {
     assert(/Lens 'synergy'/.test(r.ref) && !/team sports/.test(r.ref));
     for (const s of ['[REFERENCE MEMORY]', 'HUMAN_LENS', 'HUMAN_REFERENCE_ONLY', 'HUMAN_REFERENCE', 'SOURCE_ASSERTION', 'fx:src:lens-list', 'as_of: 2026-09-25', 'rev=fx-rev-1']) assert(r.ref.includes(s), s);
     assert(/SOURCE \(current record\) fx:src:lens-list/.test(r.src) && /NOT IMPLEMENTATION EVIDENCE/.test(r.prj) && /SUPERSEDES fx:hyp-1/.test(r.tr), JSON.stringify(r).slice(0, 400));
+    assert(/traced version: fx:hyp-2@[0-9a-f]{14} \(current\)/.test(r.tr) && /SUPERSEDES fx:hyp-1 @ fx:hyp-1@[0-9a-f]{14}/.test(r.tr), 'ref_trace must show pinned versions: ' + r.tr.slice(0, 600));
   });
 
   await T(6, 'reference survives page reload via SQLite → IndexedDB (wiz_lab_mem_store / wiz_lab_sqlite_db) — no sleep: awaited ack + independent read-back, then reload', async () => {
@@ -157,6 +168,9 @@ try {
     assert(ui.p === 'true' && ui.flag === true && /IMPORT_PERSISTED = TRUE/.test(ui.t) && /can be deleted now/.test(ui.t), JSON.stringify(ui));
     const stored = await Q.page.evaluate(IDB_REF_COUNT); // independent connection, immediately after the ack
     assert.strictEqual(stored, 14);
+    const m = /byte-identical, sha256 ([0-9a-f]{64})/.exec(ui.t); // ack reports the verified SHA-256
+    assert(m, 'ack must report sha256: ' + ui.t);
+    assert.strictEqual(await Q.page.evaluate(IDB_SHA256), m[1], 'reported sha256 must equal SHA-256 of the stored bytes');
     fs.unlinkSync(tmp); assert(!fs.existsSync(tmp));
     await Q.page.reload({ waitUntil: 'load' }); await Q.page.waitForFunction(() => window._wizDB, { timeout: 30000 });
     const n = await Q.page.evaluate(() => window._wizDB.exec('SELECT count(*) FROM wiz_ref_items')[0].values[0][0]);
@@ -179,19 +193,46 @@ try {
     await b.close(); assert.strictEqual(n, 0, 'aborted write must not have persisted');
   });
 
-  await T(18, 'UI "Export backup" → import into a fresh browser profile: identical items/statuses, nothing promoted', async () => {
+  await T('P2-h', 'hash-verified ack: read-back returns SAME-LENGTH but DIFFERENT bytes → rejected, IMPORT_PERSISTED = FALSE, no "can be deleted"', async () => {
+    const b = await launch(); const Q = await open(b, srv.url);
+    await Q.page.evaluate(() => { // stub: every IndexedDB get returns a same-length copy with one byte flipped
+      const realGet = IDBObjectStore.prototype.get;
+      IDBObjectStore.prototype.get = function (...a) {
+        const req = realGet.apply(this, a);
+        const desc = Object.getOwnPropertyDescriptor(IDBRequest.prototype, 'result');
+        Object.defineProperty(req, 'result', { get() {
+          const r = desc.get.call(req); if (!r || !r.byteLength) return r;
+          const c = new Uint8Array(r.byteLength); c.set(new Uint8Array(r)); c[c.length >> 1] ^= 0xff; return c.buffer;
+        } });
+        return req;
+      };
+      window.__stubbedGet = true; switchPanel('memory');
+    });
+    const tmp = path.join(os.tmpdir(), `refmem-hash-${process.pid}.private.jsonl`); fs.writeFileSync(tmp, v1);
+    const input = await Q.page.$('#wizRefFile'); await input.uploadFile(tmp); fs.unlinkSync(tmp);
+    await Q.page.waitForFunction(() => document.getElementById('wizRefResult').dataset.state === 'done', { timeout: 15000 });
+    const ui = await Q.page.evaluate(() => ({ p: document.getElementById('wizRefResult').dataset.persisted, t: document.getElementById('wizRefResult').textContent, flag: window.WIZ_REF_IMPORT_PERSISTED }));
+    // direct call too: the promise must reject with a mismatch
+    const direct = await Q.page.evaluate(() => _wizSaveDBAsync().then(a => 'RESOLVED ' + JSON.stringify(a), e => 'REJECTED ' + e.message));
+    await b.close();
+    assert(ui.p === 'false' && ui.flag === false && /IMPORT_PERSISTED = FALSE/.test(ui.t) && /read-back mismatch/.test(ui.t) && !/can be deleted/.test(ui.t), JSON.stringify(ui));
+    assert(/^REJECTED IndexedDB read-back mismatch \(bytes differ at offset \d+\)$/.test(direct), direct);
+  });
+
+  await T(18, 'UI "Export backup" → import into a fresh browser profile: identical items/statuses/versions and relation version pins, nothing promoted', async () => {
     await P.page.evaluate(() => switchPanel('memory'));
     const before = fs.readdirSync(dl);
     await P.page.evaluate(() => wizRefUiExport());
     let file = null; for (let i = 0; i < 40 && !file; i++) { await sleep(250); file = fs.readdirSync(dl).find(f => !before.includes(f) && f.endsWith('.jsonl')); }
     assert(file, 'no download'); assert(/\.private\.jsonl$/.test(file), 'backup must be gitignored-named');
     const text = fs.readFileSync(path.join(dl, file), 'utf8'); fs.unlinkSync(path.join(dl, file));
-    const q = "SELECT item_id,source_status,epistemic_state,lifecycle,superseded_by,claim FROM wiz_ref_items ORDER BY 1";
+    const q = "SELECT item_id,logical_item_id,version_id,source_status,epistemic_state,lifecycle,superseded_by,claim FROM wiz_ref_items ORDER BY 1; SELECT relation_id,from_item_id,to_item_id,from_version_id,to_version_id,pin_backfilled FROM wiz_ref_relations ORDER BY 1";
     const a = await P.page.evaluate(q => JSON.stringify(window._wizDB.exec(q)), q);
     const b = await launch(); const Q = await open(b, srv.url);
     const r = await Q.page.evaluate(async (t, q) => { const res = await wizRefImportJSONL(t); return { ok: res.ok, rows: JSON.stringify(window._wizDB.exec(q)) }; }, text, q);
     await b.close();
     assert(r.ok); assert.strictEqual(r.rows, a);
+    assert(/SUPERSEDES/.test(a) && /@[0-9a-f]{14}/.test(a), 'expected a revised item with version pins in the backup');
   });
 } finally {
   await browser.close(); srv.stop(); if (mainSrv) mainSrv.stop();

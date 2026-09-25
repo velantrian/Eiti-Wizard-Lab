@@ -89,7 +89,7 @@ const MAIN_WIZ_FACTS_COLS = ['id', 'claim', 'tag', 'source', 'confidence', 'stab
       assert(q1(app.db, "SELECT count(*) FROM sqlite_master WHERE name=?", [t]) === 1, t + ' missing');
     const icols = app.db.exec('PRAGMA table_info(wiz_ref_items)')[0].values.map(v => v[1]);
     for (const c of ['lifecycle', 'record_hash', 'epistemic_state', 'provenance']) assert(icols.includes(c), 'migrated column missing ' + c);
-    assert.strictEqual(W.getMeta(app.db, 'schema_version'), '2');
+    assert.strictEqual(W.getMeta(app.db, 'schema_version'), '3');
     const snap = app.db.exec("SELECT sql FROM sqlite_master ORDER BY name")[0].values.join('|');
     W.initSchema(app.db); W.initSchema(app.db); app.ctx._wizInitMemSchema();
     assert.strictEqual(app.db.exec("SELECT sql FROM sqlite_master ORDER BY name")[0].values.join('|'), snap, 'second init changed schema');
@@ -329,10 +329,10 @@ const MAIN_WIZ_FACTS_COLS = ['id', 'claim', 'tag', 'source', 'confidence', 'stab
   await T(18, 'backup: reference JSONL export → import round-trip and full SQLite export are lossless; no status promotion', async () => {
     const a = await bootApp(); await W.importJSONL(a.db, v1); await W.importJSONL(a.db, v2);
     const cols = 'item_id,source_id,project_id,item_type,claim,source_section,source_status,epistemic_state,authority_scope,validity,confidence,as_of,supersedes_item_id,created_at,provenance,lifecycle,superseded_by,record_hash,seed_id,first_seed_version,last_seed_version,' +
-      'source_title_at_capture,source_surface_at_capture,source_kind_at_capture,source_authority_class_at_capture,source_revision_at_capture,source_as_of_at_capture,source_currentness_at_capture,source_content_hash_at_capture,capture_backfilled';
+      'source_title_at_capture,source_surface_at_capture,source_kind_at_capture,source_authority_class_at_capture,source_revision_at_capture,source_as_of_at_capture,source_currentness_at_capture,source_content_hash_at_capture,capture_backfilled,logical_item_id,version_id';
     const items = d => JSON.stringify(d.exec(`SELECT ${cols} FROM wiz_ref_items ORDER BY item_id`));
     const srcs = d => JSON.stringify(d.exec('SELECT source_id,title,surface,source_kind,authority_class,project_id,locator,revision,as_of,currentness,privacy,content_hash,seed_id,first_seed_version,last_seed_version,record_hash FROM wiz_ref_sources ORDER BY 1'));
-    const rels = d => JSON.stringify(d.exec('SELECT relation_id,from_item_id,to_item_id,relation_type,epistemic_status,source_id,scope,rationale,seed_id,created_at,record_hash FROM wiz_ref_relations ORDER BY 1'));
+    const rels = d => JSON.stringify(d.exec('SELECT relation_id,from_item_id,to_item_id,relation_type,epistemic_status,source_id,scope,rationale,seed_id,created_at,record_hash,from_version_id,to_version_id,pin_backfilled FROM wiz_ref_relations ORDER BY 1'));
     const exp = W.exportJSONL(a.db);
     const b = await bootApp(); const r = await W.importJSONL(b.db, exp);
     assert(r.ok, JSON.stringify(r.errors));
@@ -440,7 +440,7 @@ const MAIN_WIZ_FACTS_COLS = ['id', 'claim', 'tag', 'source', 'confidence', 'stab
     assert.strictEqual(old.source_current_authority_class, 'IMPLEMENTATION_EVIDENCE');
   });
 
-  await T('P1-2c', 'v1→v2 migration backfills capture provenance (= source at migration time, capture_backfilled=1) and relation record_hash', async () => {
+  await T('P1-2c', 'v1→v3 migration backfills capture provenance (= source at migration time, capture_backfilled=1), relation record_hash and version pins', async () => {
     const SQL = await initSqlJs({ wasmBinary: WASM });
     const old = new SQL.Database();
     old.run(`CREATE TABLE wiz_ref_meta (key TEXT PRIMARY KEY, value TEXT)`); old.run(`INSERT INTO wiz_ref_meta VALUES('schema_version','1')`);
@@ -451,11 +451,13 @@ const MAIN_WIZ_FACTS_COLS = ['id', 'claim', 'tag', 'source', 'confidence', 'stab
     old.run(`INSERT INTO wiz_ref_items(item_id,source_id,item_type,claim,epistemic_state) VALUES('fx:i1','fx:s','HYPOTHESIS','synthetic delta claim','SOURCE_ASSERTION'),('fx:i2','fx:s','HYPOTHESIS','synthetic epsilon claim','SOURCE_ASSERTION')`);
     old.run(`INSERT INTO wiz_ref_relations(relation_id,from_item_id,to_item_id,relation_type,epistemic_status) VALUES('fx:r','fx:i1','fx:i2','RELATED_TO','SOURCE_ASSERTION')`);
     const app = await bootApp(old.export());
-    assert.strictEqual(W.getMeta(app.db, 'schema_version'), '2');
+    assert.strictEqual(W.getMeta(app.db, 'schema_version'), '3');
     assert(JSON.parse(W.getMeta(app.db, 'migrated_from_schema_1')).items_capture_backfilled === 2);
     const b = W.search(app.db, 'delta')[0];
     assert.strictEqual(b.source_revision, 'R1'); assert.strictEqual(b.capture_backfilled, true); assert(/CAPTURE PROVENANCE BACKFILLED/.test(b.block));
     assert(q1(app.db, "SELECT record_hash FROM wiz_ref_relations WHERE relation_id='fx:r'"));
+    assert(/^fx:i2@[0-9a-f]{14}$/.test(q1(app.db, "SELECT to_version_id FROM wiz_ref_relations WHERE relation_id='fx:r'")));
+    assert.strictEqual(q1(app.db, "SELECT pin_backfilled FROM wiz_ref_relations WHERE relation_id='fx:r'"), 1);
     const snap = fullSnap(app.db); W.initSchema(app.db); assert.strictEqual(fullSnap(app.db), snap, 'migration not idempotent');
     // same relation content re-imported after migration → unchanged (hash matches)
     const r = await W.importJSONL(app.db, line({ relation: { relation_id: 'fx:r', from_item_id: 'fx:i1', to_item_id: 'fx:i2', relation_type: 'RELATED_TO', epistemic_status: 'SOURCE_ASSERTION' } }));
@@ -524,6 +526,123 @@ const MAIN_WIZ_FACTS_COLS = ['id', 'claim', 'tag', 'source', 'confidence', 'stab
     const r2 = await ctx.wizRefImportJSONL(FX('synthetic.v2.fixture.jsonl'));
     assert(r2.committed && r2.persisted === false && /simulated abort/.test(r2.persist_error));
     const r3 = await ctx.wizRefImportJSONL('{bad'); assert(!r3.committed && r3.persisted === false);
+  });
+
+
+  // ── Audit revision 2: relations point to IMMUTABLE item versions ─────────────
+  const VS = S('fx:src:ver', 'A');
+  const itemRec = (id, claim, extra = {}) => line({ source: VS, item: Object.assign({ item_id: id, source_id: 'fx:src:ver', item_type: 'HYPOTHESIS', as_of: '2026-09-01', claim }, extra) });
+  const relRec = (id, from, to, extra = {}) => line({ relation: Object.assign({ relation_id: id, from_item_id: from, to_item_id: to, relation_type: 'SUPPORTS', epistemic_status: 'SOURCE_ASSERTION', source_id: 'fx:src:ver' }, extra) });
+  const ids = rs => rs.map(r => r.relation_id).sort();
+
+  await T('P1-5a', 'item revision never retargets existing relations: R stays on X-v1 ("A is UNKNOWN"), R2 attaches to X-v2 ("A is SUPPORTED"); trace per version', async () => {
+    const { db } = await bootApp();
+    // 1) X v1 + evidence E; 2) R: E SUPPORTS X-v1
+    let r = await W.importJSONL(db, [itemRec('fx:E', 'Synthetic evidence E', { item_type: 'RESEARCH_RESULT' }), itemRec('fx:X', 'A is UNKNOWN'), relRec('fx:R', 'fx:E', 'fx:X')].join('\n'));
+    assert(r.committed, JSON.stringify(r.errors));
+    const x1 = W.trace(db, 'fx:X').version_id;
+    assert(/^fx:X@[0-9a-f]{14}$/.test(x1));
+    // 3) revise the same logical X
+    r = await W.importJSONL(db, itemRec('fx:X', 'A is SUPPORTED'));
+    assert(r.committed && r.items_revised === 1);
+    const x2 = W.trace(db, 'fx:X').version_id;
+    assert.notStrictEqual(x1, x2);
+    // 4) R still resolves to the OLD version / claim
+    let R = W.resolveRelation(db, 'fx:R');
+    assert.strictEqual(R.to.version_id, x1); assert.strictEqual(R.to.claim, 'A is UNKNOWN'); assert.strictEqual(R.to.is_current_version, false);
+    assert.strictEqual(R.to_item_id, 'fx:X'); // logical label kept, but the pin decides the target
+    // 5) R2 to the current X-v2
+    r = await W.importJSONL(db, relRec('fx:R2', 'fx:E', 'fx:X'));
+    assert(r.committed && r.relations_inserted === 1);
+    const R2 = W.resolveRelation(db, 'fx:R2');
+    R = W.resolveRelation(db, 'fx:R');
+    assert.strictEqual(R.to.version_id, x1); assert.strictEqual(R.to.claim, 'A is UNKNOWN');
+    assert.strictEqual(R2.to.version_id, x2); assert.strictEqual(R2.to.claim, 'A is SUPPORTED'); assert.strictEqual(R2.to.is_current_version, true);
+    // trace: old version → old relations only; current version → only relations attached to it
+    const tOld = W.trace(db, x1), tCur = W.trace(db, 'fx:X');
+    assert.strictEqual(tOld.item.claim, 'A is UNKNOWN'); assert.strictEqual(tOld.is_current_version, false);
+    assert.deepStrictEqual(ids(tOld.relations.incoming), ['fx:R']);
+    assert.strictEqual(tCur.item.claim, 'A is SUPPORTED'); assert.strictEqual(tCur.is_current_version, true);
+    assert.deepStrictEqual(ids(tCur.relations.incoming), ['fx:R2']);
+    assert.deepStrictEqual(ids(W.trace(db, x2).relations.incoming), ['fx:R2']);
+    assert.deepStrictEqual(ids(W.trace(db, 'fx:E').relations.outgoing), ['fx:R', 'fx:R2']);
+    assert.deepStrictEqual(tCur.versions.map(v => [v.version_id, v.is_current_version]), [[x1, false], [x2, true]]);
+    // re-importing R unchanged does NOT rebind it to X-v2; explicit re-pin is rejected with zero delta
+    r = await W.importJSONL(db, relRec('fx:R', 'fx:E', 'fx:X'));
+    assert(r.committed && r.relations_unchanged === 1);
+    assert.strictEqual(W.resolveRelation(db, 'fx:R').to.version_id, x1);
+    const before = fullSnap(db);
+    r = await W.importJSONL(db, relRec('fx:R', 'fx:E', 'fx:X', { to_version_id: x2 }));
+    assert(!r.committed && r.errors.some(e => /re-pinning is rejected/.test(e.msg)));
+    assert.strictEqual(fullSnap(db), before);
+    // search block shows version identity
+    assert(/version: fx:X@[0-9a-f]{14} \(current\)/.test(W.search(db, 'SUPPORTED')[0].block));
+    // export/backup round-trip preserves the pins
+    const b = await bootApp(); const rr = await W.importJSONL(b.db, W.exportJSONL(db));
+    assert(rr.ok, JSON.stringify(rr.errors));
+    assert.strictEqual(W.resolveRelation(b.db, 'fx:R').to.version_id, x1); assert.strictEqual(W.resolveRelation(b.db, 'fx:R').to.claim, 'A is UNKNOWN');
+    assert.strictEqual(W.resolveRelation(b.db, 'fx:R2').to.version_id, x2); assert.strictEqual(W.resolveRelation(b.db, 'fx:R2').to.claim, 'A is SUPPORTED');
+    assert.deepStrictEqual(ids(W.trace(b.db, x1).relations.incoming), ['fx:R']);
+    assert.deepStrictEqual(ids(W.trace(b.db, 'fx:X').relations.incoming), ['fx:R2']);
+  });
+
+  await T('P1-5b', 'bundle endpoint expression: logical id → version current after the bundle; archived id or explicit to_version_id → exactly that version; unknown version rejected', async () => {
+    const { db } = await bootApp();
+    await W.importJSONL(db, [itemRec('fx:E', 'Synthetic evidence E', { item_type: 'RESEARCH_RESULT' }), itemRec('fx:X', 'A is UNKNOWN')].join('\n'));
+    const x1 = W.trace(db, 'fx:X').version_id;
+    // same bundle revises X and adds a relation by logical id → pinned to the NEW version
+    await W.importJSONL(db, [itemRec('fx:X', 'A is SUPPORTED'), relRec('fx:Rnew', 'fx:E', 'fx:X')].join('\n'));
+    const x2 = W.trace(db, 'fx:X').version_id;
+    assert.strictEqual(W.resolveRelation(db, 'fx:Rnew').to.version_id, x2);
+    // archived id as endpoint, and explicit to_version_id → the old version
+    await W.importJSONL(db, [relRec('fx:Rarch', 'fx:E', x1), relRec('fx:Rpin', 'fx:E', 'fx:X', { to_version_id: x1 })].join('\n'));
+    assert.strictEqual(W.resolveRelation(db, 'fx:Rarch').to.claim, 'A is UNKNOWN');
+    assert.strictEqual(W.resolveRelation(db, 'fx:Rpin').to.claim, 'A is UNKNOWN');
+    const before = fullSnap(db);
+    const r = await W.importJSONL(db, relRec('fx:Rbad', 'fx:E', 'fx:X', { to_version_id: 'fx:X@00000000000000' }));
+    assert(!r.committed && r.errors.some(e => /not a known item version/.test(e.msg)));
+    assert.strictEqual(fullSnap(db), before);
+    // tampered version_id on an item record is rejected
+    const r2 = await W.importJSONL(db, line({ source: VS, item: { item_id: 'fx:Y', source_id: 'fx:src:ver', item_type: 'HYPOTHESIS', claim: 'y', version_id: 'fx:Y@ffffffffffffff' } }));
+    assert(!r2.committed && r2.errors.some(e => /does not match its content/.test(e.msg)));
+  });
+
+  await T('P1-5c', 'v2→v3 migration pins existing relations deterministically to the version current at migration time (pin_backfilled=1); later revision does not move them', async () => {
+    const SQL = await initSqlJs({ wasmBinary: WASM });
+    const old = new SQL.Database();
+    // exact v2 column set (schema as shipped at b2c7e34), no v3 columns
+    const cap = ['source_title', 'source_surface', 'source_kind', 'source_authority_class', 'source_revision', 'source_as_of', 'source_currentness', 'source_content_hash'].map(f => f + '_at_capture TEXT').join(', ');
+    old.run(`CREATE TABLE wiz_ref_meta (key TEXT PRIMARY KEY, value TEXT)`); old.run(`INSERT INTO wiz_ref_meta VALUES('schema_version','2')`);
+    old.run(`CREATE TABLE wiz_ref_sources (source_id TEXT PRIMARY KEY, title TEXT NOT NULL, surface TEXT NOT NULL, source_kind TEXT NOT NULL, authority_class TEXT, project_id TEXT, locator TEXT, revision TEXT, as_of TEXT, currentness TEXT, privacy TEXT DEFAULT 'private', content_hash TEXT, seed_id TEXT, first_seed_version TEXT, last_seed_version TEXT, record_hash TEXT, imported_at INTEGER)`);
+    old.run(`CREATE TABLE wiz_ref_items (item_id TEXT PRIMARY KEY, source_id TEXT NOT NULL, project_id TEXT, item_type TEXT NOT NULL, claim TEXT NOT NULL, source_section TEXT, source_status TEXT, epistemic_state TEXT, authority_scope TEXT, validity TEXT, confidence REAL, as_of TEXT, supersedes_item_id TEXT, created_at INTEGER, provenance TEXT, lifecycle TEXT DEFAULT 'ACTIVE', superseded_by TEXT, record_hash TEXT, seed_id TEXT, first_seed_version TEXT, last_seed_version TEXT, ${cap}, capture_backfilled INTEGER DEFAULT 0)`);
+    old.run(`CREATE TABLE wiz_ref_relations (relation_id TEXT PRIMARY KEY, from_item_id TEXT NOT NULL, to_item_id TEXT NOT NULL, relation_type TEXT NOT NULL, epistemic_status TEXT NOT NULL, source_id TEXT, scope TEXT, rationale TEXT, seed_id TEXT, created_at INTEGER, record_hash TEXT)`);
+    old.run(`CREATE VIRTUAL TABLE wiz_ref_items_fts USING fts5(item_id UNINDEXED, claim, project_id, item_type, tokenize='unicode61')`);
+    old.run(`INSERT INTO wiz_ref_sources(source_id,title,surface,source_kind,authority_class,revision) VALUES('fx:src:ver','[SYNTHETIC FIXTURE] v2 source','fixture','RESEARCH','RESEARCH_SYNTHESIS','A')`);
+    old.run(`INSERT INTO wiz_ref_items(item_id,source_id,item_type,claim,epistemic_state,lifecycle,source_title_at_capture) VALUES('fx:E','fx:src:ver','RESEARCH_RESULT','Synthetic evidence E','SOURCE_ASSERTION','ACTIVE','t'),('fx:X','fx:src:ver','HYPOTHESIS','A is UNKNOWN','SOURCE_ASSERTION','ACTIVE','t')`);
+    old.run(`INSERT INTO wiz_ref_items(item_id,source_id,item_type,claim,epistemic_state,lifecycle,superseded_by,source_title_at_capture) VALUES('fx:X@0123456789abcd','fx:src:ver','HYPOTHESIS','A was earlier OPEN','SOURCE_ASSERTION','SUPERSEDED','fx:X','t')`);
+    old.run(`INSERT INTO wiz_ref_relations(relation_id,from_item_id,to_item_id,relation_type,epistemic_status) VALUES('fx:R','fx:E','fx:X','SUPPORTS','SOURCE_ASSERTION'),('fx:Rdang','fx:E','fx:gone','RELATED_TO','SOURCE_ASSERTION')`);
+    const app = await bootApp(old.export());
+    const db = app.db;
+    assert.strictEqual(W.getMeta(db, 'schema_version'), '3');
+    const mig = JSON.parse(W.getMeta(db, 'migrated_from_schema_2'));
+    assert(mig.items_versioned === 3 && mig.relations_pinned === 2, JSON.stringify(mig));
+    assert.strictEqual(q1(db, "SELECT version_id FROM wiz_ref_items WHERE item_id='fx:X@0123456789abcd'"), 'fx:X@0123456789abcd');
+    assert.strictEqual(q1(db, "SELECT logical_item_id FROM wiz_ref_items WHERE item_id='fx:X@0123456789abcd'"), 'fx:X');
+    const xMig = W.trace(db, 'fx:X').version_id;
+    let R = W.resolveRelation(db, 'fx:R');
+    assert.strictEqual(R.to.version_id, xMig); assert.strictEqual(R.pin_backfilled, 1); assert.strictEqual(R.to.claim, 'A is UNKNOWN');
+    const D = W.resolveRelation(db, 'fx:Rdang'); assert(D.to.unresolved && D.to_version_id === null && D.pin_backfilled === 1);
+    const snap = fullSnap(db); W.initSchema(db); assert.strictEqual(fullSnap(db), snap, 'v3 migration not idempotent');
+    // after migration, revising X does not move the backfilled pin
+    await W.importJSONL(db, line({ source: Object.assign({}, VS, { revision: 'A' }), item: { item_id: 'fx:X', source_id: 'fx:src:ver', item_type: 'HYPOTHESIS', claim: 'A is SUPPORTED' } }));
+    R = W.resolveRelation(db, 'fx:R');
+    assert.strictEqual(R.to.version_id, xMig); assert.strictEqual(R.to.claim, 'A is UNKNOWN');
+    assert.deepStrictEqual(ids(W.trace(db, 'fx:X').relations.incoming), []);
+  });
+
+  await T('P2-h', '_wizSaveDBAsync verifies exact bytes + SHA-256 of the read-back and reports the hash (static)', async () => {
+    const fn = fnBody('_wizSaveDBAsync');
+    assert(/crypto\.subtle\.digest\('SHA-256'/.test(fn) && /sha256/.test(fn) && /read-back mismatch/.test(fn) && /for \(let i = 0; i < a\.length; i\+\+\) if \(a\[i\] !== b\[i\]\)/.test(fn), 'hash/byte verification missing');
   });
 
   const fail = results.filter(r => r[1] !== 'PASS');

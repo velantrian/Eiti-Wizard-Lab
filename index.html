@@ -1734,7 +1734,7 @@ main {
             <span>🧠 Admission review</span>
             <button onclick="wizAdmUiRender()" style="padding:4px 10px;border-radius:8px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);font-size:.78rem;cursor:pointer">↻</button>
           </div>
-          <p style="font-size:.78rem;color:var(--text-dim);margin-bottom:6px">Lab · REVIEW mode only · not canon · not an automatic memory writer. Paste an incoming memory passport (JSON); the controller finds related reference records and stages a proposal that waits for your decision. Nothing is written to reference or personal memory.</p>
+          <p style="font-size:.78rem;color:var(--text-dim);margin-bottom:6px">Lab · REVIEW mode only · not canon · not an automatic memory writer. Paste an incoming memory passport (JSON); the controller finds related reference records and stages a proposal that waits for your decision. Nothing is written to reference memory unless you click <b>Apply shown plan</b>, which executes exactly the shown write plan (after a stale-plan check) — Apply is not a USER_DECISION and never marks anything VERIFIED. Dismiss writes nothing. Personal memory is never touched.</p>
           <div id="wizAdmPending" style="font-size:.78rem;opacity:.8;margin-bottom:6px;white-space:pre-wrap">—</div>
           <textarea id="wizAdmIncoming" rows="6" placeholder='{"WHAT":"…","SOURCE":{"source_id":"…"},"WHO":"USER","WHEN":"YYYY-MM-DD","SCOPE":"demo-project-x","TYPE":"HYPOTHESIS","STATUS":"SOURCE_ASSERTION","PROVENANCE":{"method":"…"}}' style="width:100%;padding:6px 10px;border-radius:9px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.74rem;font-family:monospace;box-sizing:border-box"></textarea>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
@@ -1743,6 +1743,13 @@ main {
             <button id="wizAdmPrepareBtn" onclick="wizAdmUiPrepare(event)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);font-size:.78rem;cursor:pointer">Prepare review</button>
           </div>
           <pre id="wizAdmResult" style="white-space:pre-wrap;font-size:.72rem;line-height:1.4;max-height:360px;overflow-y:auto;margin-top:6px;color:var(--text-dim)"></pre>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">
+            <select id="wizAdmPendingSelect" onchange="wizAdmUiShow(this.value)" style="flex:1;min-width:160px;padding:5px 8px;border-radius:8px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.74rem"></select>
+            <input id="wizAdmDismissReason" placeholder="dismiss reason (optional)" style="flex:1;min-width:140px;padding:5px 8px;border-radius:8px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.74rem;box-sizing:border-box">
+            <button id="wizAdmApplyBtn" onclick="wizAdmUiApply(event)" title="Execute exactly the write plan shown above (not a USER_DECISION, not VERIFIED)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);font-size:.78rem;cursor:pointer">Apply shown plan</button>
+            <button id="wizAdmDismissBtn" onclick="wizAdmUiDismiss(event)" title="Close this review without writing reference memory" style="padding:5px 10px;border-radius:8px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);font-size:.78rem;cursor:pointer">Dismiss</button>
+          </div>
+          <pre id="wizAdmActionResult" style="white-space:pre-wrap;font-size:.72rem;line-height:1.4;max-height:240px;overflow-y:auto;margin-top:6px;color:var(--text-dim)"></pre>
         </div>
 
         <!-- Clear all -->

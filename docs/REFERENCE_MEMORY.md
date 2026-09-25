@@ -32,7 +32,7 @@ Personal memory (`wiz_facts`, `wiz_facts_fts`, `wiz_l2_digests`, `wiz_notes_fts`
 * can never become `Validated` through `mem_validate` (it only calls `wizMemSetState` → `UPDATE wiz_facts`; tested);
 * are never injected into the chat context automatically — retrieval is explicit only.
 
-## 2. Schema (schema_version 1)
+## 2. Schema (schema_version 2)
 
 ```sql
 wiz_ref_sources(source_id PK, title NOT NULL, surface NOT NULL, source_kind NOT NULL, authority_class,
@@ -41,9 +41,14 @@ wiz_ref_sources(source_id PK, title NOT NULL, surface NOT NULL, source_kind NOT 
 wiz_ref_items(item_id PK, source_id NOT NULL → wiz_ref_sources, project_id, item_type NOT NULL, claim NOT NULL,
               source_section, source_status, epistemic_state, authority_scope, validity, confidence, as_of,
               supersedes_item_id, created_at, provenance, lifecycle DEFAULT 'ACTIVE', superseded_by,
-              record_hash, seed_id, first_seed_version, last_seed_version)
+              record_hash, seed_id, first_seed_version, last_seed_version,
+              -- v2: capture provenance (snapshot of the source record when this item content was captured)
+              source_title_at_capture, source_surface_at_capture, source_kind_at_capture,
+              source_authority_class_at_capture, source_revision_at_capture, source_as_of_at_capture,
+              source_currentness_at_capture, source_content_hash_at_capture, capture_backfilled DEFAULT 0)
 wiz_ref_relations(relation_id PK, from_item_id NOT NULL, to_item_id NOT NULL, relation_type NOT NULL,
-                  epistemic_status NOT NULL, source_id, scope, rationale, seed_id, created_at)
+                  epistemic_status NOT NULL, source_id, scope, rationale, seed_id, created_at,
+                  record_hash)   -- v2
 wiz_ref_items_fts USING fts5(item_id UNINDEXED, claim, project_id, item_type, tokenize='unicode61')
 wiz_ref_meta(key PK, value)   -- schema_version, seed_id, seed_version, seed_as_of, seed_hash,
                               -- seed.<seed_id> (JSON), last_import_at
@@ -67,6 +72,26 @@ adds any missing columns to pre-existing `wiz_ref_*` tables with `ALTER TABLE �
 and writes `schema_version` into `wiz_ref_meta` if absent. It never touches personal-memory tables.
 Running it any number of times on an existing DB is a no-op (tested).
 
+v1 → v2 (audit revision 1): adds the `*_at_capture` columns and `capture_backfilled` on items and
+`record_hash` on relations. Existing items are **backfilled** with the source record as it is at migration
+time and marked `capture_backfilled=1` (retrieval shows “CAPTURE PROVENANCE BACKFILLED”); existing relations
+get their `record_hash`; items missing from the FTS index are indexed; `migrated_from_schema_1` is recorded in
+`wiz_ref_meta`.
+
+### Capture provenance (why option B)
+
+`wiz_ref_sources` keeps **one row per `source_id` = the current source record**. Each item stores a snapshot of
+the source identity it was captured from (`*_at_capture`). Retrieval uses the **capture** values as the item's
+source identity (title, surface, kind, authority, revision, as_of, currentness, content hash) — also for
+`is_implementation_evidence` and for the `authority_class` / `source_kind` / `surface` /
+`implementation_evidence_only` filters — and shows the current source record separately
+(`source_current_*`, “source (current record)” line) with a “SOURCE CHANGED SINCE CAPTURE” warning when they
+differ. So a newer source revision can never retroactively re-date or promote an older item. An item re-asserted
+with identical content keeps its original capture; a content change re-captures from the current record while the
+previous version is archived (`<item_id>@<hash>`, SUPERSEDED) with its own capture provenance.
+Option B was chosen over immutable `source_id@revision` rows (option A) because it is purely additive: `source_id`
+stays a stable key for items, relations, filters and exports, and no primary-key semantics change.
+
 ## 3. Import format (`wiz-ref-jsonl/1`)
 
 One JSON object per line:
@@ -83,6 +108,11 @@ See `reference-memory/velantrim_reference.private.template.jsonl` (placeholders 
 
 Importer rules:
 
+0. **Two-phase, all-or-nothing.** Phase 1 parses, normalises and validates the *whole* bundle read-only
+   (record validity, intra-bundle conflicts, relation endpoints, relation revisions against the DB). Only if
+   phase 1 finds **zero errors** does phase 2 write everything in one transaction (ROLLBACK on exception).
+   Invariant: `errors.length > 0 ⇒ committed === false` and the database is unchanged (tested with full
+   table hashes).
 1. **Idempotent.** Records are keyed by `source_id` / `item_id` / `relation_id`; identical content → *unchanged*.
    Importing the same bundle twice creates zero duplicates (tested).
 2. **Statuses preserved verbatim.** `source_status`, `epistemic_state`, `currentness`, `validity` are stored
@@ -102,6 +132,10 @@ Importer rules:
 5. **Guards.** `HUMAN_REFERENCE_ONLY` sources may only carry `HUMAN_LENS` items and `HUMAN_LENS` items require
    such a source; `BOOK_DONOR` sources must be `RESEARCH_DONOR`; unknown `item_type` / `source_kind` /
    `relation_type` are rejected. The whole import runs in one transaction.
+6. **Relations.** `record_hash` covers relation_type, from/to, epistemic_status, source_id, scope, rationale.
+   Same `relation_id` + same content → unchanged. Same `relation_id` + different content → **rejected**
+   (validation error → nothing is written); a changed relation must use a new `relation_id`. Both endpoints
+   must exist in the DB or in the same bundle; external/dangling references are rejected.
 
 ## 4. Retrieval (explicit only)
 
@@ -123,7 +157,7 @@ computed flags `is_implementation_evidence` (only `surface=github` + `IMPLEMENTA
 
 ```
 [REFERENCE MEMORY] demo-project-x / IMPLEMENTATION_FACT / OBSERVATION / source_status=OPEN · DRAFT / currentness=CURRENT
-source: [SYNTHETIC FIXTURE] … (fx:src:github-soul; github/IMPLEMENTATION; authority=IMPLEMENTATION_EVIDENCE; rev=abc1234)
+source (at capture): [SYNTHETIC FIXTURE] … (fx:src:github-soul; github/IMPLEMENTATION; authority=IMPLEMENTATION_EVIDENCE; rev=abc1234)
 as_of: 2026-09-25 · scope: demo-project-x branch feat/relations (unmerged)
 claim (source-bound, not verified truth): Fixture: PR #202 was OPEN/DRAFT at source snapshot.
 ⚠ CACHED STATE as-of 2026-09-25 — not live repo state; verify live on GitHub (IMPLEMENTED ≠ ACTIVATED)
@@ -132,6 +166,28 @@ claim (source-bound, not verified truth): Fixture: PR #202 was OPEN/DRAFT at sou
 
 `ref_search` never returns a bare claim. `mem_search` (personal) and `ref_search` (reference) query
 different tables and return disjoint datasets.
+
+## 4b. Persistence acknowledgement
+
+`_wizSaveDB()` (personal memory, unchanged) writes to IndexedDB fire-and-forget. Reference import / clear /
+restore use `_wizSaveDBAsync()` instead, which resolves only after the IndexedDB transaction's `oncomplete`
+and a read-back of the stored byte length, and rejects on `onerror` / `onabort` / `onblocked`.
+`wizRefImportJSONL()` returns `persisted: true` only after that promise resolved; the UI then shows
+`IMPORT_PERSISTED = TRUE … The local file can be deleted now` and sets `data-persisted="true"` on
+`#wizRefResult` and `window.WIZ_REF_IMPORT_PERSISTED = true`. On failure it shows
+`IMPORT_PERSISTED = FALSE … KEEP your local file`. A rejected (invalid) bundle writes nothing.
+
+Residual risk (pre-existing, not changed here): an older fire-and-forget `_wizSaveDB()` snapshot whose
+IndexedDB transaction is created *after* the acknowledged write could still overwrite it with an older export.
+This requires a personal-memory save issued before the import whose IndexedDB open is still pending; later
+personal saves export the current DB, which already contains the reference rows.
+
+## 4c. Service worker update strategy
+
+`sw.js` caches `wiz-ref-memory.js` as a static asset (cache-first). **Any change to `wiz-ref-memory.js` (or
+any other cached static asset) must bump `CACHE_NAME` in `sw.js`** (current: `eiti-wizard-lab-v1.8.9-refmem1`
+→ e.g. `…-refmem2`), otherwise installed clients keep the old file. The old cache is deleted on activate.
+A static test checks that the asset is listed and that `CACHE_NAME` differs from `main`.
 
 ## 5. Epistemic contract
 

@@ -19,7 +19,7 @@
 (function (root) {
   'use strict';
 
-  const SCHEMA_VERSION = '2'; // v2 (audit rev 1): capture provenance on items, record_hash on relations
+  const SCHEMA_VERSION = '3'; // v2: capture provenance, relation record_hash · v3: immutable item versions + pinned relation endpoints
   const FORMAT = 'wiz-ref-jsonl/1';
 
   const ENUMS = {
@@ -69,12 +69,17 @@
       // v2: snapshot of the source record at the moment this item content was captured
       // (a later source revision never rewrites an older item's provenance)
       ...CAPTURE_FIELDS.map(f => [f + '_at_capture', 'TEXT']), ['capture_backfilled', 'INTEGER DEFAULT 0'],
+      // v3: immutable version identity. version_id = '<logical_item_id>@<record_hash>'. The current row of a
+      // logical item has item_id = logical_item_id; archived versions have item_id = version_id.
+      ['logical_item_id', 'TEXT'], ['version_id', 'TEXT'],
     ],
     wiz_ref_relations: [
       ['relation_id', 'TEXT PRIMARY KEY'], ['from_item_id', 'TEXT NOT NULL'], ['to_item_id', 'TEXT NOT NULL'],
       ['relation_type', 'TEXT NOT NULL'], ['epistemic_status', 'TEXT NOT NULL'], ['source_id', 'TEXT'],
       ['scope', 'TEXT'], ['rationale', 'TEXT'], ['seed_id', 'TEXT'], ['created_at', 'INTEGER'],
       ['record_hash', 'TEXT'], // v2
+      // v3: relations point to IMMUTABLE item versions (pinned when the relation is first stored)
+      ['from_version_id', 'TEXT'], ['to_version_id', 'TEXT'], ['pin_backfilled', 'INTEGER DEFAULT 0'],
     ],
     wiz_ref_meta: [['key', 'TEXT PRIMARY KEY'], ['value', 'TEXT']],
   };
@@ -108,6 +113,9 @@
     db.run('CREATE INDEX IF NOT EXISTS wiz_ref_items_source ON wiz_ref_items(source_id)');
     db.run('CREATE INDEX IF NOT EXISTS wiz_ref_rel_from ON wiz_ref_relations(from_item_id)');
     db.run('CREATE INDEX IF NOT EXISTS wiz_ref_rel_to ON wiz_ref_relations(to_item_id)');
+    db.run('CREATE INDEX IF NOT EXISTS wiz_ref_items_version ON wiz_ref_items(version_id)');
+    db.run('CREATE INDEX IF NOT EXISTS wiz_ref_rel_from_v ON wiz_ref_relations(from_version_id)');
+    db.run('CREATE INDEX IF NOT EXISTS wiz_ref_rel_to_v ON wiz_ref_relations(to_version_id)');
     // v2 backfill for rows written before capture provenance existed: capture := the source
     // record as it is at migration time, explicitly marked capture_backfilled=1.
     db.run(`UPDATE wiz_ref_items SET ${CAPTURE_FIELDS.map(f => `${f}_at_capture=(SELECT s.${CAPTURE_MAP[f]} FROM wiz_ref_sources s WHERE s.source_id=wiz_ref_items.source_id)`).join(', ')},
@@ -120,15 +128,43 @@
             WHERE item_id NOT IN (SELECT item_id FROM wiz_ref_items_fts)`);
     const relNoHash = _rowsRaw(db, 'SELECT * FROM wiz_ref_relations WHERE record_hash IS NULL');
     for (const r of relNoHash) db.run('UPDATE wiz_ref_relations SET record_hash=? WHERE relation_id=?', [_recordHash(r, REL_CONTENT_FIELDS), r.relation_id]);
+    // v3 backfill (deterministic): every item row gets its immutable version id; archived rows
+    // ('<logical>@<14-hex>', SUPERSEDED) are their own version; then every relation endpoint is pinned to the
+    // version CURRENT AT MIGRATION TIME and marked pin_backfilled=1 (unresolvable endpoints stay NULL).
+    const noVer = _rowsRaw(db, 'SELECT * FROM wiz_ref_items WHERE version_id IS NULL');
+    for (const r of noVer) {
+      const m = /^(.*)@([0-9a-f]{14})$/.exec(r.item_id);
+      const archived = m && r.lifecycle === 'SUPERSEDED';
+      const h = r.record_hash || _recordHash(r, ITEM_CONTENT_FIELDS);
+      db.run('UPDATE wiz_ref_items SET logical_item_id=?, version_id=?, record_hash=COALESCE(record_hash,?) WHERE item_id=?',
+        [archived ? m[1] : r.item_id, archived ? r.item_id : r.item_id + '@' + h, h, r.item_id]);
+    }
+    const noPin = _rowsRaw(db, 'SELECT * FROM wiz_ref_relations WHERE from_version_id IS NULL AND to_version_id IS NULL AND COALESCE(pin_backfilled,0)=0');
+    for (const r of noPin) {
+      const pin = id => { const x = _getItemRowRaw(db, id); return x ? x.version_id : null; };
+      db.run('UPDATE wiz_ref_relations SET from_version_id=?, to_version_id=?, pin_backfilled=1 WHERE relation_id=?',
+        [pin(r.from_item_id), pin(r.to_item_id), r.relation_id]);
+    }
     const cur = getMeta(db, 'schema_version');
     if (cur == null) setMeta(db, 'schema_version', SCHEMA_VERSION);
     else if (Number(cur) < Number(SCHEMA_VERSION)) {
       setMeta(db, 'schema_version', SCHEMA_VERSION);
-      setMeta(db, 'migrated_from_schema_' + cur, JSON.stringify({ at: Date.now(), items_capture_backfilled: nBackfilled, relations_hashed: relNoHash.length }));
+      setMeta(db, 'migrated_from_schema_' + cur, JSON.stringify({ at: Date.now(), items_capture_backfilled: nBackfilled,
+        relations_hashed: relNoHash.length, items_versioned: noVer.length, relations_pinned: noPin.length }));
     }
     return getMeta(db, 'schema_version');
   }
 
+  function _getItemRowRaw(db, id) {
+    const st = db.prepare('SELECT * FROM wiz_ref_items WHERE item_id=?'); st.bind([id]);
+    const r = st.step() ? st.getAsObject() : null; st.free(); return r;
+  }
+  // an immutable version → the row that holds it (archived row preferred; identical content either way)
+  function _getVersionRow(db, versionId) {
+    if (!versionId) return null;
+    const st = db.prepare('SELECT * FROM wiz_ref_items WHERE version_id=? ORDER BY (item_id=version_id) DESC LIMIT 1'); st.bind([versionId]);
+    const r = st.step() ? st.getAsObject() : null; st.free(); return r;
+  }
   function _rowsRaw(db, sql, params) {
     const st = db.prepare(sql); st.bind(params || []);
     const out = []; while (st.step()) out.push(st.getAsObject()); st.free(); return out;
@@ -205,6 +241,7 @@
       capture: CAPTURE_FIELDS.some(f => it[f + '_at_capture'] != null)
         ? Object.fromEntries(CAPTURE_FIELDS.map(f => [f, _str(it[f + '_at_capture'])])) : null,
       capture_backfilled: it.capture_backfilled ? 1 : 0,
+      logical_item_id: _str(it.logical_item_id), version_id: _str(it.version_id),
     };
   }
   function _captureFromSource(src) {
@@ -251,10 +288,10 @@
     const r = st.step() ? st.getAsObject() : null; st.free(); return r;
   }
   function _insertRelation(db, rel, h, seedId, createdAt) {
-    db.run(`INSERT INTO wiz_ref_relations(relation_id,from_item_id,to_item_id,relation_type,epistemic_status,source_id,scope,rationale,seed_id,created_at,record_hash)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+    db.run(`INSERT INTO wiz_ref_relations(relation_id,from_item_id,to_item_id,relation_type,epistemic_status,source_id,scope,rationale,seed_id,created_at,record_hash,from_version_id,to_version_id,pin_backfilled)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [rel.relation_id, rel.from_item_id, rel.to_item_id, rel.relation_type, rel.epistemic_status, rel.source_id,
-        rel.scope, rel.rationale, seedId, createdAt, h]);
+        rel.scope, rel.rationale, seedId, createdAt, h, rel.from_version_id, rel.to_version_id, rel.pin_backfilled ? 1 : 0]);
   }
   function _markSuperseded(db, oldId, byId) {
     const row = _getItemRow(db, oldId);
@@ -337,9 +374,14 @@
           else if (_validateItem(it, srcRow, errs, warns, line)) {
             const h = _recordHash(it, ITEM_CONTENT_FIELDS);
             const prev = bItems.get(it.item_id);
-            if (prev && prev.h !== h) errs.push({ line, msg: `conflicting records for item ${it.item_id} within one bundle` });
+            // immutable version identity of this record: '<logical>@<content hash>'
+            const logical = it.logical_item_id || it.item_id;
+            const version = logical + '@' + h;
+            if (it.version_id && it.version_id !== version) errs.push({ line, msg: `item ${it.item_id}: version_id "${it.version_id}" does not match its content (expected ${version})` });
+            else if (prev && prev.h !== h) errs.push({ line, msg: `conflicting records for item ${it.item_id} within one bundle` });
             else if (!prev) {
               it.capture = it.capture || _captureFromSource(srcRow);
+              it.logical_item_id = logical; it.version_id = version;
               bItems.set(it.item_id, { it, h, line });
             }
           }
@@ -351,7 +393,10 @@
           relation_id: _str(r.relation_id), from_item_id: _str(r.from_item_id), to_item_id: _str(r.to_item_id),
           relation_type: _str(r.relation_type), epistemic_status: _str(r.epistemic_status) || 'SOURCE_ASSERTION',
           source_id: _str(r.source_id), scope: _str(r.scope), rationale: _str(r.rationale),
+          // optional explicit version pins (e.g. from an export); otherwise resolved below
+          from_version_id: _str(r.from_version_id), to_version_id: _str(r.to_version_id), pin_backfilled: r.pin_backfilled ? 1 : 0,
         };
+        rel.explicit_from = !!rel.from_version_id; rel.explicit_to = !!rel.to_version_id;
         if (!rel.from_item_id || !rel.to_item_id || !rel.relation_type) { errs.push({ line, msg: 'relation requires from_item_id,to_item_id,relation_type' }); continue; }
         if (!ENUMS.relation_type.includes(rel.relation_type)) { errs.push({ line, msg: 'unknown relation_type ' + rel.relation_type }); continue; }
         rel.relation_id = rel.relation_id || `rel:${rel.relation_type}:${rel.from_item_id}->${rel.to_item_id}`;
@@ -361,14 +406,34 @@
         if (!prev) bRels.set(rel.relation_id, { rel, h, line, raw: r });
       }
     }
-    // relation integrity: endpoints must exist (DB or same bundle); relation revisions are REJECTED
+    // relation integrity + VERSION PINNING.
+    // Endpoint expression: from_item_id/to_item_id name an item (logical id → the version current after this
+    // bundle's items are applied; an archived id '<logical>@<hash>' → exactly that version). Optional
+    // from_version_id/to_version_id pin an explicit version, which must exist in the DB or be produced by this bundle.
+    // Existing relation_id: same content → unchanged and KEEPS ITS ORIGINAL PINS (never rebound to a newer version);
+    // different content or different explicit pins → rejected.
+    const bundleVersions = new Set([...bItems.values()].map(x => x.it.version_id));
+    const resolveEnd = (ref) => {
+      if (bItems.has(ref)) return bItems.get(ref).it.version_id;
+      const row = _getItemRowRaw(db, ref);
+      return row ? (row.version_id || null) : null;
+    };
     for (const { rel, h, line } of bRels.values()) {
-      for (const end of ['from_item_id', 'to_item_id'])
-        if (!bItems.has(rel[end]) && !_getItemRow(db, rel[end]))
-          errs.push({ line, msg: `relation ${rel.relation_id}: ${end} "${rel[end]}" not found in DB or bundle (external references are not supported)` });
+      for (const [end, vkey, explicit] of [['from_item_id', 'from_version_id', rel.explicit_from], ['to_item_id', 'to_version_id', rel.explicit_to]]) {
+        if (explicit) {
+          if (!bundleVersions.has(rel[vkey]) && !_getVersionRow(db, rel[vkey]))
+            errs.push({ line, msg: `relation ${rel.relation_id}: ${vkey} "${rel[vkey]}" is not a known item version (DB or bundle)` });
+        } else {
+          const v = resolveEnd(rel[end]);
+          if (!v) errs.push({ line, msg: `relation ${rel.relation_id}: ${end} "${rel[end]}" not found in DB or bundle (external references are not supported)` });
+          rel[vkey] = v;
+        }
+      }
       const ex = _getRelRow(db, rel.relation_id);
       if (ex && ex.record_hash !== h)
         errs.push({ line, msg: `relation ${rel.relation_id} already exists with different content — relation revisions are rejected; use a new relation_id` });
+      else if (ex && ((rel.explicit_from && rel.from_version_id !== ex.from_version_id) || (rel.explicit_to && rel.to_version_id !== ex.to_version_id)))
+        errs.push({ line, msg: `relation ${rel.relation_id} already exists pinned to other item versions — re-pinning is rejected; use a new relation_id` });
     }
     if (errs.length) { res.ok = false; res.committed = false; return res; } // NO WRITE
 
@@ -416,15 +481,18 @@
         } else {
           // Same item_id, different content → explicit version lineage: keep the old
           // version as '<item_id>@<old_hash>' (SUPERSEDED, with its own capture provenance), then update.
-          const archId = it.item_id + '@' + ex.record_hash;
+          // the old row BECOMES the immutable archived version (item_id = its version_id); relations pinned to that
+          // version keep resolving to the OLD content — ITEM REVISION ≠ RETROACTIVE RELATION REBINDING.
+          const archId = ex.version_id || (it.item_id + '@' + ex.record_hash);
           if (!_getItemRow(db, archId))
-            _insertItemRow(db, Object.assign({}, ex, { item_id: archId, lifecycle: 'SUPERSEDED', superseded_by: it.item_id }));
+            _insertItemRow(db, Object.assign({}, ex, { item_id: archId, version_id: archId, logical_item_id: ex.logical_item_id || it.item_id,
+              lifecycle: 'SUPERSEDED', superseded_by: it.item_id }));
           const keepLifecycle = ex.lifecycle === 'SUPERSEDED' ? 'SUPERSEDED' : (it.lifecycle || 'ACTIVE'); // never un-supersede
           const cc = capCols(it);
           const sets = ITEM_CONTENT_FIELDS.map(f => f + '=?').concat(Object.keys(cc).map(k => k + '=?')).join(',');
-          db.run(`UPDATE wiz_ref_items SET ${sets},capture_backfilled=?,record_hash=?,lifecycle=?,last_seed_version=? WHERE item_id=?`,
+          db.run(`UPDATE wiz_ref_items SET ${sets},capture_backfilled=?,record_hash=?,lifecycle=?,last_seed_version=?,version_id=?,logical_item_id=? WHERE item_id=?`,
             [...ITEM_CONTENT_FIELDS.map(f => (it[f] === undefined ? null : it[f])), ...Object.values(cc),
-              it.capture_backfilled || 0, h, keepLifecycle, seedVersion, it.item_id]);
+              it.capture_backfilled || 0, h, keepLifecycle, seedVersion, it.version_id, it.logical_item_id, it.item_id]);
           db.run('DELETE FROM wiz_ref_items_fts WHERE item_id=?', [it.item_id]);
           db.run('INSERT INTO wiz_ref_items_fts(item_id,claim,project_id,item_type) VALUES(?,?,?,?)',
             [it.item_id, it.claim, it.project_id || '', it.item_type]);
@@ -447,7 +515,8 @@
         if (!_getItemRow(db, oldId)) { warns.push({ line: 0, msg: `supersedes_item_id ${oldId} not present (kept as reference only)` }); continue; }
         if (_markSuperseded(db, oldId, newId)) res.items_superseded++;
         const rel = { relation_id: `rel:auto:SUPERSEDES:${newId}->${oldId}`, from_item_id: newId, to_item_id: oldId,
-          relation_type: 'SUPERSEDES', epistemic_status: 'SOURCE_ASSERTION', source_id: srcId, scope: null, rationale: 'declared via supersedes_item_id' };
+          relation_type: 'SUPERSEDES', epistemic_status: 'SOURCE_ASSERTION', source_id: srcId, scope: null, rationale: 'declared via supersedes_item_id',
+          from_version_id: (_getItemRow(db, newId) || {}).version_id || null, to_version_id: (_getItemRow(db, oldId) || {}).version_id || null };
         if (!_getRelRow(db, rel.relation_id)) _insertRelation(db, rel, _recordHash(rel, REL_CONTENT_FIELDS), seedId, now);
       }
       // items of the same seed that this revision no longer contains: counted, NOT deleted
@@ -540,6 +609,7 @@
       `source (at capture): ${r.source_title} (${r.source_id}; ${r.source_surface}/${r.source_kind}; authority=${r.authority_class || 'UNSPECIFIED'}${r.source_revision ? '; rev=' + r.source_revision : ''})`,
       ...(revised ? [`source (current record): rev=${row.cur_revision || '—'} · as_of ${row.cur_as_of || '—'} · currentness=${row.cur_currentness || '—'} · authority=${row.cur_authority_class || '—'}`] : []),
       `as_of: ${asOf}${r.authority_scope ? ' · scope: ' + r.authority_scope : ''}${r.source_section ? ' · section: ' + r.source_section : ''}${r.provenance ? ' · provenance: ' + r.provenance : ''}`,
+      `version: ${row.version_id || '—'}${row.item_id === row.logical_item_id ? ' (current)' : ' (archived version of ' + (row.logical_item_id || '—') + ')'}`,
       `claim (source-bound, not verified truth): ${r.claim}`,
       ...caveats.map(c => '⚠ ' + c),
     ].join('\n');
@@ -549,6 +619,7 @@
       authority_scope: r.authority_scope, confidence: r.confidence, source_section: r.source_section,
       as_of: r.as_of, provenance: r.provenance, lifecycle: r.lifecycle, superseded_by: r.superseded_by,
       supersedes_item_id: r.supersedes_item_id,
+      logical_item_id: row.logical_item_id, version_id: row.version_id, is_current_version: row.item_id === row.logical_item_id,
       // source identity AT CAPTURE
       source_id: r.source_id, source_title: r.source_title, source_surface: r.source_surface,
       source_kind: r.source_kind, authority_class: r.authority_class, source_revision: r.source_revision,
@@ -631,23 +702,45 @@
     return { project_id: projectId, item_count: items.length, sources, by_type, items };
   }
 
-  function trace(db, itemId) {
+  // Resolve a relation's pinned endpoints to the immutable versions they refer to.
+  function _resolveRelation(db, r) {
+    const end = v => { const x = _getVersionRow(db, v);
+      return x ? { version_id: x.version_id, logical_item_id: x.logical_item_id, row_item_id: x.item_id, claim: x.claim,
+        lifecycle: x.lifecycle, is_current_version: x.item_id === x.logical_item_id } : { version_id: v, unresolved: true }; };
+    const o = Object.assign({}, r); delete o.record_hash;
+    return Object.assign(o, { from: end(r.from_version_id), to: end(r.to_version_id) });
+  }
+  function resolveRelation(db, relationId) {
     if (!db) return null;
     initSchema(db);
-    const row = _rows(db, JOIN_SQL + ' WHERE i.item_id=?', [itemId])[0];
+    const r = _getRelRow(db, relationId);
+    return r ? _resolveRelation(db, r) : null;
+  }
+
+  // trace(ref): ref = logical item id (→ its CURRENT version) or a version id / archived id (→ that version).
+  // Relations are those pinned to exactly this version — a current version never inherits relations of older versions.
+  function trace(db, ref) {
+    if (!db) return null;
+    initSchema(db);
+    const row = _rows(db, JOIN_SQL + ' WHERE i.item_id=?', [ref])[0]
+      || _rows(db, JOIN_SQL + ' WHERE i.version_id=? ORDER BY (i.item_id=i.version_id) DESC LIMIT 1', [ref])[0];
     if (!row) return null;
     const item = toBlock(row);
     const source = _getSource(db, row.source_id); if (source) delete source.record_hash;
-    const outgoing = _rows(db, 'SELECT * FROM wiz_ref_relations WHERE from_item_id=? ORDER BY relation_type, to_item_id', [itemId]);
-    const incoming = _rows(db, 'SELECT * FROM wiz_ref_relations WHERE to_item_id=? ORDER BY relation_type, from_item_id', [itemId]);
-    // supersession lineage in both directions (bounded)
+    const v = row.version_id;
+    const outgoing = _rows(db, 'SELECT * FROM wiz_ref_relations WHERE from_version_id=? ORDER BY relation_type, relation_id', [v]).map(r => _resolveRelation(db, r));
+    const incoming = _rows(db, 'SELECT * FROM wiz_ref_relations WHERE to_version_id=? ORDER BY relation_type, relation_id', [v]).map(r => _resolveRelation(db, r));
+    const unpinned = _rows(db, 'SELECT * FROM wiz_ref_relations WHERE (from_version_id IS NULL AND from_item_id=?) OR (to_version_id IS NULL AND to_item_id=?) ORDER BY relation_id', [row.item_id, row.item_id]).map(r => _resolveRelation(db, r));
+    // supersession lineage (logical) in both directions (bounded)
     const newer = [], older = [];
     let cur = row, guard = 0;
-    while (cur && cur.superseded_by && guard++ < 50) { cur = _getItemRow(db, cur.superseded_by); if (cur) newer.push({ item_id: cur.item_id, lifecycle: cur.lifecycle, as_of: cur.as_of }); }
-    const olderRows = _rows(db, 'SELECT item_id,lifecycle,as_of FROM wiz_ref_items WHERE superseded_by=? ORDER BY item_id', [itemId]);
-    older.push(...olderRows);
+    while (cur && cur.superseded_by && guard++ < 50) { cur = _getItemRow(db, cur.superseded_by); if (cur) newer.push({ item_id: cur.item_id, version_id: cur.version_id, lifecycle: cur.lifecycle, as_of: cur.as_of }); }
+    older.push(..._rows(db, 'SELECT item_id,version_id,lifecycle,as_of FROM wiz_ref_items WHERE superseded_by=? ORDER BY item_id', [row.item_id]));
+    const versions = _rows(db, 'SELECT item_id,version_id,lifecycle,as_of,claim FROM wiz_ref_items WHERE logical_item_id=? ORDER BY (item_id=logical_item_id), item_id', [row.logical_item_id || row.item_id])
+      .map(x => Object.assign(x, { is_current_version: x.item_id === (row.logical_item_id || row.item_id) }));
     // item.source_* = provenance AT CAPTURE; source_current = the source row as it is now
-    return { item, source_current: source, relations: { outgoing, incoming }, lineage: { newer, older } };
+    return { item, version_id: v, logical_item_id: row.logical_item_id, is_current_version: row.item_id === row.logical_item_id,
+      source_current: source, relations: { outgoing, incoming, unpinned }, versions, lineage: { newer, older } };
   }
 
   function stats(db) {
@@ -696,7 +789,7 @@
     return HEADER + '\n\n' + blocks.map(b => b.block).join('\n\n');
   }
 
-  const WizRef = { SCHEMA_VERSION, FORMAT, ENUMS, initSchema, importJSONL, search, getSource, project, trace,
+  const WizRef = { SCHEMA_VERSION, FORMAT, ENUMS, initSchema, importJSONL, search, getSource, project, trace, resolveRelation,
     stats, exportJSONL, clearAll, toBlock, formatBlocks, getMeta, sha256Hex, HEADER };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = WizRef;
@@ -723,7 +816,7 @@
       const r = await importJSONL(db(), text, opts);
       r.persisted = false;
       if (r.committed) {
-        try { const ack = await persist(); r.persisted = true; r.persisted_bytes = ack.bytes; }
+        try { const ack = await persist(); r.persisted = true; r.persisted_bytes = ack.bytes; r.persisted_sha256 = ack.sha256 || null; }
         catch (e) { r.persisted = false; r.persist_error = String((e && e.message) || e); }
       }
       return r;
@@ -760,7 +853,7 @@
         if (!r.committed) msg += '\nNOTHING WRITTEN — the whole bundle was rejected. Fix the errors and import again.';
         else if (r.persisted) {
           window.WIZ_REF_IMPORT_PERSISTED = true;
-          msg += `\nIMPORT_PERSISTED = TRUE — IndexedDB write confirmed (${r.persisted_bytes} bytes read back). The local file can be deleted now.`;
+          msg += `\nIMPORT_PERSISTED = TRUE — IndexedDB write confirmed (${r.persisted_bytes} bytes read back, byte-identical${r.persisted_sha256 ? `, sha256 ${r.persisted_sha256}` : ''}). The local file can be deleted now.`;
         } else msg += `\n⚠ IMPORT_PERSISTED = FALSE — IndexedDB write NOT confirmed (${r.persist_error}). KEEP your local file; a reload may lose this import.`;
         if (out) { out.textContent = msg; out.dataset.persisted = r.persisted ? 'true' : 'false'; }
         toast(!r.committed ? '⚠️ Reference import rejected' : r.persisted ? '📚 Reference import saved' : '⚠️ Reference import NOT persisted');

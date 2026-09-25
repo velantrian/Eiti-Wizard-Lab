@@ -5267,7 +5267,7 @@ const AGENT_TOOLS_SPEC = [
     parameters:{ type:'object', properties:{ source_id:{type:'string'}}, required:['source_id']}},
   { name:'ref_project', description:'List REFERENCE items for a project_id, grouped by item type, with provenance.',
     parameters:{ type:'object', properties:{ project_id:{type:'string'}}, required:['project_id']}},
-  { name:'ref_trace', description:'Trace a REFERENCE item: source, relations, supersession lineage.',
+  { name:'ref_trace', description:'Trace a REFERENCE item version: source, relations pinned to that exact version, supersession lineage. A logical item_id traces the current version; an archived id (item@hash) traces that old version.',
     parameters:{ type:'object', properties:{ item_id:{type:'string'}}, required:['item_id']}},
 
   { name:'task_add', description:'Добавить задачу в Доску. status: To Do|In Progress|Done|Blocked, priority: low|medium|high',
@@ -5649,9 +5649,19 @@ function _wizSaveDBAsync() {
           const rb = idb.transaction('kv', 'readonly').objectStore('kv').get('wiz_lab_sqlite_db');
           rb.onsuccess = () => {
             idb.close();
-            const n = rb.result && rb.result.byteLength;
-            n === buf.byteLength ? resolve({ bytes: n, verified: true })
-                                 : reject(new Error('IndexedDB read-back mismatch'));
+            // Exact verification: byte-for-byte equality AND SHA-256(exported) === SHA-256(read-back).
+            const res = rb.result;
+            const a = new Uint8Array(buf);
+            const b = res ? new Uint8Array(res.buffer || res, res.byteOffset || 0, res.byteLength) : null;
+            if (!b || b.length !== a.length) return reject(new Error('IndexedDB read-back mismatch (length)'));
+            for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return reject(new Error('IndexedDB read-back mismatch (bytes differ at offset ' + i + ')'));
+            const hex = d => Array.from(new Uint8Array(d), x => x.toString(16).padStart(2, '0')).join('');
+            if (!(window.crypto && crypto.subtle)) return resolve({ bytes: a.length, sha256: null, verified: true, method: 'byte-equality' });
+            Promise.all([crypto.subtle.digest('SHA-256', a), crypto.subtle.digest('SHA-256', b)]).then(([h1, h2]) => {
+              const s1 = hex(h1), s2 = hex(h2);
+              s1 === s2 ? resolve({ bytes: a.length, sha256: s1, verified: true, method: 'byte-equality+sha256' })
+                        : reject(new Error('IndexedDB read-back mismatch (sha256)'));
+            }, reject);
           };
           rb.onerror = () => { idb.close(); reject(rb.error || new Error('IndexedDB read-back failed')); };
         } catch(err) { idb.close(); reject(err); }
@@ -6099,10 +6109,13 @@ async function executeAgentTool(name, args) {
         }
         const t = W.trace(db, String(args.item_id||''));
         if (!t) return `Reference item not found: "${args.item_id}"`;
-        const rel = [...t.relations.outgoing.map(r => `→ ${r.relation_type} ${r.to_item_id} [${r.epistemic_status}]`),
-                     ...t.relations.incoming.map(r => `← ${r.relation_type} from ${r.from_item_id} [${r.epistemic_status}]`)];
+        // Relations are pinned to immutable item versions: show the pinned version + the claim it pins.
+        const pin = e => e && !e.unresolved ? `${e.version_id}${e.is_current_version ? ' (current)' : ' (archived)'}: "${String(e.claim||'').slice(0,80)}"` : 'unresolved';
+        const rel = [...t.relations.outgoing.map(r => `→ ${r.relation_type} ${r.to_item_id} @ ${pin(r.to)} [${r.epistemic_status}]`),
+                     ...t.relations.incoming.map(r => `← ${r.relation_type} from ${r.from_item_id} @ ${pin(r.from)} [${r.epistemic_status}]`),
+                     ...t.relations.unpinned.map(r => `? ${r.relation_type} ${r.from_item_id} → ${r.to_item_id} (unpinned) [${r.epistemic_status}]`)];
         const sc = t.source_current || {};
-        return `${t.item.block}\ncurrent source record: rev=${sc.revision||'—'} · as_of ${sc.as_of||'—'} · currentness=${sc.currentness||'—'}${t.item.source_changed_since_capture ? ' (DIFFERS from capture)' : ''}\nrelations:\n${rel.join('\n') || '(none)'}\nlineage: newer=[${t.lineage.newer.map(x=>x.item_id).join(', ')}] older=[${t.lineage.older.map(x=>x.item_id).join(', ')}]`;
+        return `${t.item.block}\ntraced version: ${t.version_id}${t.is_current_version ? ' (current)' : ` (archived; current = ${t.logical_item_id})`} · versions=[${t.versions.map(v=>v.version_id).join(', ')}]\ncurrent source record: rev=${sc.revision||'—'} · as_of ${sc.as_of||'—'} · currentness=${sc.currentness||'—'}${t.item.source_changed_since_capture ? ' (DIFFERS from capture)' : ''}\nrelations:\n${rel.join('\n') || '(none)'}\nlineage: newer=[${t.lineage.newer.map(x=>x.item_id).join(', ')}] older=[${t.lineage.older.map(x=>x.item_id).join(', ')}]`;
       }
 
       case 'task_add': {

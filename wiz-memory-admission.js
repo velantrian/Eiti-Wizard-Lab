@@ -195,22 +195,38 @@
     return { errors, warnings, inc };
   }
 
-  // ── trusted caller context (audit rev 1, P1-3) ──
-  // Authority can never come from the incoming JSON. A trusted caller context is an unforgeable token minted
-  // inside this module: in the browser ONLY from a genuine user click on the Prepare button (Event.isTrusted,
-  // brand-checked), in a non-DOM host (node tests / future host integration) via hostCallerContext(). Any other
-  // opts.caller value (plain object, string, token from elsewhere) is ignored → UNTRUSTED. Default = UNTRUSTED.
+  // ── caller context: semantic AUTHORITY vs. user INTERACTION (audit rev 1 P1-3, audit rev 2 P1-3b) ──
+  //   USER_INTERACTION ≠ USER_AUTHORITY · PREPARE_REVIEW ≠ CONFIRM_EQUIVALENCE ≠ AUTHORIZE_STATUS_CHANGE
+  // Two structurally separate, unforgeable token kinds, each in its own module-private WeakSet:
+  //  • AUTHORITY tokens (_authTokens, passed as opts.caller): the only thing trustedAs() accepts. Minted ONLY by
+  //    hostCallerContext(), which exists ONLY in a non-DOM host (node tests / a future host integration).
+  //    The module does NOT authenticate that host: code able to call hostCallerContext('USER') must already be
+  //    trusted, and a future real host owns the authority boundary. Future trusted USER authority may come only
+  //    from (1) a separately verified user-authored event supplied by the host, or (2) a dedicated explicit
+  //    confirmation action whose semantics name exactly what is confirmed. Neither exists in step 1.
+  //  • INTERACTION tokens (_interactionTokens, passed as opts.interaction): audit/UI only — "a user clicked
+  //    Prepare review". Minted by the browser glue from a genuine click. Never in _authTokens, never read by
+  //    trustedAs(); passing one as opts.caller is ignored like any other untrusted value.
+  // Authority never comes from the incoming JSON. Default = UNTRUSTED, no interaction. In the browser there is NO
+  // path that yields a trusted authority token.
   const TRUSTED_CALLER_KINDS = Object.freeze(['USER', 'EXTERNAL_SYSTEM']);
-  const _tokens = new WeakSet();
-  function _mintCaller(kind, via) {
+  const INTERACTION_KINDS = Object.freeze(['USER_INTERACTION']);
+  const _authTokens = new WeakSet();
+  const _interactionTokens = new WeakSet();
+  function _mintAuthority(kind, via) {
     if (!TRUSTED_CALLER_KINDS.includes(kind)) throw new Error('caller kind must be one of ' + TRUSTED_CALLER_KINDS.join('/'));
-    const t = Object.freeze({ kind, via: String(via || 'host') }); _tokens.add(t); return t;
+    const t = Object.freeze({ kind, via: String(via || 'host') }); _authTokens.add(t); return t;
+  }
+  function _mintInteraction(via) { // NOT authority: no `kind` field, never added to _authTokens
+    const t = Object.freeze({ interaction: 'USER_INTERACTION', via: String(via || 'unknown') }); _interactionTokens.add(t); return t;
   }
   function callerOf(opts) {
-    const c = opts && opts.caller;
-    if (c && typeof c === 'object' && _tokens.has(c)) return { kind: c.kind, via: c.via, trusted: true };
-    return { kind: 'UNTRUSTED', via: c === undefined || c === null ? 'none' : 'unverified caller value ignored', trusted: false };
+    const c = opts && opts.caller, i = opts && opts.interaction;
+    const interaction = i && typeof i === 'object' && _interactionTokens.has(i) ? { interaction: 'USER_INTERACTION', interaction_via: i.via } : { interaction: 'NONE', interaction_via: null };
+    if (c && typeof c === 'object' && _authTokens.has(c)) return Object.assign({ kind: c.kind, via: c.via, trusted: true }, interaction);
+    return Object.assign({ kind: 'UNTRUSTED', via: c === undefined || c === null ? 'none' : 'unverified caller value ignored', trusted: false }, interaction);
   }
+  const callerText = c => `${c.kind}${c.trusted ? '' : ', untrusted'}${c.interaction === 'USER_INTERACTION' ? '; USER_INTERACTION present — user interaction ≠ user authority' : ''}`;
 
   // ── read-only retrieval (own SELECT-only SQL; similarity only RANKS) ──
   const CAND_COLS = `i.item_id, i.logical_item_id, i.version_id, i.claim, i.item_type, i.epistemic_state, i.source_status,
@@ -330,7 +346,7 @@
     const st = inc.STATUS.toUpperCase();
     if (VERIFIED_LIKE.includes(st)) { hard.push('CLAIM WITHOUT SOURCE ↛ VERIFIED / USER SAID X ≠ X IS TRUE'); warnings.push(`HARD_RULE_BLOCKED: incoming STATUS "${inc.STATUS}" is VERIFIED-like; admission never admits a claim as verified`); return res('UNCERTAIN', 'incoming asserts a VERIFIED-like status; blocked by hard rule — human review required'); }
     if (st === 'USER_DECISION' && isModel(inc.WHO)) { hard.push('MODEL_PROPOSAL ↛ USER_DECISION'); warnings.push('HARD_RULE_BLOCKED: model-originated incoming cannot carry STATUS USER_DECISION'); return res('UNCERTAIN', 'model output declared as USER_DECISION; blocked by hard rule'); }
-    if (st === 'USER_DECISION' && !trustedAs('USER')) { hard.push('LLM OUTPUT ≠ MEMORY DECISION'); warnings.push(`HARD_RULE_BLOCKED: STATUS USER_DECISION requires a trusted USER caller context (caller: ${caller.kind})`); return res('UNCERTAIN', 'STATUS USER_DECISION claimed without trusted USER caller context; the string in the passport is not proof'); }
+    if (st === 'USER_DECISION' && !trustedAs('USER')) { hard.push('LLM OUTPUT ≠ MEMORY DECISION'); warnings.push(`HARD_RULE_BLOCKED: STATUS USER_DECISION requires a trusted USER caller context (caller: ${callerText(caller)})`); return res('UNCERTAIN', 'STATUS USER_DECISION claimed without trusted USER caller context; the string in the passport is not proof'); }
     if (st === 'PROD_AUTH' && inc.TYPE === 'RESEARCH_RESULT') { hard.push('RESEARCH_RESULT ↛ PROD_AUTH'); return res('UNCERTAIN', 'RESEARCH_RESULT cannot carry PROD_AUTH; blocked by hard rule'); }
 
     // 3) deterministic DUPLICATE (hard identity only — never similarity, never identical text alone)
@@ -342,7 +358,7 @@
       const aff = [ref(v)];
       if (!EQUIVALENCE_DECLARERS.includes(by) || isModel(eq.declared_by) || !trustedAs(by)) {
         hard.push('LLM OUTPUT ≠ MEMORY DECISION');
-        warnings.push(`EQUIVALENT_TO declared_by "${eq.declared_by}" not accepted: requires declared_by ∈ ${EQUIVALENCE_DECLARERS.join('/')} with a matching TRUSTED caller context (caller: ${caller.kind}${caller.trusted ? '' : ', untrusted'}) and a non-model WHO (WHO: ${inc.WHO})`);
+        warnings.push(`EQUIVALENT_TO declared_by "${eq.declared_by}" not accepted: requires declared_by ∈ ${EQUIVALENCE_DECLARERS.join('/')} with a matching TRUSTED caller context (caller: ${callerText(caller)}) and a non-model WHO (WHO: ${inc.WHO})`);
         return res('UNCERTAIN', 'declared equivalence is not backed by a trusted caller context — the passport cannot authorise itself; human review required', { affected: aff });
       }
       if (!_s(eq.basis)) { warnings.push('EQUIVALENT_TO without basis'); return res('UNCERTAIN', 'declared equivalence without basis — human review required', { affected: aff }); }
@@ -388,7 +404,7 @@
       const auth = _s(sc.authority).toUpperCase();
       if (!TRUSTED_CALLER_KINDS.includes(auth) || !trustedAs(auth)) {
         hard.push('LLM OUTPUT ≠ MEMORY DECISION');
-        warnings.push(`AUTHORITY_NOT_PROVEN: authority "${sc.authority}" in the passport is not backed by a matching trusted caller context (caller: ${caller.kind}${caller.trusted ? '' : ', untrusted'}; WHO: ${inc.WHO})`);
+        warnings.push(`AUTHORITY_NOT_PROVEN: authority "${sc.authority}" in the passport is not backed by a matching trusted caller context (caller: ${callerText(caller)}; WHO: ${inc.WHO})`);
         return res('UNCERTAIN', `status change ${from} → ${to} claims authority "${sc.authority}" without trusted caller context — not accepted as authority; human review required`, { affected: aff });
       }
       return res('STATUS_CHANGE', `explicit status change request ${from} → ${to} on exact version ${v.version_id} (authority: ${auth}, proven by trusted caller context via ${caller.via}; rationale: ${_s(sc.rationale)})`, {
@@ -528,7 +544,8 @@
       `PROPOSED OUTCOME: ${p.proposed_outcome}   (basis: ${p.decision_basis})`,
       `REASON: ${p.reason}`,
       `INCOMING: ${p.incoming.WHAT}\n  type=${p.incoming.TYPE} · status=${p.incoming.STATUS} · scope=${p.incoming.SCOPE} · who=${p.incoming.WHO} · when=${p.incoming.WHEN}`,
-      `CALLER CONTEXT: ${p.caller ? p.caller.kind + (p.caller.trusted ? ' (trusted, via ' + p.caller.via + ')' : ' (untrusted — passport cannot authorise itself)') : '—'}`,
+      `CALLER CONTEXT: ${!p.caller ? '—' : (p.caller.interaction === 'USER_INTERACTION' ? 'USER_INTERACTION (review initiated by user click; NOT semantic authority) · ' : '')
+        + 'semantic authority: ' + (p.caller.trusted ? p.caller.kind + ' (trusted host context via ' + p.caller.via + '; the module does not authenticate the host)' : 'NONE (untrusted — neither the passport nor a UI click can authorise)')}`,
       `REFERENCE MEMORY: ${p.reference_memory ? p.reference_memory.state + ' · read-only' + (p.reference_memory.issues.length ? ' · ' + p.reference_memory.issues.join('; ') : '') : '—'}`,
       `PROVENANCE: ${j(p.provenance)}`,
       `CANDIDATES (${p.candidate_matches.length}; similarity ranks only):`,
@@ -545,12 +562,16 @@
 
   const IS_DOM = typeof window !== 'undefined' && typeof document !== 'undefined' && root === window;
   const api = { VERSION, ADMISSION_MODE, OUTCOMES, REVIEW_STATES, PASSPORT_FIELDS, REQUIRED_FIELDS, TYPED_INPUTS,
-    RELATED_ITEM_RELATION_TYPES, EVIDENCE_DIRECTIONS, VERIFIED_LIKE, FORBIDDEN_TRANSITIONS, EQUIVALENCE_DECLARERS, TRUSTED_CALLER_KINDS,
+    RELATED_ITEM_RELATION_TYPES, EVIDENCE_DIRECTIONS, VERIFIED_LIKE, FORBIDDEN_TRANSITIONS, EQUIVALENCE_DECLARERS, TRUSTED_CALLER_KINDS, INTERACTION_KINDS,
     DUPLICATE_MATCH_FIELDS, REF_SCHEMA_VERSION, TABLE, DDL, DDL_INDEX,
     initSchema, normalizeIncoming, prepare, getReview, listPending, refFingerprint, refSnapshot, refReadiness, formatPacket };
-  // Non-DOM host only (node tests / a future host integration): mint a trusted caller context. NOT exported in the
-  // browser — there the only trusted context is a genuine user click on the Prepare button (see glue below).
-  if (!IS_DOM) api.hostCallerContext = kind => _mintCaller(_s(kind).toUpperCase(), 'host');
+  // Non-DOM host seam only (node tests / a future host integration). NOT exported in the browser. The module does
+  // NOT authenticate the host: any code that can call hostCallerContext('USER') must already be trusted; a real
+  // host owns the authority boundary (see the caller-context comment above and docs §5a).
+  if (!IS_DOM) {
+    api.hostCallerContext = kind => _mintAuthority(_s(kind).toUpperCase(), 'host');
+    api.hostInteractionContext = () => _mintInteraction('host'); // test seam: interaction ≠ authority
+  }
   Object.freeze(api);
 
   // ── Browser glue (explicit, user-initiated only; no agent tool, no context injection) ──
@@ -570,24 +591,25 @@
       catch (e) { r.persisted = false; r.persist_error = String((e && e.message) || e); }
       return r;
     };
-    // Script-callable wrapper: ALWAYS untrusted (any caller value passed in is dropped).
+    // Script-callable wrapper: ALWAYS untrusted, no interaction (any caller / interaction value passed in is dropped).
     window.wizAdmissionPrepare = async (incoming, opts) => {
-      const o = Object.assign({}, opts || {}); delete o.caller;
+      const o = Object.assign({}, opts || {}); delete o.caller; delete o.interaction;
       return prepareAndPersist(incoming, o);
     };
-    // Trusted USER context only from a GENUINE user click on #wizAdmPrepareBtn. Brand-checked getters captured at
-    // load time: a plain object {isTrusted:true} or a script-dispatched event (isTrusted=false) never qualifies.
+    // USER_INTERACTION context (NOT authority) only from a GENUINE user click on #wizAdmPrepareBtn. Brand-checked
+    // getters captured at load time: a plain object {isTrusted:true} or a script-dispatched event never qualifies.
     const EP = typeof Event !== 'undefined' ? Event.prototype : null;
     const gType = EP && Object.getOwnPropertyDescriptor(EP, 'type').get;
     const gTarget = EP && Object.getOwnPropertyDescriptor(EP, 'target').get;
     let gTrusted = null;
     try { gTrusted = Object.getOwnPropertyDescriptor(new Event('x'), 'isTrusted').get; } catch (e) { gTrusted = null; }
-    const userClickCaller = ev => {
+    // A genuine click yields ONLY a USER_INTERACTION token (audit/UI), never semantic authority (P1-3b).
+    const userClickInteraction = ev => {
       try {
         if (!gTrusted || gTrusted.call(ev) !== true || gType.call(ev) !== 'click') return null;
         const t = gTarget.call(ev); const btn = document.getElementById('wizAdmPrepareBtn');
         if (!btn || !(t === btn || (t && typeof btn.contains === 'function' && btn.contains(t)))) return null;
-        return _mintCaller('USER', 'ui-click:#wizAdmPrepareBtn');
+        return _mintInteraction('ui-click:#wizAdmPrepareBtn');
       } catch (e) { return null; } // brand check failed → not a real Event
     };
     window.wizAdmissionGetReview = id => getReview(db(), id);
@@ -607,14 +629,15 @@
     };
     window.wizAdmUiPrepare = async (ev) => {
       const out = $('wizAdmResult'); if (!out) return;
-      const caller = userClickCaller(ev);
+      const interaction = userClickInteraction(ev);
       out.dataset.state = 'pending'; out.dataset.persisted = 'false'; out.dataset.outcome = '';
       let inc;
       try { inc = JSON.parse(($('wizAdmIncoming') || {}).value || ''); } catch (e) { out.textContent = '❌ incoming is not valid JSON: ' + e.message; out.dataset.state = 'done'; return; }
       const scopeTxt = (($('wizAdmScope') || {}).value || '').trim();
       const opts = scopeTxt ? { review_scope: { project_ids: scopeTxt.split(',').map(s => s.trim()).filter(Boolean) } } : {};
-      if (caller) opts.caller = caller;
-      out.dataset.caller = caller ? 'USER' : 'UNTRUSTED';
+      if (interaction) opts.interaction = interaction; // audit/UI only — no opts.caller is ever set in the browser
+      out.dataset.interaction = interaction ? 'USER_INTERACTION' : 'NONE';
+      out.dataset.caller = 'UNTRUSTED'; // semantic authority: the browser has no path to a trusted authority token
       try {
         const r = await prepareAndPersist(inc, opts);
         if (!r.ok) out.textContent = '❌ passport rejected — nothing staged:\n' + r.errors.map(e => '  • ' + e).join('\n');

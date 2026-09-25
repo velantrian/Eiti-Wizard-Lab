@@ -1,5 +1,5 @@
 // sw.js — Eiti Wizard Service Worker v1.8.9
-const CACHE_NAME = 'eiti-wizard-lab-v1.8.9-admission2'; // bump on every change to a cached static asset
+const CACHE_NAME = 'eiti-wizard-lab-v1.8.9-admission3'; // bump on every change to a cached static asset
 const BASE_PATH = '/Eiti-Wizard-Lab';
 
 const STATIC_ASSETS = [

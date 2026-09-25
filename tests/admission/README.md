@@ -5,8 +5,10 @@ All fixtures in `fixtures/` are **synthetic** (`[SYNTHETIC FIXTURE] …`, surfac
 
 * `fixtures/synthetic.reference-base.fixture.jsonl` — a small Reference Memory bundle (imported through
   `WizRef.importJSONL` as test setup).
-* `fixtures/synthetic.incoming.fixture.json` — incoming memory passports (valid, similar, exact duplicate,
-  out of scope, ambiguous).
+* `fixtures/synthetic.duplicate-target.fixture.jsonl` — one synthetic item with capture provenance
+  (source revision/as_of, provenance JSON) used as the DUPLICATE identity target (audit rev 1).
+* `fixtures/synthetic.incoming.fixture.json` — incoming memory passports (valid, similar, exact duplicate of the
+  duplicate target, out of scope, ambiguous).
 
 ## Commands (from the repo root)
 
@@ -28,15 +30,24 @@ Same tested environment as `tests/refmem/README.md` (Node 20, puppeteer-core 23.
 
 DB suite (`db.test.cjs`, real modules + memory block from `index.html` on the repo sql-wasm):
 `enum` (exactly 8 frozen outcomes = staging CHECK; REVIEW only; no apply/dismiss) · `zw-static` (no wiz_ref
-write statement, only WizRef.search/trace/sha256Hex used) · `schema` (additive migration of a DB created by main,
-idempotent, CHECK constraints) · **A1** (valid prepare: independent wiz_ref dump + fingerprint unchanged,
-AWAITING_REVIEW) · **A2** (similar ≠ duplicate → UNCERTAIN) · **A3** (exact identity/content → DUPLICATE; declared
-equivalence by USER → DUPLICATE, by MODEL → not; *apply half deferred to step 2*) · **A10** (scope →
-OUT_OF_SCOPE) · **A11** (ambiguous candidates → UNCERTAIN, nothing added) · `passport` (invalid/non-REVIEW → nothing
-staged, DB byte-identical) · `HR` (hard rules block) · `WP` (declarative write plans) · `iso` (staging invisible to
-ref_search/mem_search, wiz_facts unchanged) · `persist` (staged review survives save → reload) · `ui/sw`.
+write statement; no call of ANY WizRef function that takes a db — they all reach `WizRef.initSchema`; `db.run`
+whitelist) · `zw-trace` (runtime: all SQL during prepare is SELECT/PRAGMA/savepoint except the staging INSERT;
+WizRef db functions trapped) · `ro-legacy` (P1-1a: v2 DB unchanged incl. schema_version/pins/FTS; UNCERTAIN +
+needs-migration warning) · `ro-fts` (P1-1b: missing FTS row not repaired) · `ro-inject` (P1-1c: injected write →
+throws, no staged row, DB unchanged) · `schema` (additive migration of a DB created by main, idempotent, CHECK
+constraints) · **A1** (valid prepare: independent wiz_ref dump + fingerprint unchanged, AWAITING_REVIEW) · **A2**
+(similar ≠ duplicate → UNCERTAIN) · **A3** (P1-2: exact ITEM_ID + compatible content → DUPLICATE; identical text
+without ITEM_ID → UNCERTAIN; differing WHEN / PROVENANCE / source revision / as_of / content_hash / source / status
+→ not DUPLICATE; *apply half deferred to step 2*) · `P1-3` (authority spoof: declared_by / authority need a
+matching trusted caller context and non-model WHO) · **A10** (scope → OUT_OF_SCOPE) · **A11** (ambiguous
+candidates → UNCERTAIN, nothing added) · `passport` (invalid/non-REVIEW → nothing staged, DB byte-identical) ·
+`HR` (hard rules block) · `WP` (declarative write plans; random, non-content-derived new-item id; existing ITEM_ID
++ ADD_ITEM → UNCERTAIN) · `iso` (staging invisible to ref_search/mem_search, wiz_facts unchanged) · `persist`
+(staged review survives save → reload) · `noref` · `ui/sw` (asset cached, CACHE_NAME bumped, button passes event).
 
-Browser suite (`browser.test.mjs`): **B1** boot (0 new page errors vs main, REVIEW-only API) · **B2** UI Prepare →
-packet (UNCERTAIN, AWAITING_REVIEW, write plan), verified persist, wiz_ref_* + personal memory unchanged,
-independent IndexedDB read-back · **B3** reload → pending review present, no ref item, Reference UI + ref_search +
-mem_add/mem_search work, no leak · **B4** invalid passport rejected; no Apply/Dismiss/Auto-approve controls.
+Browser suite (`browser.test.mjs`): **B1** boot (0 new page errors vs main, REVIEW-only API) · **B2** genuine UI
+activation of Prepare → trusted USER context, packet (UNCERTAIN, AWAITING_REVIEW, write plan), verified persist,
+wiz_ref_* + personal memory unchanged, independent IndexedDB read-back · **B3** reload → pending review present,
+no ref item, Reference UI + ref_search + mem_add/mem_search work, no leak · **B4** invalid passport rejected; no
+Apply/Dismiss/Auto-approve controls · **B5** (P1-3) script call / forged event / dispatched click / wrapper with
+caller → UNTRUSTED → not DUPLICATE; genuine activation → DUPLICATE; `hostCallerContext` absent in the browser.

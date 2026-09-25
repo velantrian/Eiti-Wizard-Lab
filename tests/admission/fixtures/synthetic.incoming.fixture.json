@@ -1,5 +1,5 @@
 {
- "_note": "SYNTHETIC TEST FIXTURE — incoming memory passports for admission review tests",
+ "_note": "SYNTHETIC TEST FIXTURE — incoming memory passports for admission review tests (exact_duplicate targets synthetic.duplicate-target.fixture.jsonl)",
  "valid_new": {
   "SOURCE": {
    "source_id": "fx:adm:src-b",
@@ -36,21 +36,23 @@
  },
  "exact_duplicate": {
   "SOURCE": {
-   "source_id": "fx:adm:src-a",
-   "title": "[SYNTHETIC FIXTURE] admission reference base (synthetic)",
-   "surface": "fixture"
+   "source_id": "fx:adm:src-d",
+   "title": "[SYNTHETIC FIXTURE] duplicate-target source (synthetic)",
+   "surface": "fixture",
+   "revision": "fx-adm-rev-7",
+   "as_of": "2026-09-20"
   },
   "WHO": "USER",
-  "WHEN": "2026-09-25",
+  "WHEN": "2026-09-20",
   "SCOPE": "demo-project-adm",
   "TYPE": "HYPOTHESIS",
   "STATUS": "SOURCE_ASSERTION",
   "PROVENANCE": {
-   "method": "synthetic test fixture",
-   "captured_by": "test-suite"
+   "captured_by": "test-suite",
+   "method": "synthetic test fixture"
   },
-  "WHAT": "[SYNTHETIC FIXTURE]  The demo cache layer reduces cold start latency   of the demo widget.",
-  "ITEM_ID": "fx:adm:cache-cold"
+  "WHAT": "[SYNTHETIC FIXTURE]  The demo importer skips   empty synthetic rows.",
+  "ITEM_ID": "fx:adm:dup-target"
  },
  "out_of_scope": {
   "SOURCE": {

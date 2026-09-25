@@ -62,6 +62,13 @@ const IDB_COUNTS = async () => {
   d.close(); return out;
 };
 
+// real user activation of the Prepare button: focus + CDP key press (Chrome synthesises a TRUSTED click)
+async function userActivatePrepare(page) {
+  await page.evaluate(() => { document.getElementById('wizAdmResult').dataset.state = 'idle'; });
+  await page.focus('#wizAdmPrepareBtn');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.getElementById('wizAdmResult').dataset.state === 'done', { timeout: 15000 });
+}
 const PORT = Number(process.env.ADM_PORT || 18801);
 const srv = serve(ROOT, PORT);
 const mainSrv = process.env.MAIN_ROOT ? serve(path.resolve(process.env.MAIN_ROOT), PORT + 1) : null;
@@ -102,10 +109,11 @@ try {
     await P.page.evaluate(() => { switchPanel('memory'); });
     await P.page.waitForSelector('#wizAdmCard #wizAdmIncoming', { visible: true, timeout: 10000 });
     await P.page.evaluate(t => { document.getElementById('wizAdmIncoming').value = t; document.getElementById('wizAdmScope').value = 'demo-project-adm'; }, JSON.stringify(INC.ambiguous));
-    // DOM click on the real button (fires its onclick wiring; avoids coordinate clicks under the sticky panel chrome)
-    await P.page.$eval('#wizAdmPrepareBtn', b => b.click());
-    await P.page.waitForFunction(() => document.getElementById('wizAdmResult').dataset.state === 'done', { timeout: 15000 });
-    const ui = await P.page.evaluate(() => { const o = document.getElementById('wizAdmResult'); return { t: o.textContent, outcome: o.dataset.outcome, persisted: o.dataset.persisted, id: o.dataset.reviewId, pending: document.getElementById('wizAdmPending').dataset.count }; });
+    // GENUINE user activation (CDP keyboard → trusted click event on the real button → trusted USER caller context)
+    await userActivatePrepare(P.page);
+    const ui = await P.page.evaluate(() => { const o = document.getElementById('wizAdmResult'); return { t: o.textContent, outcome: o.dataset.outcome, persisted: o.dataset.persisted, id: o.dataset.reviewId, caller: o.dataset.caller, pending: document.getElementById('wizAdmPending').dataset.count }; });
+    assert.strictEqual(ui.caller, 'USER', 'real user activation must yield the trusted USER caller context');
+    assert(ui.t.includes('CALLER CONTEXT: USER (trusted, via ui-click:#wizAdmPrepareBtn)') && ui.t.includes('REFERENCE MEMORY: READY · read-only'), ui.t.slice(0, 600));
     assert.strictEqual(ui.outcome, 'UNCERTAIN', ui.t.slice(0, 400));
     assert.strictEqual(ui.persisted, 'true', ui.t.slice(-300));
     for (const s of ['mode=REVIEW', 'state=AWAITING_REVIEW', 'PROPOSED OUTCOME: UNCERTAIN', 'REASON:', 'PROVENANCE:', 'CANDIDATES (', 'AFFECTED RECORDS:', 'WRITE PLAN (not executed):', '"executes": false', 'WARNINGS:', 'REVIEW_PERSISTED = TRUE']) assert(ui.t.includes(s), 'missing in UI: ' + s);
@@ -159,6 +167,39 @@ try {
     assert(/passport rejected — nothing staged/.test(r.t) && /PROVENANCE/.test(r.t), r.t);
     assert.strictEqual(r.n1, r.n0);
     assert.deepStrictEqual(r.buttons, ['↻', 'Example', 'Prepare review']);
+  });
+
+  await T('B5', 'P1-3 in the page: script-invoked / forged-event / script-dispatched-click / wrapper-with-caller paths are UNTRUSTED → EQUIVALENT_TO declared_by=USER is NOT DUPLICATE; only a genuine user activation of the button gives USER context → DUPLICATE; hostCallerContext absent in the browser; wiz_ref_* unchanged', async () => {
+    const before = await P.page.evaluate(DUMPS);
+    const vid = await P.page.evaluate(() => window._wizDB.exec("SELECT version_id FROM wiz_ref_items WHERE item_id='fx:adm:cache-cold'")[0].values[0][0]);
+    const inc = Object.assign(JSON.parse(JSON.stringify(INC.similar_not_identical)), { EQUIVALENT_TO: { version_id: vid, declared_by: 'USER', basis: 'same observation, reworded' } });
+    const r = await P.page.evaluate(async (incTxt) => {
+      const out = document.getElementById('wizAdmResult'), btn = document.getElementById('wizAdmPrepareBtn');
+      document.getElementById('wizAdmIncoming').value = incTxt; document.getElementById('wizAdmScope').value = '';
+      const res = {};
+      const grab = () => ({ outcome: out.dataset.outcome, caller: out.dataset.caller });
+      await wizAdmUiPrepare(); res.scriptCall = grab();
+      await wizAdmUiPrepare({ isTrusted: true, type: 'click', target: btn, currentTarget: btn }); res.forgedObject = grab();
+      const fake = Object.create(MouseEvent.prototype, { isTrusted: { value: true }, type: { value: 'click' }, target: { value: btn } }); // prototype-forged look-alike (isTrusted on a real event is unforgeable)
+      await wizAdmUiPrepare(fake); res.shadowedEvent = grab();
+      out.dataset.state = 'idle'; btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      for (let i = 0; i < 100 && out.dataset.state !== 'done'; i++) await new Promise(r => setTimeout(r, 50));
+      res.dispatched = grab();
+      const w = await window.wizAdmissionPrepare(JSON.parse(incTxt), { caller: { kind: 'USER' } }); res.wrapper = { outcome: w.packet.proposed_outcome, caller: w.packet.caller.kind };
+      res.hostCtx = typeof window.WizAdmission.hostCallerContext;
+      return res;
+    }, JSON.stringify(inc));
+    for (const k of ['scriptCall', 'forgedObject', 'shadowedEvent', 'dispatched', 'wrapper']) {
+      assert.strictEqual(r[k].outcome, 'UNCERTAIN', k + ' ' + JSON.stringify(r[k]));
+      assert.strictEqual(r[k].caller, 'UNTRUSTED', k + ' ' + JSON.stringify(r[k]));
+    }
+    assert.strictEqual(r.hostCtx, 'undefined');
+    await userActivatePrepare(P.page); // genuine activation, same passport still in the textarea
+    const real = await P.page.evaluate(() => { const o = document.getElementById('wizAdmResult'); return { outcome: o.dataset.outcome, caller: o.dataset.caller, t: o.textContent }; });
+    assert.strictEqual(real.caller, 'USER'); assert.strictEqual(real.outcome, 'DUPLICATE', real.t.slice(0, 500));
+    const after = await P.page.evaluate(DUMPS);
+    assert.strictEqual(after.ref, before.ref, 'wiz_ref_* changed'); assert.strictEqual(after.pers, before.pers, 'personal memory changed');
+    assert.strictEqual(P.errors.length, 0, JSON.stringify(P.errors));
   });
 } finally {
   await browser.close(); srv.stop(); if (mainSrv) mainSrv.stop();

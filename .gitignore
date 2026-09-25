@@ -1,0 +1,5 @@
+# lab/sqlite-reference-memory: private reference corpus must never be committed
+*.private.jsonl
+*.private.sqlite
+velantrim-reference-private*
+private-memory/*

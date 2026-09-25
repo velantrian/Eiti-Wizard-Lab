@@ -19,7 +19,7 @@ It is **not** a truth database, **not** Canon, **not** a new memory project, and
 |---|---|
 | Code | `wiz-ref-memory.js` (loaded by `index.html` right after `sql-wasm.js`) |
 | Database | the same `window._wizDB` created by `wizInitSQLite()` |
-| Persistence | the **existing** path: `_wizSaveDB()` → IndexedDB `wiz_lab_mem_store` / key `wiz_lab_sqlite_db` |
+| Persistence | same IndexedDB store `wiz_lab_mem_store` / key `wiz_lab_sqlite_db`, two write paths: **personal/legacy writes** use the unchanged fire-and-forget `_wizSaveDB()`; **reference-critical operations** (ref import, clear, backup restore) use the awaitable, verified `_wizSaveDBAsync()` (see §4b) |
 | Schema hook | one guarded line in `_wizInitMemSchema()` calling `WizRef.initSchema(db)` |
 | UI | Memory panel → card “📖 Reference memory (wiz_ref)”: Import JSONL · Export backup · Clear reference · search |
 | Agent tools | `ref_search`, `ref_source`, `ref_project`, `ref_trace` (read-only; registered **alongside** `mem_*`) |
@@ -234,24 +234,37 @@ different tables and return disjoint datasets.
 
 ## 4b. Persistence acknowledgement
 
-`_wizSaveDB()` (personal memory, unchanged) writes to IndexedDB fire-and-forget. Reference import / clear /
-restore use `_wizSaveDBAsync()` instead, which resolves only after the IndexedDB transaction's `oncomplete`
-and an **exact read-back verification**: the stored bytes must be byte-for-byte equal to the exported
-bytes **and** `SHA-256(exported) === SHA-256(read-back)` (`crypto.subtle`; if unavailable, byte equality
-alone). It resolves `{bytes, sha256, verified: true, method}` and rejects with
-`IndexedDB read-back mismatch (…)` on any difference, and on `onerror` / `onabort` / `onblocked`.
-The UI ack reports the hash: `IMPORT_PERSISTED = TRUE — IndexedDB write confirmed (N bytes read back,
-byte-identical, sha256 <hex>)`. A same-length-but-different read-back yields `IMPORT_PERSISTED = FALSE`
-(tested with a stubbed IndexedDB `get`).
-`wizRefImportJSONL()` returns `persisted: true` only after that promise resolved; the UI then shows
-`IMPORT_PERSISTED = TRUE … The local file can be deleted now` and sets `data-persisted="true"` on
-`#wizRefResult` and `window.WIZ_REF_IMPORT_PERSISTED = true`. On failure it shows
-`IMPORT_PERSISTED = FALSE … KEEP your local file`. A rejected (invalid) bundle writes nothing.
+Both paths write the same SQLite export into IndexedDB `wiz_lab_mem_store` / key `wiz_lab_sqlite_db`:
 
-Residual risk (pre-existing, not changed here): an older fire-and-forget `_wizSaveDB()` snapshot whose
-IndexedDB transaction is created *after* the acknowledged write could still overwrite it with an older export.
-This requires a personal-memory save issued before the import whose IndexedDB open is still pending; later
-personal saves export the current DB, which already contains the reference rows.
+| Path | Used by | Guarantee |
+|---|---|---|
+| `_wizSaveDB()` — **unchanged** from `main` | normal / personal-memory legacy writes (`wizMem*`, decay, L2, …) | **fire-and-forget**: exports the DB, opens IndexedDB and `put`s; no completion signal, no read-back |
+| `_wizSaveDBAsync()` — added in this PR | **reference-critical operations only**: ref import (`wizRefImportJSONL`), clear (`wizRefClearAll`), backup restore (importing an export) | **awaitable and verified**, see below |
+
+`_wizSaveDBAsync()` resolves only after **all** of:
+
+1. the IndexedDB `readwrite` transaction fired `oncomplete` (it rejects on `onerror` / `onabort` / `onblocked`);
+2. an **exact byte read-back** in a new transaction: the stored bytes are byte-for-byte equal to the exported bytes;
+3. **SHA-256 confirmation**: `SHA-256(exported) === SHA-256(read-back)` via `crypto.subtle`. If `crypto.subtle`
+   is unavailable, byte equality alone is the confirmation (`method: 'byte-equality'`, `sha256: null`).
+
+It resolves `{bytes, sha256, verified: true, method}`; any difference rejects with
+`IndexedDB read-back mismatch (…)`. **Only then** does `wizRefImportJSONL()` return `persisted: true`, and the
+UI shows `IMPORT_PERSISTED = TRUE — IndexedDB write confirmed (N bytes read back, byte-identical,
+sha256 <hex>). The local file can be deleted now`, sets `data-persisted="true"` on `#wizRefResult` and
+`window.WIZ_REF_IMPORT_PERSISTED = true`. In every other case (rejection, mismatch, no awaitable save) it shows
+`⚠ IMPORT_PERSISTED = FALSE … KEEP your local file` and never says the file can be deleted. A same-length but
+different read-back yields `IMPORT_PERSISTED = FALSE` (tested with a stubbed IndexedDB `get`). A rejected
+(invalid) bundle writes nothing.
+
+Residual risk (pre-existing in the fire-and-forget path, not changed here): `_wizSaveDB()` takes its export
+**when it is called** and `put`s it later, after its own `indexedDB.open` succeeds. If a personal-memory save was
+called **before** a reference import and its `readwrite` transaction only starts **after** the verified
+`_wizSaveDBAsync()` write, it overwrites the stored bytes with that older export (without the new reference
+rows), even though the UI already showed `IMPORT_PERSISTED = TRUE`. The ack confirms the stored bytes at ack
+time only. Any later `_wizSaveDB()` call exports the current in-memory DB, which already contains the
+reference rows, and so repairs the stored copy. The window is narrow (a pending `open` from an earlier
+fire-and-forget save), but if in doubt keep the file or an `Export backup` until after a reload shows the rows.
 
 ## 4c. Service worker update strategy
 
@@ -278,8 +291,8 @@ Authority is scoped, not global; nothing in this layer grants runtime, architect
   a placeholder-only template and a public demo seed (demo-labelled items, plus a few observations of this
   repo's own code at an exact commit).
 * Private corpora (from private documents) are built **locally** as `*.private.jsonl`, imported through the
-  UI into the browser (SQLite → IndexedDB) and never committed. The source file can be deleted after import;
-  the SQLite copy persists. `Export backup` downloads a `*.private.jsonl` file.
+  UI into the browser (SQLite → IndexedDB via the verified `_wizSaveDBAsync()`, §4b) and never committed. The
+  source file can be deleted only after the UI shows `IMPORT_PERSISTED = TRUE`; the SQLite copy persists. `Export backup` downloads a `*.private.jsonl` file.
 * `.gitignore` covers `*.private.jsonl`, `*.private.sqlite`, `velantrim-reference-private*`, `private-memory/*`.
 * `tests/refmem/scan-private.sh` scans the branch diff, every commit reachable from HEAD, branch commit
   messages and all tracked files for private-surface URLs, Notion-style IDs and (with local, uncommitted

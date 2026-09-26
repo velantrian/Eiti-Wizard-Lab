@@ -1,5 +1,5 @@
 // Headless-browser tests for the Memory Admission Controller v0.1 (REVIEW mode; step 1 Prepare + step 2 Apply/Dismiss,
-// incl. step 2 rev 1 persistence-race tests B10–B12):
+// incl. step 2 rev 1 persistence-race tests B10–B12 and the P2 stale-DB-writer regression B13):
 // real index.html, real IndexedDB, real UI, genuine (CDP) user activation for Prepare / Apply / Dismiss. Requires Chrome + puppeteer-core (not vendored):
 //   PUPPETEER_CORE=/path/to/node_modules/puppeteer-core CHROME_PATH=/usr/bin/google-chrome \
 //   [MAIN_ROOT=/path/to/checkout/of/main] [ADM_PORT=18801] node tests/admission/browser.test.mjs
@@ -483,6 +483,64 @@ try {
     const r = await P.page.evaluate(id => window.wizAdmissionGetReview(id).actions.map(x => x.result), p.id);
     assert.deepStrictEqual(r, ['DISMISSED']); assert.strictEqual(await foreignCount('b12'), 1);
     assert.strictEqual((await P.page.evaluate(DUMPS)).ref, before.ref);
+    assert.strictEqual(P.errors.length, 0, JSON.stringify(P.errors));
+  });
+  await T('B13', 'stale-DB writer (documented limit) · a real wizRefImportJSONL is paused at its pre-write hash await (SubtleCrypto.digest hook; wiz-ref-memory.js unchanged) → a genuine Admission Apply swaps + closes the old DB → the import resumes on the closed object and FAILS LOUDLY (the wizRefImportJSONL promise rejects with "Database closed"; no committed/persisted result); the new live DB (wiz_ref_* rows) is untouched by it; nothing detached is persisted (IndexedDB image ≡ post-Apply live, no import rows after reload); a retry of the same import then commits exactly once', async () => {
+    const warm = await verOf('fx:adm:cache-warm');
+    const p = await prepareGenuine(relInc('[SYNTHETIC FIXTURE] The demo exporter retries synthetic uploads once.', warm));
+    assert.strictEqual(p.outcome, 'NEW_RELATED_ITEM');
+    const IMPORT = '{"manifest":{"format":"wiz-ref-jsonl/1","seed_id":"fx-adm-stale-writer","seed_version":"1","seed_as_of":"2026-09-25","privacy":"public"}}\n'
+      + '{"source":{"source_id":"fx:adm:src-stale","title":"[SYNTHETIC FIXTURE] stale-writer source","surface":"fixture","source_kind":"RESEARCH","authority_class":"RESEARCH_SYNTHESIS","project_id":"demo-project-adm","as_of":"2026-09-25","currentness":"CURRENT","privacy":"public"},'
+      + '"item":{"source_id":"fx:adm:src-stale","project_id":"demo-project-adm","as_of":"2026-09-25","item_id":"fx:adm:stale-writer-item","item_type":"HYPOTHESIS","claim":"[SYNTHETIC FIXTURE] Written by a paused reference import.","source_status":"CURRENT","epistemic_state":"SOURCE_ASSERTION"}}';
+    // 1) start the real import and pause it at its first await inside importJSONL (the seed hash)
+    const started = await P.page.evaluate((text) => {
+      const SP = SubtleCrypto.prototype; window.__origDigest = SP.digest; window.__gate = { paused: false };
+      SP.digest = function (...a) {
+        if (window.__gate && !window.__gate.paused && /importJSONL/.test(new Error().stack || '')) {
+          window.__gate.paused = true; const self = this;
+          return new Promise(res => { window.__gate.resume = () => res(window.__origDigest.apply(self, a)); });
+        }
+        return window.__origDigest.apply(this, a);
+      };
+      window.__oldDb = window._wizDB;
+      window.__imp = { done: false };
+      window.wizRefImportJSONL(text).then(r => { window.__imp = { done: true, rejected: false, committed: r.committed, persisted: r.persisted, errors: (r.errors || []).map(e => e.msg || String(e)) }; },
+        e => { window.__imp = { done: true, rejected: true, error: String((e && e.message) || e) }; });
+      return true;
+    }, IMPORT);
+    assert(started);
+    await P.page.waitForFunction(() => window.__gate.paused === true, { timeout: 10000 });
+    // 2) genuine Admission Apply while the import is paused → swap + close of the old DB object
+    const a = await userActivate(P.page, '#wizAdmApplyBtn');
+    assert.strictEqual(a.result, 'APPLIED', a.t); assert.strictEqual(a.durable, 'CANDIDATE_DURABLE_AND_LIVE');
+    assert.strictEqual(await P.page.evaluate(() => window._wizDB !== window.__oldDb), true, 'the live DB object was swapped');
+    const postApply = await P.page.evaluate(DUMPS);
+    await sleep(200);
+    assert.strictEqual((await liveVsStored()).equal, true, 'IndexedDB ≠ post-Apply live');
+    // 3) resume the import → it must fail loudly, not write anywhere
+    await P.page.evaluate(() => { SubtleCrypto.prototype.digest = window.__origDigest; window.__gate.resume(); });
+    await P.page.waitForFunction(() => window.__imp.done === true, { timeout: 10000 });
+    const imp = await P.page.evaluate(() => window.__imp);
+    // observed + documented behaviour: the promise REJECTS with sql.js' "Database closed" (no result object, so no persisted=true)
+    assert.strictEqual(imp.rejected, true, 'import did not fail loudly: ' + JSON.stringify(imp));
+    assert(/Database closed/.test(imp.error), imp.error);
+    console.log('      (stale import outcome: ' + JSON.stringify(imp).slice(0, 200) + ')');
+    const afterImp = await P.page.evaluate(DUMPS);
+    assert.strictEqual(afterImp.ref, postApply.ref, 'the stale import mutated the new live wiz_ref_*');
+    assert.strictEqual(await P.page.evaluate(() => window._wizDB.exec("SELECT count(*) FROM wiz_ref_items WHERE item_id='fx:adm:stale-writer-item'")[0].values[0][0]), 0);
+    await sleep(200);
+    assert.strictEqual((await liveVsStored()).equal, true, 'something detached was persisted');
+    await reloadPage(P);
+    const re = await P.page.evaluate(id => ({ items: window._wizDB.exec("SELECT count(*) FROM wiz_ref_items WHERE item_id='fx:adm:stale-writer-item'")[0].values[0][0], state: window.wizAdmissionGetReview(id).review_state }), p.id);
+    assert.deepStrictEqual(re, { items: 0, state: 'APPLIED' });
+    assert.strictEqual((await P.page.evaluate(DUMPS)).ref, postApply.ref, 'reload shows a different reference state');
+    // 4) retry of the same import → commits exactly once (a second identical import changes nothing)
+    const r1 = await P.page.evaluate(async t => { const r = await wizRefImportJSONL(t); return { committed: r.committed, persisted: r.persisted, ins: r.items_inserted }; }, IMPORT);
+    assert.deepStrictEqual(r1, { committed: true, persisted: true, ins: 1 });
+    const r2 = await P.page.evaluate(async t => { const r = await wizRefImportJSONL(t); return { ins: r.items_inserted, n: window._wizDB.exec("SELECT count(*) FROM wiz_ref_items WHERE item_id='fx:adm:stale-writer-item'")[0].values[0][0] }; }, IMPORT);
+    assert.strictEqual(r2.ins, 0); assert.strictEqual(r2.n, 1);
+    await reloadPage(P);
+    assert.strictEqual(await P.page.evaluate(() => window._wizDB.exec("SELECT count(*) FROM wiz_ref_items WHERE item_id='fx:adm:stale-writer-item'")[0].values[0][0]), 1);
     assert.strictEqual(P.errors.length, 0, JSON.stringify(P.errors));
   });
 } finally {

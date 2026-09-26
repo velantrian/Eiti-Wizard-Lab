@@ -570,7 +570,8 @@ notes FTS, Reference Memory import/clear, admission Prepare — whether it saves
 Not covered / residual (reported, not hidden):
 * A writer that captured the DB object *before* the swap and writes *after* it (only possible across an `await`;
   in current code: `wizRefImportJSONL` awaits a hash between capturing `db()` and writing). It now fails loudly on
-  the closed object (import reports an error, nothing silently lost); it is not transparently redirected.
+  the closed object (the import promise rejects with "Database closed", nothing is written or persisted); it is
+  not transparently redirected and must be retried (browser regression test `B13`, P2 cleanup).
 * Code that replaces `window._wizDB` itself during the action → `FAILED DATABASE_REPLACED` (nothing applied).
 * A candidate that was committed and then raced (live changed after the commit) is on disk until the next
   candidate or the live save overwrites it. If **every** later IndexedDB write fails, the stored image may keep the

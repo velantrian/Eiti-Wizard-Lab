@@ -677,7 +677,7 @@
   // status change authority, a USER_DECISION record) must come from a host AUTHORITY token (opts.caller) — never from
   // an Apply/Dismiss click, which yields at most a USER_INTERACTION token.
   // ════════════════════════════════════════════════════════════════════════════════════════════════════════════
-  let _actionLock = false; // one apply/dismiss at a time (duplicate invocation → REFUSED BUSY, zero writes)
+  let _actionLock = false; // module lock: browser Prepare (+ its save), Apply and Dismiss are mutually exclusive (a concurrent call → REFUSED BUSY / "in progress", zero writes)
   const REF_PK = Object.freeze({ wiz_ref_items: 'item_id', wiz_ref_relations: 'relation_id', wiz_ref_sources: 'source_id', wiz_ref_meta: 'key' });
   const IMPORT_META_KEYS = Object.freeze(['seed_id', 'seed_version', 'seed_as_of', 'seed_hash', 'seed.' + IMPORT_SEED_ID, 'last_import_at']); // importer bookkeeping
   const _hasActions = db => _hasObj(db, ACTIONS_TABLE);

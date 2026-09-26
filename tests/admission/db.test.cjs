@@ -973,13 +973,13 @@ const deq = (a, b, m) => assert.deepStrictEqual(JSON.parse(JSON.stringify(a)), J
     assert(!/(review_state|epistemic_state)\s*=\s*'VERIFIED'/.test(code));
   });
 
-  await T('ui/sw', 'sw.js caches wiz-memory-admission.js and CACHE_NAME bumped (≠ main, ≠ admission1-3); index.html loads it after wiz-ref-memory.js; separate 🧠 card with Apply shown plan / Dismiss (event passed), no Auto-approve; no agent tool / context injection', async () => {
+  await T('ui/sw', 'sw.js caches wiz-memory-admission.js and CACHE_NAME bumped to …-admission5 (≠ main, rejects admission1–4); index.html loads it after wiz-ref-memory.js; separate 🧠 card with Apply shown plan / Dismiss (event passed), no Auto-approve; no agent tool / context injection', async () => {
     const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
     assert(/BASE_PATH \+ '\/wiz-memory-admission\.js'/.test(sw.slice(sw.indexOf('STATIC_ASSETS'), sw.indexOf('];'))));
     const cur = sw.match(/const CACHE_NAME = '([^']+)'/)[1];
     let mainName = 'eiti-wizard-lab-v1.8.9-refmem3';
     try { mainName = require('child_process').execSync('git show origin/main:sw.js', { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().match(/const CACHE_NAME = '([^']+)'/)[1]; } catch (e) {}
-    assert.notStrictEqual(cur, mainName);
+    assert.notStrictEqual(cur, mainName); assert.strictEqual(cur, 'eiti-wizard-lab-v1.8.9-admission5');
     for (const prev of ['eiti-wizard-lab-v1.8.9-admission1', 'eiti-wizard-lab-v1.8.9-admission2', 'eiti-wizard-lab-v1.8.9-admission3', 'eiti-wizard-lab-v1.8.9-admission4']) assert.notStrictEqual(cur, prev, 'CACHE_NAME must be bumped (wiz-memory-admission.js changed in audit rev 1, 2, step 2 and step 2 rev 1)');
     assert(/id="wizAdmPrepareBtn" onclick="wizAdmUiPrepare\(event\)"/.test(INDEX), 'Prepare button passes the click event (USER_INTERACTION context only, not authority)');
     const iRef = INDEX.indexOf('<script src="wiz-ref-memory.js"></script>'), iAdm = INDEX.indexOf('<script src="wiz-memory-admission.js"></script>');

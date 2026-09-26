@@ -80,4 +80,7 @@ identical, Apply/Dismiss after refused; survives reload · **B9** stale in the p
 reload; fresh prepare applies. · **B10–B12** (P1-S2-PERSIST-RACE, real IndexedDB; an
 `IDBObjectStore.put` hook runs the app's `wizMemAdd` inside the admission candidate write): B10 genuine Apply +
 race → rebased, APPLIED once, live ≡ IndexedDB image, reload · B11 candidate write fails + race → PERSIST_FAILED,
-write kept, reload, retry applies once · B12 Dismiss + race.
+write kept, reload, retry applies once · B12 Dismiss + race. · **B13** (P2) stale-DB writer: a real
+`wizRefImportJSONL` paused at its pre-write hash (`SubtleCrypto.digest` hook) + a genuine Apply that swaps/closes the
+old DB → the import rejects with "Database closed", new live `wiz_ref_*` untouched, IndexedDB image ≡ post-Apply
+live, no import rows after reload; a retry commits exactly once.

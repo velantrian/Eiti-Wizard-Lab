@@ -14,6 +14,9 @@
 > **Audit revision 1** (see §15): read-only retrieval (no WizRef db function is called — they all run
 > `WizRef.initSchema`), strict DUPLICATE identity rule, and trusted caller context for authority claims.
 
+> **Frozen checkpoint:** [Memory Admission Controller v0.1 — bounded lab result](checkpoints/MEMORY_ADMISSION_CONTROLLER_v0.1.md)
+> (describes code at `e286c50`).
+
 LLM OUTPUT ≠ MEMORY DECISION · SIMILARITY ≠ IDENTITY ≠ DUPLICATE ≠ SUPERSESSION · NEW INFORMATION ≠ NEW MEMORY
 
 ## 1. What it is

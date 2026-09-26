@@ -6,7 +6,8 @@
 >
 > **Step 1** prepares and stages review packets (zero writes to `wiz_ref_*`). **Step 2** (§17) adds exactly two
 > explicit, human-gated review actions: **Apply** (executes exactly the prepared and shown write plan through
-> the existing `WizRef.importJSONL`, after an integrity + stale-plan check, all-or-nothing) and **Dismiss** (zero
+> the existing `WizRef.importJSONL`, after an integrity + stale-plan check; SQLite-atomic, and persisted with the
+> guarantee stated precisely in §17.4 / §18) and **Dismiss** (zero
 > writes to `wiz_ref_*`). There is no automatic admission of any kind; `ADMISSION_MODE` stays `REVIEW`. Nothing
 > writes personal memory (`wiz_facts`).
 >
@@ -427,15 +428,13 @@ the attempt is recorded as an action row `STALE_REVIEW`.
   modify exactly 1 row) + action INSERT either all `RELEASE` together or all `ROLLBACK TO wiz_adm_apply` →
   `FAILED` (`rolled_back`, `reference_unchanged` reported). Importer validation failures write nothing (its
   phase 1 is read-only).
-* **Persistence level** (`applyPersisted` / `dismissPersisted`, used by the UI) — the action runs on a byte copy
-  (`new SQL.Database(live.export())`). On failure the copy is discarded and the failure is recorded on the
-  untouched live DB. On success the live DB must still be byte-identical to the snapshot (else `FAILED
-  CONCURRENT_MODIFICATION`); then `window._wizDB` is swapped to the copy and the verified `_wizSaveDBAsync()` runs;
-  if it fails, the original live DB is swapped back (`FAILED PERSIST_FAILED`, recorded). So the live DB never holds
-  an applied-but-unpersisted state and a retry cannot double-write (it re-runs the full checks; after success the
-  review is terminal).
-* A module-level lock refuses a concurrent second apply/dismiss (`REFUSED BUSY`); Prepare is refused while an
-  action runs.
+* **Persistence level** (`applyPersisted` / `dismissPersisted`, used by the UI) — **revised in step 2 rev 1 (§18)**:
+  the candidate database stays isolated until it is durable and becomes live only in a synchronous
+  check-and-swap; concurrent writes are carried into a rebuilt candidate, never dropped. The step-2 version
+  (swap first, then save, swap back on failure) could lose or leave unsaved an unrelated write (P1-S2-PERSIST-RACE)
+  and is gone.
+* A module-level lock makes the browser Prepare (incl. its save), Apply and Dismiss mutually exclusive
+  (`REFUSED BUSY` / "in progress").
 
 ### 17.5 DISMISS semantics
 
@@ -473,7 +472,8 @@ browser has no path to an authority token (`hostCallerContext` is node-only). Ap
 Single path: `apply()` / `applyPersisted()` → `_applyTx()` → `W.importJSONL(_nestedTxDb(db), …)` (the only
 `importJSONL` call site in the module; test `zw-static` enforces exactly one, inside `_applyTx`). The proxy only
 forwards the importer's statements. `applyPersisted` additionally swaps the whole DB object (`host.setDb`) and
-persists it (`host.persist` = `_wizSaveDBAsync`) — that moves the already-imported copy, it creates no new
+persists it — since §18: `host.persistBytes` (candidate bytes → IndexedDB) before `host.setDb(work)`, then
+`host.persist` (= `_wizSaveDBAsync`, saves the live DB). These move the already-imported copy; they create no new
 `wiz_ref` content. The module contains no `INSERT/UPDATE/DELETE/ALTER … wiz_ref*` statement.
 
 ### 17.10 Tests (step 2)
@@ -500,12 +500,100 @@ stale in the page.
   could recompute it).
 * In the browser Apply/Dismiss require a genuine click (a node host may call them directly — it owns that
   boundary).
-* Copy-then-swap persistence: a non-admission write landing on the live DB during the action is detected
-  (`CONCURRENT_MODIFICATION`) before the swap; one landing during the persist window after the swap goes to the
-  new DB — if that persist then fails, the swap back to the original DB loses that write (narrow window,
-  documented residual risk, same family as §10).
+* (Superseded by §18) the step-2 copy-then-swap persistence had a race with unrelated writes; fixed in step 2
+  rev 1.
 * Existing sources are never revised by admission; a status-change version carries the base version's capture
   provenance.
 * Relation / target deletion can't be exercised: Reference Memory never deletes; "target missing" is covered by
   the check code and by collision / non-current / fingerprint cases.
+
+## 18. Step 2 revision 1 (PR #10 @ 2b70ed4) — P1-S2-PERSIST-RACE
+
+**Finding.** In the step-2 `_durable()` the applied copy became `window._wizDB` *before* it was durable
+(`setDb(work)` → `await persist()` → swap back on failure). `_wizSaveDBAsync()` exports at call start and then
+awaits IndexedDB, so an unrelated write could (A) land after the export and be live but not in the saved image, or
+(B) land in the copy and be dropped by the swap back. Required invariant: **no unrelated DB write may be lost or
+become live-but-not-durable because of an admission Apply/Dismiss.**
+
+### 18.1 How the app writes and saves (investigated before changing anything)
+
+* Every app writer is **synchronous** on `window._wizDB`, read at call time: `wizMemAdd / wizMemDelete /
+  wizMemSetState / wizMemAccess / wizConsolidateL2 / wizDecayTick / wizNotesReindex / _wizInitMemSchema`
+  (`index.html`), followed by the fire-and-forget `_wizSaveDB()` (export at call → `_wizIDBSet` put). Reference
+  Memory (`wizRefImportJSONL`, `wizRefClearAll`) writes synchronously (the importer's BEGIN…COMMIT contains no
+  await) and saves with the awaitable `_wizSaveDBAsync()`. Admission Prepare's staging transaction is synchronous
+  too. No app code keeps a transaction open across an `await` (grep: BEGIN/COMMIT in index.html, the importer and
+  this module).
+* All saves write the whole image under one IndexedDB key (`wiz_lab_mem_store` / `kv` / `wiz_lab_sqlite_db`).
+  IndexedDB processes open requests for one database in order and runs overlapping read-write transactions in
+  creation order, so a save requested later commits later.
+* Consequence: a correct fix does **not** need an application-wide persistence redesign and does not change any
+  app writer or save function. `index.html` and `wiz-ref-memory.js` are unchanged by this revision.
+
+### 18.2 The mechanism (`_durable`, `persistBytes`)
+
+1. `base = live.export()`; `work = copy(base)`; the action (`_applyTx` / `_dismissTx`, unchanged) runs on `work`.
+   `live` is never touched by the action and keeps receiving app writes.
+2. If `live` changed during the action (byte comparison with `base`) → discard `work`, **rebase** (start again from
+   the current live; the stale guard re-runs, so a concurrent `wiz_ref` change turns into `STALE_REVIEW`).
+3. `host.persistBytes(work.export(), stillValid)` writes the **candidate** to IndexedDB without touching
+   `window._wizDB`. In the put's success callback it runs `stillValid()` (live still identical to `base`) and
+   **aborts the IndexedDB transaction** if not (`CONCURRENT_ABORT`, nothing stored) → rebase. After `oncomplete`
+   the stored bytes are read back byte-for-byte (`VERIFY_FAILED` otherwise).
+4. After the verified write, in one synchronous step (no `await` between — asserted by a static test):
+   `stillValid()` → `setDb(work)` → close the old object. Because JS is single-threaded, no write can land between
+   the check and the swap; every write before the check is in `base` and therefore in the stored candidate; every
+   write after the swap goes to the new live DB and is saved by the writer's own save. Then one more ordinary
+   `host.persist()` of the new live DB is requested; being requested last it commits last, superseding any save
+   that was requested during the window with pre-swap bytes.
+   If live changed after the candidate committed but before the swap → **rebase**: the next candidate is built on
+   the new live DB (it carries the concurrent write) and overwrites the stored one.
+5. Candidate write fails, or the DB keeps changing for `DURABLE_MAX_ATTEMPTS` (4) attempts → `work` discarded; the
+   failure is recorded on the **live** DB and the live DB is saved (`host.persist`), which also overwrites a
+   candidate stored by an earlier attempt. Result `FAILED PERSIST_FAILED` / `CONCURRENT_WRITES`, review stays
+   `AWAITING_REVIEW`, `durable_state = LIVE_SAVED`.
+6. The old live object is **closed** after the swap: a writer still holding it fails loudly ("database closed")
+   instead of writing into a detached DB that would silently never be saved.
+7. The module lock covers browser Prepare+save, Apply and Dismiss (Prepare holds `window._wizDB` across awaits).
+
+Results carry `attempts` (e.g. `CONCURRENT_WRITE_DURING_PERSIST → DURABLE_THEN_LIVE`), `durable_state`
+(`CANDIDATE_DURABLE_AND_LIVE` / `LIVE_SAVED` / `PREVIOUS_SAVED_STATE` / `UNKNOWN_CANDIDATE_MAY_BE_DURABLE`) and
+`post_swap_save`. Exactly-once: attempts never touch `live`; only the successful attempt's database becomes live;
+after it the review is terminal, and a retry is `ALREADY_TERMINAL`.
+
+### 18.3 What it covers — and what it does not
+
+Covered: every writer that mutates `window._wizDB` read at call time and synchronously — all app memory functions,
+notes FTS, Reference Memory import/clear, admission Prepare — whether it saves with `_wizSaveDB`,
+`_wizSaveDBAsync`, or not at all (a non-saving write present at the swap is in the candidate and thus stored).
+
+Not covered / residual (reported, not hidden):
+* A writer that captured the DB object *before* the swap and writes *after* it (only possible across an `await`;
+  in current code: `wizRefImportJSONL` awaits a hash between capturing `db()` and writing). It now fails loudly on
+  the closed object (import reports an error, nothing silently lost); it is not transparently redirected.
+* Code that replaces `window._wizDB` itself during the action → `FAILED DATABASE_REPLACED` (nothing applied).
+* A candidate that was committed and then raced (live changed after the commit) is on disk until the next
+  candidate or the live save overwrites it. If **every** later IndexedDB write fails, the stored image may keep the
+  candidate (admission applied, without the unrelated write) while live has the write but not the admission: the
+  result says `durable_state = UNKNOWN_CANDIDATE_MAY_BE_DURABLE` (test `S2-P5`). This needs an IndexedDB write
+  failure directly after a successful one.
+* A tab closed/crashed in the middle of steps 3–5 can leave either the previous image or the candidate on disk
+  (each a consistent snapshot); the app's own fire-and-forget saves have the same exposure.
+* The pre-existing `_wizSaveDB` behaviour (§10, `REFERENCE_MEMORY.md` §4b) is unchanged: a fire-and-forget save can
+  still fail silently for its own write. That is not caused by admission and is out of scope.
+* The candidate write duplicates the IndexedDB name/store/key constants of `index.html` (kept in sync by test).
+
+### 18.4 Tests
+
+DB (real app memory block, the app's `wizMemAdd` as the unrelated writer, injectable candidate-write host):
+`S2-P1` success with an unrelated write during the async apply phase / while the candidate write is in flight /
+after the candidate commit before the swap → rebased, APPLIED once, write kept, live ≡ stored image ≡ reload,
+retry `ALREADY_TERMINAL`, old object closed · `S2-P2` failed candidate write (before commit / stored-then-verify
+failure) + unrelated write → not applied anywhere, write kept, live ≡ stored ≡ reload, retry applies once ·
+`S2-P3` continuous writes → `CONCURRENT_WRITES`, all writes kept, stored candidate overwritten by the live save ·
+`S2-P4` Dismiss through the same path (race + failure) · `S2-P5` residual reported as
+`UNKNOWN_CANDIDATE_MAY_BE_DURABLE`; lock → `BUSY`; static: no `await` between check and swap. Browser (real
+IndexedDB; the hook runs `wizMemAdd` inside the admission's candidate put): `B10` race → rebased, APPLIED once, live
+≡ IndexedDB image, reload · `B11` candidate write fails + race → `PERSIST_FAILED`, write kept, reload, retry applies
+once · `B12` Dismiss + race. `CACHE_NAME` → `…-admission5`.
 

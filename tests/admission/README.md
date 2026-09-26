@@ -55,7 +55,13 @@ from_status changed / id collision) → STALE_REVIEW + REPREPARE_REQUIRED, no wr
 tampered packet / write_plan / missing seal / shown-packet mismatch → INTEGRITY_FAILED · **S2-J** (A14) double
 apply / apply-after-dismiss / dismiss-after-apply / concurrent → no duplicates, no reversal · **S2-K** (A15)
 injected importer failure / review-update failure / persistence failure → full rollback, not APPLIED, retry once
-· **S2-L** USER_INTERACTION-only Apply never supplies USER authority. (A4–A15 mapping inferred — SPEC.md lists the
+· **S2-L** USER_INTERACTION-only Apply never supplies USER authority. Step 2 rev 1 (P1-S2-PERSIST-RACE, docs §18):
+**S2-P1** unrelated app write (`wizMemAdd`) during the apply phase / during the candidate write / after the
+candidate commit → rebased, APPLIED once, write kept, live ≡ stored image ≡ reload, retry ALREADY_TERMINAL ·
+**S2-P2** candidate write fails (before commit / stored-then-verify-failure) + unrelated write → not applied, write
+kept, live ≡ stored ≡ reload, retry once · **S2-P3** continuous writes → CONCURRENT_WRITES, nothing lost · **S2-P4**
+Dismiss via the same durable path · **S2-P5** residual reported (UNKNOWN_CANDIDATE_MAY_BE_DURABLE), lock BUSY,
+static no-await check-and-swap, IndexedDB constants in sync with index.html. (A4–A15 mapping inferred — SPEC.md lists the
 ids without definitions.)
 
 Browser suite (`browser.test.mjs`): **B1** boot (0 new page errors vs main, REVIEW-only API) · **B2** genuine UI
@@ -71,4 +77,7 @@ genuine Apply click on a plan needing USER authority → REFUSED, interaction US
 **B7** genuine Prepare + genuine Apply → APPLIED + persisted, exact +1/+1, double Apply refused; reload → APPLIED,
 readable via ref_search / ref_trace / fresh IndexedDB read · **B8** genuine Dismiss (+reason) → DISMISSED, wiz_ref_*
 identical, Apply/Dismiss after refused; survives reload · **B9** stale in the page → STALE_REVIEW, no write, survives
-reload; fresh prepare applies.
+reload; fresh prepare applies. · **B10–B12** (P1-S2-PERSIST-RACE, real IndexedDB; an
+`IDBObjectStore.put` hook runs the app's `wizMemAdd` inside the admission candidate write): B10 genuine Apply +
+race → rebased, APPLIED once, live ≡ IndexedDB image, reload · B11 candidate write fails + race → PERSIST_FAILED,
+write kept, reload, retry applies once · B12 Dismiss + race.

@@ -801,7 +801,8 @@ const deq = (a, b, m) => assert.deepStrictEqual(JSON.parse(JSON.stringify(a)), J
     assert.strictEqual(f2.result, 'FAILED'); assert.strictEqual(f2.rolled_back, true); assert.strictEqual(f2.reference_unchanged, true);
     assert.strictEqual(refDump(db), d0); assert.strictEqual(A.getReview(db, p.review_id).review_state, 'AWAITING_REVIEW');
     // (3) persistence failure (durable path): the applied copy is discarded, the live database is untouched
-    let live = db; const host = ok => ({ getDb: () => live, setDb: d => { live = d; }, persist: async () => { if (!ok) throw new Error('INJECTED: IndexedDB write failed'); app.idb.saved = live.export().slice(); return { bytes: app.idb.saved.length, sha256: 'x' }; } });
+    let live = db; const host = ok => ({ getDb: () => live, setDb: d => { live = d; }, persist: async () => { app.idb.saved = live.export().slice(); return { bytes: app.idb.saved.length, sha256: 'x' }; },
+      persistBytes: async (bytes) => { if (!ok) throw new Error('INJECTED: IndexedDB write failed'); app.idb.saved = bytes.slice(); return { bytes: bytes.length }; } });
     const f3 = await A.applyPersisted(host(false), p.review_id);
     assert.strictEqual(f3.result, 'FAILED'); assert.strictEqual(f3.code, 'PERSIST_FAILED'); assert.strictEqual(live, db, 'live database object unchanged');
     assert.strictEqual(refDump(db), d0); assert.strictEqual(A.getReview(db, p.review_id).review_state, 'AWAITING_REVIEW');
@@ -816,6 +817,135 @@ const deq = (a, b, m) => assert.deepStrictEqual(JSON.parse(JSON.stringify(a)), J
     assert.strictEqual(re.A.getReview(re.db, p.review_id).review_state, 'APPLIED');
     assert.strictEqual(re.W.trace(re.db, ok.applied.items[0].item_id).version_id, ok.applied.items[0].version_id);
     assert.strictEqual(refDump(re.db), refDump(live));
+  });
+
+  // ───── step 2 rev 1: P1-S2-PERSIST-RACE — concurrent unrelated writes vs the durable apply/dismiss ─────
+  // Durable host over the REAL app memory block: getDb/setDb = window._wizDB, persist = the app's _wizSaveDBAsync
+  // (exports the live DB), persistBytes = candidate write with injectable hooks. The foreign writer is the app's own
+  // wizMemAdd (writes window._wizDB and saves through _wizSaveDB/_wizIDBSet → the same stored image).
+  const fullDump = db => refDump(db) + '#' + personalDump(db) + '#' + JSON.stringify(db.exec('SELECT review_id, review_state, reviewed_at, packet_sha256 FROM wiz_admission_reviews ORDER BY review_id')) + '#' + JSON.stringify(db.exec('SELECT review_id, action, result, review_state_after FROM wiz_admission_actions ORDER BY requested_at, action_id'));
+  const durableHost = (app, hooks = {}) => {
+    const h = { calls: 0, stored: [] };
+    h.host = {
+      getDb: () => app.ctx._wizDB, setDb: d => { app.ctx._wizDB = d; },
+      persist: async () => { if (hooks.failPersist) throw new Error('INJECTED: live save failed'); return app.ctx._wizSaveDBAsync(); },
+      persistBytes: async (bytes, stillValid) => {
+        const n = ++h.calls; await new Promise(r => setImmediate(r));
+        if (hooks.beforeCommit) hooks.beforeCommit(n);          // a write landing while the candidate write is in flight
+        if (hooks.failBytes && hooks.failBytes(n) === 'before') throw new Error('INJECTED: IndexedDB write failed');
+        if (!stillValid()) throw Object.assign(new Error('aborted (concurrent write)'), { code: 'CONCURRENT_ABORT' });
+        app.idb.saved = bytes.slice(); h.stored.push(n);         // committed
+        if (hooks.afterCommit) hooks.afterCommit(n);            // a write landing after the commit, before the swap
+        if (hooks.failBytes && hooks.failBytes(n) === 'verify') throw Object.assign(new Error('INJECTED: read-back mismatch'), { code: 'VERIFY_FAILED' });
+        return { bytes: bytes.length, verified: true };
+      },
+    };
+    return h;
+  };
+  const foreign = (app, tag) => app.ctx.wizMemAdd(`[SYNTHETIC FIXTURE] unrelated concurrent write ${tag}`, 'general', 'user');
+  const hasForeign = (db, tag) => q1(db, 'SELECT count(*) FROM wiz_facts WHERE claim=?', [`[SYNTHETIC FIXTURE] unrelated concurrent write ${tag}`]);
+  const prepRel = async (app, what) => app.A.prepare(app.ctx._wizDB, pSrcA({ WHAT: what || INC.valid_new.WHAT, RELATIONS: [{ relation_type: 'RELATED_TO', target_version_id: vOf(app.ctx._wizDB, 'fx:adm:cache-warm') }] }));
+  // reload = boot a fresh app from the stored image; it must equal the live state exactly
+  const reloadEq = async (app) => { const re = await bootApp(app.idb.saved); assert.strictEqual(fullDump(re.db), fullDump(app.ctx._wizDB), 'stored image ≠ live state'); return re; };
+
+  await T('S2-P1', 'PERSIST-RACE 1+3+4 · successful persistence with an unrelated write injected (a) during the async apply phase, (b) while the candidate write is in flight, (c) after the candidate commit but before the swap → each time the candidate is rebuilt on the new live DB: APPLIED exactly once, the unrelated write kept, live ≡ stored image ≡ reload; retry → ALREADY_TERMINAL, no second write', async () => {
+    for (const where of ['apply-phase', 'beforeCommit', 'afterCommit']) {
+      const app = await seeded(); const p = await prepRel(app); const n0 = cnt(app.db, 'wiz_ref_items'), r0 = cnt(app.db, 'wiz_ref_relations');
+      let fired = 0;
+      const h = durableHost(app, { beforeCommit: n => { if (where === 'beforeCommit' && n === 1) { fired++; foreign(app, where); } }, afterCommit: n => { if (where === 'afterCommit' && n === 1) { fired++; foreign(app, where); } } });
+      if (where === 'apply-phase') Promise.resolve().then(() => { fired++; foreign(app, where); }); // runs at the first await inside the apply
+      const r = await app.A.applyPersisted(h.host, p.review_id);
+      assert.strictEqual(fired, 1, where);
+      assert.strictEqual(r.result, 'APPLIED', where + ' ' + JSON.stringify(r.problems)); assert.strictEqual(r.persisted, true); assert.strictEqual(r.durable_state, 'CANDIDATE_DURABLE_AND_LIVE');
+      const ev = r.attempts.map(a => a.event);
+      assert.strictEqual(ev[ev.length - 1], 'DURABLE_THEN_LIVE'); assert.strictEqual(ev.length, 2, where + ' ' + JSON.stringify(ev));
+      assert.strictEqual(ev[0], { 'apply-phase': 'CONCURRENT_WRITE_BEFORE_PERSIST', beforeCommit: 'CONCURRENT_WRITE_DURING_PERSIST', afterCommit: 'CONCURRENT_WRITE_AFTER_PERSIST' }[where]);
+      const live = app.ctx._wizDB;
+      assert.strictEqual(hasForeign(live, where), 1, 'unrelated write lost from live: ' + where);
+      assert.strictEqual(cnt(live, 'wiz_ref_items'), n0 + 1); assert.strictEqual(cnt(live, 'wiz_ref_relations'), r0 + 1);
+      assert.strictEqual(cnt(live, 'wiz_admission_actions', "review_id=? AND result='APPLIED'", [p.review_id]), 1);
+      const re = await reloadEq(app);
+      assert.strictEqual(hasForeign(re.db, where), 1); assert.strictEqual(re.A.getReview(re.db, p.review_id).review_state, 'APPLIED');
+      // exactly-once retry
+      const again = await app.A.applyPersisted(h.host, p.review_id);
+      assert.strictEqual(again.code, 'ALREADY_TERMINAL'); assert.strictEqual(cnt(app.ctx._wizDB, 'wiz_ref_items'), n0 + 1);
+      await reloadEq(app);
+      // the replaced database object is closed: a stale reference fails loudly instead of writing into a detached DB
+      assert.throws(() => app.db.run("INSERT INTO wiz_facts(id,claim) VALUES('x','y')"));
+    }
+  });
+
+  await T('S2-P2', 'PERSIST-RACE 2+3+4 · failed persistence with an unrelated write during persistence (write fails before commit / candidate stored but read-back fails) → FAILED PERSIST_FAILED, admission NOT applied in live nor in the stored image, the unrelated write kept (the live DB — with it — is what gets saved), live ≡ stored ≡ reload; retry applies exactly once', async () => {
+    for (const mode of ['before', 'verify']) {
+      const app = await seeded(); const p = await prepRel(app); const n0 = cnt(app.db, 'wiz_ref_items'), d0 = refDump(app.db);
+      const h = durableHost(app, { beforeCommit: n => { if (n === 1) foreign(app, 'p2-' + mode); }, failBytes: n => (n === 1 ? mode : null) });
+      // for 'verify' the candidate must actually be stored first: let the foreign write land AFTER the commit
+      if (mode === 'verify') { h.host.persistBytes = (orig => async (b, sv) => { const r = orig(b, () => true); return r; })(h.host.persistBytes); }
+      const r = await app.A.applyPersisted(h.host, p.review_id);
+      assert.strictEqual(r.result, 'FAILED', mode); assert.strictEqual(r.code, 'PERSIST_FAILED', mode); assert.strictEqual(r.durable_state, 'LIVE_SAVED'); assert.strictEqual(r.failure_recorded_persisted, true);
+      const live = app.ctx._wizDB;
+      assert.strictEqual(live, app.db, 'live object unchanged'); assert.strictEqual(hasForeign(live, 'p2-' + mode), 1, 'unrelated write lost');
+      assert.strictEqual(refDump(live), d0, 'reference changed'); assert.strictEqual(app.A.getReview(live, p.review_id).review_state, 'AWAITING_REVIEW');
+      const re = await reloadEq(app);
+      assert.strictEqual(re.A.getReview(re.db, p.review_id).review_state, 'AWAITING_REVIEW'); assert.strictEqual(hasForeign(re.db, 'p2-' + mode), 1); assert.strictEqual(refDump(re.db), d0);
+      const ok = await app.A.applyPersisted(durableHost(app).host, p.review_id);
+      assert.strictEqual(ok.result, 'APPLIED', JSON.stringify(ok.problems)); assert.strictEqual(cnt(app.ctx._wizDB, 'wiz_ref_items'), n0 + 1);
+      assert.strictEqual((await app.A.applyPersisted(durableHost(app).host, p.review_id)).code, 'ALREADY_TERMINAL');
+      assert.strictEqual(cnt(app.ctx._wizDB, 'wiz_ref_items'), n0 + 1); assert.strictEqual(hasForeign(app.ctx._wizDB, 'p2-' + mode), 1);
+      deq(app.A.listActions(app.ctx._wizDB, p.review_id).map(a => a.result), ['FAILED', 'APPLIED']);
+      await reloadEq(app);
+    }
+  });
+
+  await T('S2-P3', 'PERSIST-RACE · the DB keeps changing on every attempt → FAILED CONCURRENT_WRITES after the bounded retries, nothing applied, every unrelated write kept, live ≡ stored ≡ reload (the stored candidate of an earlier attempt is overwritten by the live save)', async () => {
+    const app = await seeded(); const p = await prepRel(app); const d0 = refDump(app.db);
+    const h = durableHost(app, { afterCommit: n => foreign(app, 'p3-' + n) });
+    const r = await app.A.applyPersisted(h.host, p.review_id);
+    assert.strictEqual(r.result, 'FAILED'); assert.strictEqual(r.code, 'CONCURRENT_WRITES'); assert.strictEqual(r.durable_state, 'LIVE_SAVED');
+    assert(h.stored.length >= 1, 'a candidate was stored at least once');
+    for (let n = 1; n <= h.calls; n++) assert.strictEqual(hasForeign(app.ctx._wizDB, 'p3-' + n), 1, 'lost write ' + n);
+    assert.strictEqual(refDump(app.ctx._wizDB), d0); assert.strictEqual(app.A.getReview(app.ctx._wizDB, p.review_id).review_state, 'AWAITING_REVIEW');
+    await reloadEq(app);
+  });
+
+  await T('S2-P4', 'PERSIST-RACE · Dismiss uses the same durable path: unrelated write while the candidate write is in flight → rebased, DISMISSED exactly once, wiz_ref_* unchanged, unrelated write kept, live ≡ stored ≡ reload; persistence failure → not DISMISSED, write kept', async () => {
+    const app = await seeded(); const p = await prepRel(app); const d0 = refDump(app.db);
+    const h = durableHost(app, { beforeCommit: n => { if (n === 1) foreign(app, 'p4'); } });
+    const r = await app.A.dismissPersisted(h.host, p.review_id, { reason: 'synthetic reason' });
+    assert.strictEqual(r.result, 'DISMISSED', JSON.stringify(r.problems)); assert.strictEqual(r.attempts.length, 2);
+    assert.strictEqual(hasForeign(app.ctx._wizDB, 'p4'), 1); assert.strictEqual(refDump(app.ctx._wizDB), d0);
+    assert.strictEqual(cnt(app.ctx._wizDB, 'wiz_admission_actions', 'review_id=?', [p.review_id]), 1);
+    await reloadEq(app);
+    const p2 = await prepRel(app, '[SYNTHETIC FIXTURE] another synthetic note for dismissal.');
+    const f = await app.A.dismissPersisted(durableHost(app, { beforeCommit: () => foreign(app, 'p4b'), failBytes: () => 'before' }).host, p2.review_id);
+    assert.strictEqual(f.result, 'FAILED'); assert.strictEqual(f.code, 'PERSIST_FAILED');
+    assert.strictEqual(app.A.getReview(app.ctx._wizDB, p2.review_id).review_state, 'AWAITING_REVIEW'); assert.strictEqual(hasForeign(app.ctx._wizDB, 'p4b'), 1);
+    await reloadEq(app);
+  });
+
+  await T('S2-P5', 'PERSIST-RACE residual is REPORTED, never hidden: candidate stored + concurrent write + every later save failing → FAILED with durable_state UNKNOWN_CANDIDATE_MAY_BE_DURABLE; live keeps the unrelated write and is NOT applied; a module lock makes prepare/apply/dismiss mutually exclusive (BUSY)', async () => {
+    const app = await seeded(); const p = await prepRel(app);
+    const hooks = { afterCommit: n => { foreign(app, 'p5-' + n); if (n === 1) { hooks.failPersist = true; hooks.failBytes = () => 'before'; } } };
+    const r = await app.A.applyPersisted(durableHost(app, hooks).host, p.review_id);
+    assert.strictEqual(r.result, 'FAILED'); assert.strictEqual(r.durable_state, 'UNKNOWN_CANDIDATE_MAY_BE_DURABLE', JSON.stringify(r));
+    assert.strictEqual(app.A.getReview(app.ctx._wizDB, p.review_id).review_state, 'AWAITING_REVIEW'); assert.strictEqual(hasForeign(app.ctx._wizDB, 'p5-1'), 1);
+    // lock: a second durable action while one is in flight → BUSY, zero writes
+    const slow = durableHost(app); const orig = slow.host.persistBytes; let release; slow.host.persistBytes = async (b, sv) => { await new Promise(r2 => { release = r2; }); return orig(b, sv); };
+    const first = app.A.applyPersisted(slow.host, p.review_id);
+    for (let i = 0; i < 500 && !release; i++) await new Promise(r2 => setTimeout(r2, 2));
+    assert(release, 'first action reached the candidate write');
+    const busy = await app.A.dismissPersisted(durableHost(app).host, p.review_id);
+    assert.strictEqual(busy.code, 'BUSY');
+    // static: the durability check and the swap are one synchronous step (no await in between); the browser host has persistBytes
+    const src = ADMJS.slice(ADMJS.indexOf('async function _durable('), ADMJS.indexOf('const applyPersisted = '));
+    const win = src.slice(src.indexOf('if (!perr && stillValid()) {'), src.indexOf('host.setDb(work);'));
+    assert(win.length > 0 && !/await/.test(win), 'await between durability check and swap');
+    assert(/const host = \{ getDb: \(\) => window\._wizDB, setDb: d => \{ window\._wizDB = d; \}, persist, persistBytes \};/.test(ADMJS));
+    // the candidate write uses the same IndexedDB name / store / key as index.html's saves
+    assert(ADMJS.includes("const IDB_NAME = 'wiz_lab_mem_store', IDB_STORE = 'kv', IDB_KEY = 'wiz_lab_sqlite_db';"));
+    assert(INDEX.includes("indexedDB.open('wiz_lab_mem_store', 1)") && INDEX.includes("_wizIDBSet('wiz_lab_sqlite_db'") && INDEX.includes("objectStore('kv').put(buf, 'wiz_lab_sqlite_db')"));
+    release(); const fr = await first; assert.strictEqual(fr.result, 'APPLIED', JSON.stringify(fr.problems));
+    await reloadEq(app);
   });
 
   await T('S2-L', 'APPLY ≠ USER_DECISION ≠ VERIFIED: a USER_INTERACTION-only Apply never supplies semantic authority — plans needing USER authority (USER_DECISION record / declared equivalence / status change) are refused without the host token; no code path in the module writes USER_DECISION/VERIFIED on its own', async () => {
@@ -850,7 +980,7 @@ const deq = (a, b, m) => assert.deepStrictEqual(JSON.parse(JSON.stringify(a)), J
     let mainName = 'eiti-wizard-lab-v1.8.9-refmem3';
     try { mainName = require('child_process').execSync('git show origin/main:sw.js', { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().match(/const CACHE_NAME = '([^']+)'/)[1]; } catch (e) {}
     assert.notStrictEqual(cur, mainName);
-    for (const prev of ['eiti-wizard-lab-v1.8.9-admission1', 'eiti-wizard-lab-v1.8.9-admission2', 'eiti-wizard-lab-v1.8.9-admission3']) assert.notStrictEqual(cur, prev, 'CACHE_NAME must be bumped (wiz-memory-admission.js changed in audit rev 1, 2 and step 2)');
+    for (const prev of ['eiti-wizard-lab-v1.8.9-admission1', 'eiti-wizard-lab-v1.8.9-admission2', 'eiti-wizard-lab-v1.8.9-admission3', 'eiti-wizard-lab-v1.8.9-admission4']) assert.notStrictEqual(cur, prev, 'CACHE_NAME must be bumped (wiz-memory-admission.js changed in audit rev 1, 2, step 2 and step 2 rev 1)');
     assert(/id="wizAdmPrepareBtn" onclick="wizAdmUiPrepare\(event\)"/.test(INDEX), 'Prepare button passes the click event (USER_INTERACTION context only, not authority)');
     const iRef = INDEX.indexOf('<script src="wiz-ref-memory.js"></script>'), iAdm = INDEX.indexOf('<script src="wiz-memory-admission.js"></script>');
     assert(iRef > 0 && iAdm > iRef);

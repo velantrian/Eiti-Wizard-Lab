@@ -1,4 +1,5 @@
-// Headless-browser tests for the Memory Admission Controller v0.1 (REVIEW mode; step 1 Prepare + step 2 Apply/Dismiss):
+// Headless-browser tests for the Memory Admission Controller v0.1 (REVIEW mode; step 1 Prepare + step 2 Apply/Dismiss,
+// incl. step 2 rev 1 persistence-race tests B10–B12):
 // real index.html, real IndexedDB, real UI, genuine (CDP) user activation for Prepare / Apply / Dismiss. Requires Chrome + puppeteer-core (not vendored):
 //   PUPPETEER_CORE=/path/to/node_modules/puppeteer-core CHROME_PATH=/usr/bin/google-chrome \
 //   [MAIN_ROOT=/path/to/checkout/of/main] [ADM_PORT=18801] node tests/admission/browser.test.mjs
@@ -82,6 +83,42 @@ const reloadPage = async (P) => {
   await P.page.waitForFunction(() => window._wizDB && typeof executeAgentTool === 'function' && window.WizAdmission, { timeout: 30000 });
   await P.page.evaluate(async () => { switchPanel('memory'); await new Promise(r => setTimeout(r, 600)); });
 };
+// in-page: full state of a database (wiz_ref* + personal + admission tables) — used to compare live vs the stored image
+const STATE_OF = (db) => {
+  const rows = sql => { const r = db.exec(sql); return r.length ? r[0].values : []; };
+  const enc = v => (v instanceof Uint8Array ? Array.from(v).join(',') : v);
+  const schema = rows("SELECT type,name,sql FROM sqlite_master WHERE substr(name,1,7)='wiz_ref' OR substr(tbl_name,1,7)='wiz_ref' ORDER BY type,name");
+  const ref = JSON.stringify({ schema, data: schema.filter(s => s[0] === 'table').map(([, n]) => [n, rows(`SELECT * FROM "${n}"`).map(r => JSON.stringify(r.map(enc))).sort()]) });
+  return ref + '#' + ['wiz_facts', 'wiz_facts_fts', 'wiz_l2_digests'].map(t => JSON.stringify(rows(`SELECT * FROM ${t}`))).join('|')
+    + '#' + JSON.stringify(rows('SELECT review_id, review_state, reviewed_at FROM wiz_admission_reviews ORDER BY review_id'))
+    + '#' + JSON.stringify(rows('SELECT review_id, action, result FROM wiz_admission_actions ORDER BY requested_at, action_id'));
+};
+// in-page: live state vs the image stored in IndexedDB (fresh connection, fresh sql.js DB)
+const LIVE_VS_STORED = async (stateSrc) => {
+  const STATE = eval('(' + stateSrc + ')');
+  const buf = await new Promise((res, rej) => { const q = indexedDB.open('wiz_lab_mem_store', 1); q.onerror = () => rej(q.error);
+    q.onsuccess = e => { const d = e.target.result; const g = d.transaction('kv', 'readonly').objectStore('kv').get('wiz_lab_sqlite_db'); g.onsuccess = () => { d.close(); res(g.result); }; g.onerror = () => { d.close(); rej(g.error); }; }; });
+  const SQL = await initSqlJs({ locateFile: f => f }); const d = new SQL.Database(new Uint8Array(buf));
+  const stored = STATE(d); d.close(); const live = STATE(window._wizDB);
+  return { equal: stored === live, stored: stored.length, live: live.length };
+};
+// in-page: arm an IndexedDB put hook that fires only for the admission module's candidate write (stack check)
+const ARM_PUT_HOOK = (mode, tag) => {
+  const P = IDBObjectStore.prototype; if (!window.__origPut) window.__origPut = P.put;
+  window.__hook = { mode, tag, fired: 0 };
+  P.put = function (v, k) {
+    const h = window.__hook, fromAdm = /wiz-memory-admission\.js/.test(new Error().stack || '');
+    if (h && fromAdm && h.fired === 0) {
+      h.fired++;
+      wizMemAdd('[SYNTHETIC FIXTURE] unrelated concurrent write ' + h.tag, 'general', 'user'); // app writer: window._wizDB + _wizSaveDB
+      const req = window.__origPut.call(this, v, k);
+      if (h.mode === 'fail') this.transaction.abort(); // the candidate write itself fails (not a race)
+      return req;
+    }
+    return window.__origPut.call(this, v, k);
+  };
+};
+const DISARM_PUT_HOOK = () => { if (window.__origPut) IDBObjectStore.prototype.put = window.__origPut; const f = window.__hook ? window.__hook.fired : 0; window.__hook = null; return f; };
 const PORT = Number(process.env.ADM_PORT || 18801);
 const srv = serve(ROOT, PORT);
 const mainSrv = process.env.MAIN_ROOT ? serve(path.resolve(process.env.MAIN_ROOT), PORT + 1) : null;
@@ -368,6 +405,84 @@ try {
     assert.notStrictEqual(p2.id, p.id);
     const a2 = await userActivate(P.page, '#wizAdmApplyBtn');
     assert.strictEqual(a2.result, 'APPLIED', a2.t);
+    assert.strictEqual(P.errors.length, 0, JSON.stringify(P.errors));
+  });
+  // ───── step 2 rev 1: P1-S2-PERSIST-RACE in the real page (real IndexedDB, real app writer wizMemAdd) ─────
+  const liveVsStored = () => P.page.evaluate(LIVE_VS_STORED, STATE_OF.toString());
+  const foreignCount = tag => P.page.evaluate(t => window._wizDB.exec('SELECT count(*) FROM wiz_facts WHERE claim=?', ['[SYNTHETIC FIXTURE] unrelated concurrent write ' + t])[0].values[0][0], tag);
+  const showReview = id => P.page.evaluate(i => wizAdmUiShow(i), id);
+
+  await T('B10', 'PERSIST-RACE 1+3+4 · genuine Apply while an unrelated app write (wizMemAdd + its own _wizSaveDB) lands during the candidate IndexedDB write → candidate aborted, rebuilt on the new live DB, APPLIED exactly once; unrelated write kept; live ≡ IndexedDB image; retry → ALREADY_TERMINAL; reload → same state (review APPLIED, new ref item, unrelated write)', async () => {
+    const warm = await verOf('fx:adm:cache-warm');
+    const p = await prepareGenuine(relInc('[SYNTHETIC FIXTURE] The demo exporter tags synthetic manifests with a run id.', warm));
+    assert.strictEqual(p.outcome, 'NEW_RELATED_ITEM');
+    const n0 = await P.page.evaluate(IDB_COUNTS);
+    await P.page.evaluate(ARM_PUT_HOOK, 'race', 'b10');
+    const a = await userActivate(P.page, '#wizAdmApplyBtn');
+    const fired = await P.page.evaluate(DISARM_PUT_HOOK);
+    assert.strictEqual(fired, 1, 'hook fired');
+    assert.strictEqual(a.result, 'APPLIED', a.t); assert.strictEqual(a.persisted, 'true'); assert.strictEqual(a.authority, 'NONE');
+    const det = await P.page.evaluate(id => window.wizAdmissionGetReview(id).last_action, p.id);
+    assert.strictEqual(det.result, 'APPLIED');
+    assert.strictEqual(await foreignCount('b10'), 1, 'unrelated write lost');
+    await sleep(300); // let the app's own fire-and-forget save settle
+    assert.strictEqual((await liveVsStored()).equal, true, 'live ≠ stored');
+    assert.deepStrictEqual(JSON.parse(a.attempts), ['CONCURRENT_WRITE_DURING_PERSIST', 'DURABLE_THEN_LIVE'], a.attempts); assert.strictEqual(a.durable, 'CANDIDATE_DURABLE_AND_LIVE');
+    const n1 = await P.page.evaluate(IDB_COUNTS);
+    assert.strictEqual(n1.ref_items, n0.ref_items + 1); assert.strictEqual(n1.ref_rel, n0.ref_rel + 1);
+    const again = await userActivate(P.page, '#wizAdmApplyBtn');
+    assert.strictEqual(again.code, 'ALREADY_TERMINAL');
+    assert.deepStrictEqual(await P.page.evaluate(IDB_COUNTS), n1);
+    await reloadPage(P);
+    const r = await P.page.evaluate(id => ({ state: window.wizAdmissionGetReview(id).review_state, acts: window.wizAdmissionGetReview(id).actions.map(x => x.result) }), p.id);
+    assert.deepStrictEqual(r, { state: 'APPLIED', acts: ['APPLIED'] });
+    assert.strictEqual(await foreignCount('b10'), 1);
+    assert.deepStrictEqual(await P.page.evaluate(IDB_COUNTS), n1);
+  });
+
+  await T('B11', 'PERSIST-RACE 2+3+4 · genuine Apply whose candidate IndexedDB write FAILS while an unrelated app write lands → FAILED PERSIST_FAILED, not applied, unrelated write kept (the live DB incl. the failure record is saved), live ≡ IndexedDB image; reload → AWAITING_REVIEW + unrelated write + no ref item; retry (genuine click) → APPLIED exactly once, survives reload', async () => {
+    const warm = await verOf('fx:adm:cache-warm');
+    const p = await prepareGenuine(relInc('[SYNTHETIC FIXTURE] The demo exporter validates synthetic manifests before writing.', warm));
+    const before = await P.page.evaluate(DUMPS), n0 = await P.page.evaluate(IDB_COUNTS);
+    await P.page.evaluate(ARM_PUT_HOOK, 'fail', 'b11');
+    const a = await userActivate(P.page, '#wizAdmApplyBtn');
+    assert.strictEqual(await P.page.evaluate(DISARM_PUT_HOOK), 1);
+    assert.strictEqual(a.result, 'FAILED', a.t); assert.strictEqual(a.code, 'PERSIST_FAILED'); assert.strictEqual(a.reviewState, 'AWAITING_REVIEW'); assert.strictEqual(a.durable, 'LIVE_SAVED');
+    assert.strictEqual(await foreignCount('b11'), 1, 'unrelated write lost');
+    assert.strictEqual((await P.page.evaluate(DUMPS)).ref, before.ref, 'reference changed by a failed apply');
+    await sleep(300);
+    assert.strictEqual((await liveVsStored()).equal, true, 'live ≠ stored after failure');
+    await reloadPage(P);
+    const r = await P.page.evaluate(id => ({ state: window.wizAdmissionGetReview(id).review_state, acts: window.wizAdmissionGetReview(id).actions.map(x => [x.result, x.detail.code]) }), p.id);
+    assert.deepStrictEqual(r, { state: 'AWAITING_REVIEW', acts: [['FAILED', 'PERSIST_FAILED']] });
+    assert.strictEqual(await foreignCount('b11'), 1); assert.strictEqual((await P.page.evaluate(DUMPS)).ref, before.ref);
+    assert.strictEqual((await P.page.evaluate(IDB_COUNTS)).ref_items, n0.ref_items);
+    await showReview(p.id);
+    const ok = await userActivate(P.page, '#wizAdmApplyBtn');
+    assert.strictEqual(ok.result, 'APPLIED', ok.t);
+    assert.strictEqual((await P.page.evaluate(IDB_COUNTS)).ref_items, n0.ref_items + 1);
+    assert.strictEqual((await userActivate(P.page, '#wizAdmApplyBtn')).code, 'ALREADY_TERMINAL');
+    await reloadPage(P);
+    assert.strictEqual(await P.page.evaluate(id => window.wizAdmissionGetReview(id).review_state, p.id), 'APPLIED');
+    assert.strictEqual((await P.page.evaluate(IDB_COUNTS)).ref_items, n0.ref_items + 1); assert.strictEqual(await foreignCount('b11'), 1);
+    assert.strictEqual((await liveVsStored()).equal, true);
+  });
+
+  await T('B12', 'PERSIST-RACE · genuine Dismiss with an unrelated app write during the candidate write → DISMISSED exactly once, wiz_ref_* unchanged, unrelated write kept, live ≡ IndexedDB image, survives reload; no new page errors', async () => {
+    const cold = await verOf('fx:adm:cache-cold');
+    const p = await prepareGenuine(relInc('[SYNTHETIC FIXTURE] The demo cache layer warms up after a synthetic restart.', cold));
+    const before = await P.page.evaluate(DUMPS);
+    await P.page.evaluate(ARM_PUT_HOOK, 'race', 'b12');
+    const d = await userActivate(P.page, '#wizAdmDismissBtn');
+    assert.strictEqual(await P.page.evaluate(DISARM_PUT_HOOK), 1);
+    assert.strictEqual(d.result, 'DISMISSED', d.t); assert.deepStrictEqual(JSON.parse(d.attempts), ['CONCURRENT_WRITE_DURING_PERSIST', 'DURABLE_THEN_LIVE']);
+    assert.strictEqual((await P.page.evaluate(DUMPS)).ref, before.ref); assert.strictEqual(await foreignCount('b12'), 1);
+    await sleep(300);
+    assert.strictEqual((await liveVsStored()).equal, true);
+    await reloadPage(P);
+    const r = await P.page.evaluate(id => window.wizAdmissionGetReview(id).actions.map(x => x.result), p.id);
+    assert.deepStrictEqual(r, ['DISMISSED']); assert.strictEqual(await foreignCount('b12'), 1);
+    assert.strictEqual((await P.page.evaluate(DUMPS)).ref, before.ref);
     assert.strictEqual(P.errors.length, 0, JSON.stringify(P.errors));
   });
 } finally {

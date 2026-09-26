@@ -25,8 +25,11 @@
 // exactly write_plan.import_bundle (built and shown at prepare time, sealed by packet_sha256). Before it: integrity
 // check, authority check (plan-required authority only from a host authority token — a click is never authority),
 // full stale-plan check. Around it: one outer SAVEPOINT covering import + exact-effect verification + review record
-// update; any failure rolls everything back. Persistence (browser): the apply runs on a byte copy of the database,
-// which becomes live only after the verified IndexedDB save succeeds. No other code in this file writes wiz_ref_*.
+// update; any failure rolls everything back (SQLite-atomic). Persistence (browser, step 2 rev 1): the action runs on
+// an isolated copy; that candidate is written to IndexedDB first and becomes live only in a synchronous
+// check-and-swap if the live database did not change meanwhile — otherwise it is rebuilt on top of the new live
+// database (concurrent writes are carried, never dropped); on failure the live database is what gets saved. See
+// _durable for the exact guarantee and its limits. No other code in this file writes wiz_ref_*.
 (function (root, factory) {
   const api = factory(root);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -34,7 +37,7 @@
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this), function (root) {
   'use strict';
 
-  const VERSION = '0.1-step2';
+  const VERSION = '0.1-step2-rev1';
   // The ONLY admission mode. There is no AUTO / AUTONOMOUS / BACKGROUND_ADMIT / AUTO_PROMOTE / AUTO_MERGE.
   const ADMISSION_MODE = 'REVIEW';
   // CLOSED outcome enum — exactly these 8 values, frozen.
@@ -930,41 +933,79 @@
     try { if (_hasTable(db)) initSchema(db); return _public(_recordFailure(db, _dismissTx(db, reviewId, opts))); }
     finally { _actionLock = false; }
   }
-  // DURABLE variants (all-or-nothing INCLUDING persistence). host = { getDb(), setDb(db), persist() }.
-  // The action runs on a byte copy of the live database; the copy becomes live only after persist() confirmed the
-  // write; on any failure the untouched original stays live and the failure is recorded there. The live database is
-  // never left holding an applied-but-unpersisted state.
+  // DURABLE variants (APPLY / DISMISS + persistence). host = { getDb(), setDb(db), persist(), persistBytes(bytes, stillValid) }.
+  // P1-S2-PERSIST-RACE (step 2 rev 1): the candidate database stays ISOLATED until it is durable, and it becomes live
+  // only in a synchronous check-and-swap. Other app code keeps writing the live database the whole time:
+  //   1. base = live.export(); work = copy(base); the action runs on work (async; live untouched).
+  //   2. live changed meanwhile → discard work, REBASE (start again from the current live; the stale guard re-runs).
+  //   3. host.persistBytes(work bytes, stillValid) writes the CANDIDATE to IndexedDB while live stays as it is; the host
+  //      aborts the IndexedDB transaction if live changed before the write commits (stillValid() false).
+  //   4. after the verified write: if live is still byte-identical to base → setDb(work) synchronously (no await
+  //      between the check and the swap, so no write can land in between); the old object is closed so a stale
+  //      reference fails loudly instead of writing into a detached database; then one more ordinary save of the
+  //      new live (requested last → ordered last in IndexedDB) supersedes any save requested during the window.
+  //      If live changed during/after the write → REBASE: the next candidate is built on top of the new live (it
+  //      carries the concurrent write) and overwrites the stored candidate.
+  //   5. persistence failure / too many concurrent writes → work discarded; live (with every concurrent write) is
+  //      what gets saved again (host.persist exports the live database) together with the failure record.
+  // So a concurrent write is never lost by admission and never left live-but-not-saved by admission: it lives in
+  // the live database, which is either the database that is saved on failure, or the base the durable candidate
+  // was built on. Limits (flagged in docs §17.4): writers that bypass window._wizDB-at-call-time; a durable
+  // candidate + concurrent write + ALL later saves failing leaves durable_state UNKNOWN (reported, never hidden).
+  const DURABLE_MAX_ATTEMPTS = 4;
+  const _bytesEq = (a, b) => { if (!a || !b || a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; };
   async function _durable(action, host, reviewId, opts, txFn) {
     const g = _gate(action, opts); if (g) return _gated(action, reviewId, opts, g);
     if (_actionLock) return _busy(action, reviewId, opts);
     _actionLock = true;
     try {
       const live = host.getDb(); if (!live) throw new Error('no database');
+      if (typeof host.persistBytes !== 'function' || typeof host.persist !== 'function') throw new Error('durable host needs persist() and persistBytes()');
       if (!_hasTable(live)) return _public(_res(action, reviewId, Date.now(), opts, 'REFUSED', 'NOT_FOUND', { problems: ['no such review'] }));
-      initSchema(live);
       const pre = _loadRaw(live, reviewId);
       if (!pre || pre.review_state !== 'AWAITING_REVIEW') return _public(await txFn(live)); // refusal path: zero writes, nothing to persist
-      const b0 = live.export();
-      const work = new live.constructor(b0);
-      let r;
-      try { r = await txFn(work); } catch (e) { r = _res(action, reviewId, Date.now(), opts, 'FAILED', 'ERROR', { problems: [String((e && e.message) || e)] }); }
-      const persistFailure = async (res) => { _recordFailure(live, res); try { await host.persist(); res.failure_recorded_persisted = true; } catch (e) { res.failure_recorded_persisted = false; } return _public(res); };
-      if (!r.ok) { work.close(); return persistFailure(r); }
-      const b1 = live.export(); // the live database must not have changed while the copy was being worked on
-      if (b1.length !== b0.length || b1.some((x, i) => x !== b0[i])) {
+      const trail = []; let candidateMaybeDurable = false;
+      // the failure is recorded on the LIVE database (which holds every concurrent write) and that database is saved
+      const fail = async (res) => {
+        const cur = host.getDb();
+        _recordFailure(cur, res);
+        try { await host.persist(); res.failure_recorded_persisted = true; res.durable_state = 'LIVE_SAVED'; }
+        catch (e) { res.failure_recorded_persisted = false; res.durable_state = candidateMaybeDurable ? 'UNKNOWN_CANDIDATE_MAY_BE_DURABLE' : 'PREVIOUS_SAVED_STATE'; res.problems = (res.problems || []).concat(['saving the live database failed: ' + String((e && e.message) || e)]); }
+        res.attempts = trail; res.reference_unchanged = res.reference_unchanged !== false;
+        return _public(res);
+      };
+      for (let attempt = 1; attempt <= DURABLE_MAX_ATTEMPTS; attempt++) {
+        if (host.getDb() !== live) return fail(_res(action, reviewId, Date.now(), opts, 'FAILED', 'DATABASE_REPLACED', { problems: ['the live database object was replaced during the action; nothing applied'] }));
+        const base = live.export();
+        const stillValid = () => host.getDb() === live && _bytesEq(live.export(), base);
+        const work = new live.constructor(base);
+        let r;
+        try { r = await txFn(work); } catch (e) { r = _res(action, reviewId, Date.now(), opts, 'FAILED', 'ERROR', { problems: [String((e && e.message) || e)] }); }
+        if (!r.ok) { work.close(); return fail(r); } // refused / stale / integrity / in-DB failure: nothing of the copy survives
+        if (!stillValid()) { work.close(); trail.push({ attempt, event: 'CONCURRENT_WRITE_BEFORE_PERSIST', action: 'REBASE' }); continue; }
+        const cand = work.export();
+        let ack = null, perr = null;
+        try { ack = await host.persistBytes(cand, stillValid); } catch (e) { perr = e; }
+        if (!perr && stillValid()) {
+          host.setDb(work); // synchronous with the check above: the candidate is durable AND nothing was written since base
+          try { live.close(); } catch (e) {}
+          const out = _public(r); out.persisted = true; out.persisted_sha256 = (ack && ack.sha256) || null;
+          trail.push({ attempt, event: 'DURABLE_THEN_LIVE' });
+          try { await host.persist(); out.post_swap_save = 'OK'; } catch (e) { out.post_swap_save = 'FAILED: ' + String((e && e.message) || e); }
+          out.attempts = trail; out.durable_state = 'CANDIDATE_DURABLE_AND_LIVE';
+          return out;
+        }
         work.close();
-        return persistFailure(_res(action, reviewId, r.requested_at, opts, 'FAILED', 'CONCURRENT_MODIFICATION', { problems: ['the database changed during the action; nothing applied — try again'], reference_unchanged: true }));
+        if (perr && perr.code === 'CONCURRENT_ABORT') { trail.push({ attempt, event: 'CONCURRENT_WRITE_DURING_PERSIST', stored: false, action: 'REBASE' }); continue; }
+        if (perr) {
+          candidateMaybeDurable = candidateMaybeDurable || perr.code === 'VERIFY_FAILED';
+          trail.push({ attempt, event: 'PERSIST_FAILED', error: String((perr && perr.message) || perr) });
+          return fail(_res(action, reviewId, r.requested_at, opts, 'FAILED', 'PERSIST_FAILED', { problems: ['persistence failed — nothing applied: ' + String((perr && perr.message) || perr)], proposed_outcome: r.proposed_outcome }));
+        }
+        candidateMaybeDurable = true; // stored, but live changed before the swap → the next candidate (or the live save) overwrites it
+        trail.push({ attempt, event: 'CONCURRENT_WRITE_AFTER_PERSIST', stored: true, action: 'REBASE' });
       }
-      host.setDb(work);
-      let ack;
-      try { ack = await host.persist(); }
-      catch (e) {
-        host.setDb(live); work.close();
-        return persistFailure(_res(action, reviewId, r.requested_at, opts, 'FAILED', 'PERSIST_FAILED', { problems: ['persistence failed — nothing applied: ' + String((e && e.message) || e)], reference_unchanged: true, proposed_outcome: r.proposed_outcome }));
-      }
-      try { live.close(); } catch (e) {}
-      const out = _public(r); out.persisted = true; out.persisted_sha256 = (ack && ack.sha256) || null;
-      return out;
+      return fail(_res(action, reviewId, Date.now(), opts, 'FAILED', 'CONCURRENT_WRITES', { problems: [`the database kept changing during ${DURABLE_MAX_ATTEMPTS} attempts; nothing applied — try again`] }));
     } finally { _actionLock = false; }
   }
   const applyPersisted = (host, reviewId, opts = {}) => _durable('APPLY', host, reviewId, opts, d => _applyTx(d, reviewId, opts));
@@ -977,6 +1018,7 @@
       `USER CONTEXT: ${r.interaction === 'USER_INTERACTION' ? 'USER_INTERACTION (click) — executes the shown plan only; NOT authority, NOT USER_DECISION, NOT VERIFIED' : 'no user interaction'} · authority: ${r.authority && r.authority.trusted ? r.authority.kind + ' (host token)' : 'NONE'}`,
       r.result === 'APPLIED' ? `REFERENCE WRITES: ${r.reference_writes} record(s) via WizRef.importJSONL${r.persisted ? ' · persisted (IndexedDB verified)' : ''}\nAPPLIED: ${j(r.applied)}` : `REFERENCE WRITES: 0${r.reference_unchanged === false ? ' (⚠ reference state differs — see problems)' : ' — reference memory unchanged'}`,
       r.reason ? `DISMISS REASON: ${r.reason}` : '',
+      r.durable_state ? `DURABILITY: ${r.durable_state}${r.attempts && r.attempts.length > 1 ? ' · attempts: ' + r.attempts.map(a => a.event).join(' → ') : ''}` : '',
       r.reprepare_required ? 'REPREPARE_REQUIRED — the plan no longer matches reference memory / the sealed packet; Apply never recomputes a plan.' : '',
       r.problems && r.problems.length ? 'PROBLEMS:' + r.problems.map(p => '\n  ⚠ ' + p).join('') : '',
     ].filter(Boolean).join('\n');
@@ -1047,15 +1089,56 @@
       if (typeof window._wizSaveDBAsync !== 'function') throw new Error('awaitable IndexedDB save unavailable');
       return window._wizSaveDBAsync();
     };
+    // Prepare holds window._wizDB across awaits → it takes the same module lock as apply/dismiss, so a durable
+    // apply/dismiss can never swap the database under an in-flight prepare (and vice versa).
     const prepareAndPersist = async (incoming, opts) => {
-      if (_actionLock) return { ok: false, errors: ['an apply/dismiss is in progress — try again'], warnings: [], persisted: false };
-      if (!db() && typeof window.wizInitSQLite === 'function') await window.wizInitSQLite();
-      const r = await prepare(db(), incoming, opts);
-      if (!r.ok) return Object.assign(r, { persisted: false });
-      try { const ack = await persist(); r.persisted = true; r.persisted_sha256 = ack.sha256 || null; }
-      catch (e) { r.persisted = false; r.persist_error = String((e && e.message) || e); }
-      return r;
+      if (_actionLock) return { ok: false, errors: ['an apply/dismiss/prepare is in progress — try again'], warnings: [], persisted: false };
+      _actionLock = true;
+      try {
+        if (!db() && typeof window.wizInitSQLite === 'function') await window.wizInitSQLite();
+        const r = await prepare(db(), incoming, opts);
+        if (!r.ok) return Object.assign(r, { persisted: false });
+        try { const ack = await persist(); r.persisted = true; r.persisted_sha256 = ack.sha256 || null; }
+        catch (e) { r.persisted = false; r.persist_error = String((e && e.message) || e); }
+        return r;
+      } finally { _actionLock = false; }
     };
+    // Candidate write for the durable apply/dismiss (P1-S2-PERSIST-RACE): stores the given bytes under the same
+    // IndexedDB key as _wizSaveDB/_wizSaveDBAsync WITHOUT touching window._wizDB. The put's success callback runs
+    // stillValid() (live still byte-identical to the candidate's base) and ABORTS the transaction otherwise, so a
+    // candidate that raced a concurrent write is normally never stored (code CONCURRENT_ABORT). After oncomplete the
+    // stored bytes are read back and compared byte-for-byte (code VERIFY_FAILED on mismatch: stored state unknown).
+    const IDB_NAME = 'wiz_lab_mem_store', IDB_STORE = 'kv', IDB_KEY = 'wiz_lab_sqlite_db'; // same as index.html
+    const persistBytes = (bytes, stillValid) => new Promise((resolve, reject) => {
+      const err = (code, msg) => Object.assign(new Error(msg), { code });
+      const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      let req;
+      try { req = indexedDB.open(IDB_NAME, 1); } catch (e) { return reject(e); }
+      req.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
+      req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
+      req.onblocked = () => reject(new Error('IndexedDB open blocked'));
+      req.onsuccess = e => {
+        const idb = e.target.result; let tx, raced = false;
+        try {
+          tx = idb.transaction(IDB_STORE, 'readwrite');
+          const put = tx.objectStore(IDB_STORE).put(buf, IDB_KEY);
+          put.onsuccess = () => { let ok = false; try { ok = stillValid(); } catch (x) { ok = false; } if (!ok) { raced = true; try { tx.abort(); } catch (x) {} } };
+        } catch (x) { idb.close(); return reject(x); }
+        tx.onabort = () => { idb.close(); reject(raced ? err('CONCURRENT_ABORT', 'concurrent write during persistence — candidate not stored') : (tx.error || new Error('IndexedDB write aborted'))); };
+        tx.oncomplete = () => {
+          let rb;
+          try { rb = idb.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).get(IDB_KEY); } catch (x) { idb.close(); return reject(err('VERIFY_FAILED', 'read-back failed: ' + x.message)); }
+          rb.onsuccess = () => {
+            idb.close();
+            const res = rb.result, a = new Uint8Array(buf);
+            const b = res ? new Uint8Array(res.buffer || res, res.byteOffset || 0, res.byteLength) : null;
+            if (!_bytesEq(a, b)) return reject(err('VERIFY_FAILED', 'IndexedDB read-back mismatch'));
+            resolve({ bytes: a.length, sha256: null, verified: true, method: 'byte-equality' });
+          };
+          rb.onerror = () => { idb.close(); reject(err('VERIFY_FAILED', 'read-back failed')); };
+        };
+      };
+    });
     // Script-callable wrapper: ALWAYS untrusted, no interaction (any caller / interaction value passed in is dropped).
     window.wizAdmissionPrepare = async (incoming, opts) => {
       const o = Object.assign({}, opts || {}); delete o.caller; delete o.interaction;
@@ -1078,8 +1161,9 @@
         return _mintInteraction('ui-click:#' + btnId);
       } catch (e) { return null; } // brand check failed → not a real Event
     };
-    // durable host for apply/dismiss: the byte copy becomes window._wizDB only after the verified IndexedDB save
-    const host = { getDb: () => window._wizDB, setDb: d => { window._wizDB = d; }, persist };
+    // durable host for apply/dismiss: the candidate copy is written to IndexedDB first (persistBytes) and becomes
+    // window._wizDB only in the synchronous check-and-swap of _durable (see there)
+    const host = { getDb: () => window._wizDB, setDb: d => { window._wizDB = d; }, persist, persistBytes };
     window.wizAdmissionGetReview = id => getReview(db(), id);
     window.wizAdmissionListPending = () => listPending(db());
     window.wizAdmUiRender = () => {
@@ -1121,6 +1205,7 @@
       res.dataset.result = r.result; res.dataset.code = r.code; res.dataset.reviewState = r.review_state || '';
       res.dataset.persisted = r.persisted ? 'true' : 'false'; res.dataset.interaction = r.interaction || 'NONE';
       res.dataset.authority = r.authority && r.authority.trusted ? r.authority.kind : 'NONE';
+      res.dataset.attempts = JSON.stringify((r.attempts || []).map(a => a.event)); res.dataset.durable = r.durable_state || '';
       res.textContent = formatAction(r);
       res.dataset.state = 'done';
       window.wizAdmUiRender();

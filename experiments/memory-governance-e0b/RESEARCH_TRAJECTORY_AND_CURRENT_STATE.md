@@ -352,3 +352,88 @@ Do **not** write or infer that:
 ## 6. Related protocol / contract files (index only)
 
 Evidence and protocol live under `experiments/memory-governance-e0b/`. Exact frozen hashes and Git commits remain the evidence authority. This narrative does not replace those artifacts.
+
+
+---
+
+## 7. Issue #8 provenance disposition checkpoint — 2026-09-27
+
+Status:
+
+- DOCUMENTATION / PROVENANCE SYNC ONLY
+- NOT A GOLD FREEZE
+- NOT A NEW CORPUS
+- NOT A NEW EXPERIMENT ID
+- NO A0 / A1 / B RUN AUTHORIZATION
+
+This checkpoint records the latest human clarification and the resulting provenance limits without rewriting the recovered artifacts or frozen Human U0.
+
+### 7.1 FRESH-U0-01
+
+Later user self-report:
+
+- the user remembers answering the meaning of "Да, попробуй" without a model hint;
+- this is `RETROSPECTIVE_USER_SELF_REPORT`, not contemporaneous provenance evidence.
+
+Historical records remain conflicting:
+
+- Issue #8 forensic inventory: U0-01 exposure = `UNKNOWN`;
+- recovery-time `U0B_EXPOSURE_PROVENANCE.md`: `MODEL_ASSISTED_BOUNDARY_EXPOSURE = YES`.
+
+Current disposition:
+
+- `PROVENANCE_UNRESOLVED`
+- `CLEAN_UNEXPOSED = NOT ESTABLISHED`
+- `STRICT_BLIND_GOLD = NOT ESTABLISHED`
+
+Do not use the later self-report to backdate clean-blind status.
+
+### 7.2 FRESH-U0-02
+
+Existing state:
+
+- frozen U0 act count = 2;
+- exact textual boundary remains unresolved;
+- recovered checkpoint records context exposure before U0b boundary choice.
+
+During the 2026-09-27 clarification, the user was shown a model-proposed candidate decomposition before making any new boundary decision.
+
+Therefore:
+
+- `SEMANTIC_BOUNDARY_UNRESOLVED` remains;
+- the same user/item pair cannot now yield a fresh strict-blind reannotation;
+- any later annotation of this same item by this user is `HUMAN_READJUDICATION`, not fresh `STRICT_BLIND_GOLD`.
+
+The user's later explanation of the broader motive/context is retained only as retrospective self-report and does not supply the missing historical boundary.
+
+### 7.3 Other early U0b items
+
+- FRESH-U0-03 / 04: model-assisted boundary exposure remains part of the recovered provenance record; not strict-blind span gold.
+- FRESH-U0-05: incomplete / provenance-unresolved boundary record; do not promote to strict-blind gold.
+- FRESH-U0-06 ... 30: U0b boundaries were not collected. `NOT_COLLECTED != REJECTED`.
+
+### 7.4 Experiment state remains unchanged
+
+- Frozen Human U0 remains unchanged.
+- Recovered U0b remains a working/recovery checkpoint, not final gold.
+- `A0 = NOT_RUN`
+- `A1 = NOT_RUN`
+- `B = NOT_RUN`
+
+`RECOVERED != HISTORICALLY_PREREGISTERED`
+
+`RETROSPECTIVE_SELF_REPORT != CONTEMPORANEOUS_PROVENANCE`
+
+`CANNOT_ESTABLISH_CLEAN_BLIND != CANNOT_CLOSE_PROVENANCE_INVESTIGATION`
+
+An unresolved historical provenance status may be a valid terminal result if uncertainty is preserved and allowed use is restricted accordingly.
+
+### 7.5 Current bounded order
+
+1. Finalize the per-item Issue #8 disposition / allowed-use record, preserving `UNKNOWN` where historical provenance cannot be recovered.
+2. Reconcile the existing E0-B annotation / evaluation contract. Do not add schema fields unless a distinct downstream-relevant semantic collapse is demonstrated.
+3. Decide whether Issue #8 can close with qualified `PROVENANCE_UNRESOLVED` / restricted-use outcomes.
+4. If strict-blind span evidence is still scientifically required, use untouched material for one clean pilot; do not attempt to "re-blind" exposed U0-02.
+5. Freeze or run A0/A1/B only after a valid span reference exists and explicit authorization is given.
+
+This section supersedes the older narrative's mechanical "collect U0b 30/30 next" instruction as the current resume point. It does not delete or rewrite that historical instruction.

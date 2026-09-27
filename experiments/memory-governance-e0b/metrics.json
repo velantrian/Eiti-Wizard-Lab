@@ -1,0 +1,15 @@
+{
+  "status": "NOT_RUN",
+  "GROUND_TRUTH_STATUS": "PENDING",
+  "phase": 1,
+  "note": "Metrics deferred until human GT confirmation and authorized blind run.",
+  "axes": [
+    "SOURCE",
+    "SPEECH_SEMANTIC_ACT",
+    "COMMITMENT",
+    "LIFECYCLE",
+    "AUTHORITY_CANDIDATE"
+  ],
+  "n_atoms": 45,
+  "n_human_label_required": 13
+}

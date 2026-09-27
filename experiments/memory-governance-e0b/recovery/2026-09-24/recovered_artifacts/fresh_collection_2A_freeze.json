@@ -1,0 +1,31 @@
+{
+  "phase": "2A",
+  "frozen_at": "2026-09-22T00:50:05.046986+02:00",
+  "source_stream": "LABS_AGENT_CHAT:7870c64b-b8c5-4fe4-860f-0674ef545d23",
+  "sampling_window": {
+    "first_message_id": "t8u",
+    "last_message_id": "t37u",
+    "first_timestamp_iso": "2026-09-09T22:13:47.616000+02:00",
+    "last_timestamp_iso": "2026-09-11T16:42:51.293000+02:00"
+  },
+  "N_collected": 30,
+  "excluded_calibration_parents": [
+    "evt-002",
+    "evt-005",
+    "t0u",
+    "t1u",
+    "t2u",
+    "t3u",
+    "t4u",
+    "t5u",
+    "t6u",
+    "t7u"
+  ],
+  "manifest_path": "fresh_collection_manifest_v1.json",
+  "manifest_sha256": "9bcce7c2327bf14d81fd9af0761ee7940f450328ecd7445a88144483a6385ed5",
+  "u0_packet_json_sha256": "fbec1af53068c3bbd0ab37913006e414d3b8ce3bdbbb0a47729bca68c29da8b3",
+  "u0_packet_md_sha256": "4967a19818069b8cd99918e55201e873fae114390292beb6c9d63eb847181767",
+  "HUMAN_SEGMENTATION_REFERENCE": "NOT_CREATED",
+  "GENERALIZATION_HUMAN_GOLD": "NOT_CREATED",
+  "A0_A1_B": "NOT_RUN"
+}

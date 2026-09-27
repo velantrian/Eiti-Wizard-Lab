@@ -1,0 +1,4072 @@
+{
+  "schema": "E0B_ATOMS_ATOMIC_V2",
+  "phase": "1D",
+  "base_phase1c_commit": "5771de4c03c2cd6e33223b3d21223687535406bd",
+  "HUMAN_GOLD": "NOT_CREATED",
+  "BLIND_RUN": "NOT_RUN",
+  "GROUND_TRUTH_STATUS": "PENDING",
+  "user_atomic_spans": [
+    {
+      "atom_id": "E0B-V04",
+      "VERBATIM": true,
+      "raw_text": "Phase 1 will proceed without Graphiti.",
+      "content_sha256": "715dfde8cdf783b3675f1ba3fa7e94ee68688e2446fe8fc2ad4466b7c8071fc0",
+      "exact_span": {
+        "parent_message_id": "evt-002",
+        "parent_atom_id": null,
+        "start": 0,
+        "end": 38,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "Phase 1 architecture path"
+      },
+      "condition": {
+        "status": "NOT_PRESENT",
+        "value": null
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "Graphiti exclusion"
+      },
+      "parent_message_id": "evt-002",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "provenance_excerpts/LAB-E0A-FIXTURE_copy.json",
+        "note": "excerpt_ref as weak preceding pointer"
+      },
+      "source_id": "LAB-E0A-FIXTURE",
+      "source_artifact": "experiments/memory-governance-e0a/fixture.json",
+      "source_turn_id": "evt-002",
+      "source_location": "steps[event_id=evt-002].content",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "event_type": "USER_DECISION",
+        "step": 2,
+        "event_id": "evt-002"
+      },
+      "auto_structural": {
+        "SOURCE": "USER"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "PRESENT",
+          "value": "explicit exclusion/constraint branch in text"
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": false,
+          "EXPLICIT_MARKER_TYPE": "NONE",
+          "EXPLICIT_MARKER_SPAN": null,
+          "EXPLICIT_MARKER_TEXT": null,
+          "note": "Marker miss != semantic absence"
+        }
+      ],
+      "provenance_from_phase1c_atom_id": "E0B-V04"
+    },
+    {
+      "atom_id": "E0B-V07",
+      "VERBATIM": true,
+      "raw_text": "Where did we stop?",
+      "content_sha256": "781bf08ee761eae968f4d2014cafa11cb5e01312c24ccd5af6bbee7bc6a2abea",
+      "exact_span": {
+        "parent_message_id": "evt-005",
+        "parent_atom_id": null,
+        "start": 0,
+        "end": 18,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "session resume point"
+      },
+      "condition": {
+        "status": "NOT_PRESENT",
+        "value": null
+      },
+      "target": {
+        "status": "UNKNOWN",
+        "value": null
+      },
+      "parent_message_id": "evt-005",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "provenance_excerpts/LAB-E0A-FIXTURE_copy.json",
+        "note": "excerpt_ref as weak preceding pointer"
+      },
+      "source_id": "LAB-E0A-FIXTURE",
+      "source_artifact": "experiments/memory-governance-e0a/fixture.json",
+      "source_turn_id": "evt-005",
+      "source_location": "steps[event_id=evt-005].content",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "event_type": "QUERY_RESUME",
+        "step": 5,
+        "event_id": "evt-005"
+      },
+      "auto_structural": {
+        "SOURCE": "USER"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "PRESENT",
+          "value": "interrogative form visible in text",
+          "note": "form presence only; not gold resolution"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            17,
+            18
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        }
+      ],
+      "provenance_from_phase1c_atom_id": "E0B-V07"
+    },
+    {
+      "atom_id": "E0B-V08.1.1",
+      "VERBATIM": true,
+      "raw_text": "Слу- слушай, скажи мне, ты можешь здесь запустить, а, как тебе сказать? Вот, э, посмотри, а, при- другие мои чат-боты, да, что там обсуждалось, и скажи, можно здесь, а, мою систему запустить полноценно?",
+      "content_sha256": "5061a2016abfca9adc834b75959a1f5a29c6d7a8c7ad32f9e692f008d7d6f02c",
+      "exact_span": {
+        "parent_message_id": "t0u",
+        "parent_atom_id": "E0B-V08",
+        "start": 0,
+        "end": 202,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "local/lab computer capability to run user system"
+      },
+      "condition": {
+        "status": "NOT_PRESENT",
+        "value": null
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "user system launch"
+      },
+      "parent_message_id": "t0u",
+      "parent_atom_id": "E0B-V08",
+      "parent_raw_text_sha256": "43fbcccdb529a7f996e3921945a0789269e6148c40c255c54c4a24c8587a1626",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t0u",
+        "note": "excerpt_ref as weak preceding pointer"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t0u",
+      "source_location": "parent E0B-V08 raw_text[0:202)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V08"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": null,
+      "context_dependency": null,
+      "further_split_of": "E0B-V08.1",
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "PRESENT",
+          "value": "interrogative form visible in text",
+          "note": "form presence only; not gold resolution"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            13,
+            18
+          ],
+          "EXPLICIT_MARKER_TEXT": "скажи"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            80,
+            88
+          ],
+          "EXPLICIT_MARKER_TEXT": "посмотри"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            146,
+            151
+          ],
+          "EXPLICIT_MARKER_TEXT": "скажи"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            70,
+            71
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            201,
+            202
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "OPTIONAL_CAN",
+          "EXPLICIT_MARKER_SPAN": [
+            153,
+            158
+          ],
+          "EXPLICIT_MARKER_TEXT": "можно"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V08.1"
+    },
+    {
+      "atom_id": "E0B-V08.1.2",
+      "VERBATIM": true,
+      "raw_text": " Ты, у тебя же есть доступ к компьютеру. Если у тебя есть доступ к компьютеру, то ты, по идее, можешь то же самое, что на компьютере запустить, чтобы тестировать мою систему. ",
+      "content_sha256": "a88acb7ab557263be0886f62f96ff2cc797950cb8e9f310cb2303835c1f8c26d",
+      "exact_span": {
+        "parent_message_id": "t0u",
+        "parent_atom_id": "E0B-V08",
+        "start": 202,
+        "end": 377,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "local/lab computer capability to run user system"
+      },
+      "condition": {
+        "status": "PRESENT",
+        "value": "Если у тебя есть доступ к компьютеру, то ты, по идее, можешь то же самое, что на компьютере запустить, чтобы тестировать",
+        "clause_start": 41
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "user system launch"
+      },
+      "parent_message_id": "t0u",
+      "parent_atom_id": "E0B-V08",
+      "parent_raw_text_sha256": "43fbcccdb529a7f996e3921945a0789269e6148c40c255c54c4a24c8587a1626",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t0u",
+        "note": "excerpt_ref as weak preceding pointer"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t0u",
+      "source_location": "parent E0B-V08 raw_text[202:377)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V08"
+      },
+      "intentionally_compound": true,
+      "compound_reason": "CLAIM of computer access + CONDITIONAL capability; splitting would detach condition from claim",
+      "relation": {
+        "type": "SUPPORTS_FEASIBILITY_OF",
+        "target_atom_id": "E0B-V08.1.1",
+        "status": "PRESENT"
+      },
+      "context_dependency": null,
+      "further_split_of": "E0B-V08.1",
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            41,
+            45
+          ],
+          "EXPLICIT_MARKER_TEXT": "Если"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            144,
+            149
+          ],
+          "EXPLICIT_MARKER_TEXT": "чтобы"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V08.1"
+    },
+    {
+      "atom_id": "E0B-V08.2",
+      "VERBATIM": true,
+      "raw_text": "Ну ты скажи только точно, не выдумывай, а, и не галицини.",
+      "content_sha256": "7741b7d0bec4b600ed0328429d281b81b0f4185848a84451cebcca2e5f3866a0",
+      "exact_span": {
+        "parent_message_id": "t0u",
+        "parent_atom_id": "E0B-V08",
+        "start": 377,
+        "end": 434,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "local/lab computer capability to run user system"
+      },
+      "condition": {
+        "status": "NOT_PRESENT",
+        "value": null
+      },
+      "target": {
+        "status": "UNKNOWN",
+        "value": null
+      },
+      "parent_message_id": "t0u",
+      "parent_atom_id": "E0B-V08",
+      "parent_raw_text_sha256": "43fbcccdb529a7f996e3921945a0789269e6148c40c255c54c4a24c8587a1626",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t0u",
+        "note": "excerpt_ref as weak preceding pointer"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t0u",
+      "source_location": "parent E0B-V08 raw_text[377:434)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V08"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": {
+        "type": "CONSTRAINT_ON_ANSWER_FOR",
+        "target_atom_id": "E0B-V08.1.1",
+        "status": "PRESENT"
+      },
+      "context_dependency": null,
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "PRESENT",
+          "value": "explicit exclusion/constraint branch in text"
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            6,
+            11
+          ],
+          "EXPLICIT_MARKER_TEXT": "скажи"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONSTRAINT_ONLY_EXACT",
+          "EXPLICIT_MARKER_SPAN": [
+            12,
+            24
+          ],
+          "EXPLICIT_MARKER_TEXT": "только точно"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONSTRAINT_ONLY_EXACT",
+          "EXPLICIT_MARKER_SPAN": [
+            26,
+            38
+          ],
+          "EXPLICIT_MARKER_TEXT": "не выдумывай"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONSTRAINT_ONLY_EXACT",
+          "EXPLICIT_MARKER_SPAN": [
+            45,
+            56
+          ],
+          "EXPLICIT_MARKER_TEXT": "не галицини"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V08.2"
+    },
+    {
+      "atom_id": "E0B-V13",
+      "VERBATIM": true,
+      "raw_text": "Смотри, там есть ещё один репозиторий, он называется graphiti-fractal. Скажи, а, вот он уже в принципе как собранный, проект. А, как ты думаешь, его ты можешь запустить?",
+      "content_sha256": "94698e03d0f8d981c9ee2b67c78a9a0aaafa03f3962ff8588090e2ce9f7bd04c",
+      "exact_span": {
+        "parent_message_id": "t1u",
+        "parent_atom_id": null,
+        "start": 0,
+        "end": 169,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "UNKNOWN",
+        "value": null
+      },
+      "condition": {
+        "status": "NOT_PRESENT",
+        "value": null
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "Graphiti/project"
+      },
+      "parent_message_id": "t1u",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t0s5"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t1u",
+      "source_location": "transcript_entries[id=t1u].raw_text[0:169]",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER"
+      },
+      "intentionally_compound": true,
+      "compound_reason": "Brief setup CLAIM/CONTEXT + single primary QUESTION about launchability; not independently classifiable without destroying question scope",
+      "relation": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "PRESENT",
+          "value": "interrogative form visible in text",
+          "note": "form presence only; not gold resolution"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            71,
+            76
+          ],
+          "EXPLICIT_MARKER_TEXT": "Скажи"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            168,
+            169
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        }
+      ],
+      "provenance_from_phase1c_atom_id": "E0B-V13"
+    },
+    {
+      "atom_id": "E0B-V17.1",
+      "VERBATIM": true,
+      "raw_text": "Хочу тебя попросить, когда ты мне отвечаешь, всегда отвечай с эмодзи по смыслу. Потому что я визуально лучше понимаю, чем просто сухой текст. Хорошо? ",
+      "content_sha256": "73b2bd171fde96a270d58f722cbbc2b84ad84935d12f680b4b73588e55dd72f4",
+      "exact_span": {
+        "parent_message_id": "t2u",
+        "parent_atom_id": "E0B-V17",
+        "start": 0,
+        "end": 150,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "assistant reply formatting / memory"
+      },
+      "condition": {
+        "status": "PRESENT",
+        "value": "Потому что я визуально лучше понимаю, чем просто сухой текст. Хорошо?",
+        "clause_start": 80
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "assistant reply style"
+      },
+      "parent_message_id": "t2u",
+      "parent_atom_id": "E0B-V17",
+      "parent_raw_text_sha256": "2a32891b38929f065750350ce2b26ec222b0022a374657550d0c4a959d560478",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t1s2"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t2u",
+      "source_location": "parent E0B-V17 raw_text[0:150)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V17"
+      },
+      "intentionally_compound": true,
+      "compound_reason": "PREFERENCE/REQUEST + because-rationale + soft confirmation Хорошо?; rationale is not an independent act",
+      "relation": {
+        "type": "RATIONALE_ATTACHED_WITHIN_SPAN",
+        "target_atom_id": null,
+        "status": "PRESENT"
+      },
+      "context_dependency": null,
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "PRESENT",
+          "value": "Потому что я визуально лучше понимаю, чем просто сухой текст. Хорошо? "
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "PRESENT",
+          "value": "interrogative form visible in text",
+          "note": "form presence only; not gold resolution"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            0,
+            19
+          ],
+          "EXPLICIT_MARKER_TEXT": "Хочу тебя попросить"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            148,
+            149
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "BECAUSE",
+          "EXPLICIT_MARKER_SPAN": [
+            80,
+            90
+          ],
+          "EXPLICIT_MARKER_TEXT": "Потому что"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "PREFERENCE_ALWAYS",
+          "EXPLICIT_MARKER_SPAN": [
+            45,
+            59
+          ],
+          "EXPLICIT_MARKER_TEXT": "всегда отвечай"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V17.1"
+    },
+    {
+      "atom_id": "E0B-V17.2",
+      "VERBATIM": true,
+      "raw_text": "Запомни это в своей памяти, чтобы это не просто су- сухой текст был.",
+      "content_sha256": "75eac394c976a4e5587742ae44ed5ab3d1169c02f71c484fe488330b1770f0bb",
+      "exact_span": {
+        "parent_message_id": "t2u",
+        "parent_atom_id": "E0B-V17",
+        "start": 150,
+        "end": 218,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "assistant reply formatting / memory"
+      },
+      "condition": {
+        "status": "PRESENT",
+        "value": "чтобы это не просто су- сухой текст был.",
+        "clause_start": 28
+      },
+      "target": {
+        "status": "UNKNOWN",
+        "value": null
+      },
+      "parent_message_id": "t2u",
+      "parent_atom_id": "E0B-V17",
+      "parent_raw_text_sha256": "2a32891b38929f065750350ce2b26ec222b0022a374657550d0c4a959d560478",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t1s2"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t2u",
+      "source_location": "parent E0B-V17 raw_text[150:218)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V17"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": {
+        "type": "MEMORY_REQUEST_FOR",
+        "target_atom_id": "E0B-V17.1",
+        "status": "PRESENT"
+      },
+      "context_dependency": null,
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            0,
+            7
+          ],
+          "EXPLICIT_MARKER_TEXT": "Запомни"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            28,
+            33
+          ],
+          "EXPLICIT_MARKER_TEXT": "чтобы"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V17.2"
+    },
+    {
+      "atom_id": "E0B-V18.1",
+      "VERBATIM": true,
+      "raw_text": "Слушай, а я знаешь, чё думаю? Просто у меня вопрос. Можно же опционально ещё, а, например, Ladybug и Kuzu туда вместить, и, потому что для них не нужен сервер. ",
+      "content_sha256": "d47f24a81966ef6f37b350decd73cee55542dbbd987eacfa68e808600b2625a8",
+      "exact_span": {
+        "parent_message_id": "t3u",
+        "parent_atom_id": "E0B-V18",
+        "start": 0,
+        "end": 160,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "optional DB backends for lab project"
+      },
+      "condition": {
+        "status": "PRESENT",
+        "value": "потому что для них не нужен сервер.",
+        "clause_start": 124
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "Ladybug/Kuzu stack"
+      },
+      "parent_message_id": "t3u",
+      "parent_atom_id": "E0B-V18",
+      "parent_raw_text_sha256": "82711f489054256bff1da91255173107eced5702c3ceaa2d9515cf0fa532e38a",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t2u"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t3u",
+      "source_location": "parent E0B-V18 raw_text[0:160)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V18"
+      },
+      "intentionally_compound": true,
+      "compound_reason": "Interrogative-mood PROPOSAL (Ladybug/Kuzu) + because no-server rationale; not two detachable acts",
+      "relation": {
+        "type": "RATIONALE_ATTACHED_WITHIN_SPAN",
+        "status": "PRESENT"
+      },
+      "context_dependency": null,
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "PRESENT",
+          "value": "потому что для них не нужен сервер. "
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "PRESENT",
+          "value": "interrogative form visible in text",
+          "note": "form presence only; not gold resolution"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            28,
+            29
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "BECAUSE",
+          "EXPLICIT_MARKER_SPAN": [
+            124,
+            134
+          ],
+          "EXPLICIT_MARKER_TEXT": "потому что"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "OPTIONAL_CAN",
+          "EXPLICIT_MARKER_SPAN": [
+            52,
+            60
+          ],
+          "EXPLICIT_MARKER_TEXT": "Можно же"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "OPTIONAL_CAN",
+          "EXPLICIT_MARKER_SPAN": [
+            61,
+            72
+          ],
+          "EXPLICIT_MARKER_TEXT": "опционально"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V18.1"
+    },
+    {
+      "atom_id": "E0B-V18.2",
+      "VERBATIM": true,
+      "raw_text": "Я думаю, его легче будет установить, а он также по функционалу подойдёт. ",
+      "content_sha256": "0bee6fd6d8fb765601ebfa017848adc784705cd42e0d14426c232c380bf3c1fa",
+      "exact_span": {
+        "parent_message_id": "t3u",
+        "parent_atom_id": "E0B-V18",
+        "start": 160,
+        "end": 233,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "optional DB backends for lab project"
+      },
+      "condition": {
+        "status": "NOT_PRESENT",
+        "value": null
+      },
+      "target": {
+        "status": "UNKNOWN",
+        "value": null
+      },
+      "parent_message_id": "t3u",
+      "parent_atom_id": "E0B-V18",
+      "parent_raw_text_sha256": "82711f489054256bff1da91255173107eced5702c3ceaa2d9515cf0fa532e38a",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t2u"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t3u",
+      "source_location": "parent E0B-V18 raw_text[160:233)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V18"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": {
+        "type": "HYPOTHESIS_ABOUT",
+        "target_atom_id": "E0B-V18.1",
+        "status": "PRESENT"
+      },
+      "context_dependency": null,
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": false,
+          "EXPLICIT_MARKER_TYPE": "NONE",
+          "EXPLICIT_MARKER_SPAN": null,
+          "EXPLICIT_MARKER_TEXT": null,
+          "note": "Marker miss != semantic absence"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V18.2"
+    },
+    {
+      "atom_id": "E0B-V18.3",
+      "VERBATIM": true,
+      "raw_text": "Вдобавок ещё можно, а, использовать, э, SQLite и PostgreSQL. ",
+      "content_sha256": "1f1416315932a5b75bd6677412cacfa0f1faefbde14cd5ea868d427f147f84cf",
+      "exact_span": {
+        "parent_message_id": "t3u",
+        "parent_atom_id": "E0B-V18",
+        "start": 233,
+        "end": 294,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "optional DB backends for lab project"
+      },
+      "condition": {
+        "status": "NOT_PRESENT",
+        "value": null
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "SQLite/PostgreSQL"
+      },
+      "parent_message_id": "t3u",
+      "parent_atom_id": "E0B-V18",
+      "parent_raw_text_sha256": "82711f489054256bff1da91255173107eced5702c3ceaa2d9515cf0fa532e38a",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t2u"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t3u",
+      "source_location": "parent E0B-V18 raw_text[233:294)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V18"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": {
+        "type": "CONTINUES_PROPOSAL_FROM",
+        "target_atom_id": "E0B-V18.1",
+        "status": "PRESENT"
+      },
+      "context_dependency": "Additive proposal; underspecified without V18.1 target (\"туда\")",
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "OPTIONAL_CAN",
+          "EXPLICIT_MARKER_SPAN": [
+            13,
+            18
+          ],
+          "EXPLICIT_MARKER_TEXT": "можно"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V18.3"
+    },
+    {
+      "atom_id": "E0B-V18.4",
+      "VERBATIM": true,
+      "raw_text": "Ты их сможешь запустить? Просто скажи мне, это легче будет, чем Neo4j?",
+      "content_sha256": "7b177a82f666a5b440eb61684a109befadf2cbefd122726652b66569458df815",
+      "exact_span": {
+        "parent_message_id": "t3u",
+        "parent_atom_id": "E0B-V18",
+        "start": 294,
+        "end": 364,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "optional DB backends for lab project"
+      },
+      "condition": {
+        "status": "NOT_PRESENT",
+        "value": null
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "Neo4j comparison"
+      },
+      "parent_message_id": "t3u",
+      "parent_atom_id": "E0B-V18",
+      "parent_raw_text_sha256": "82711f489054256bff1da91255173107eced5702c3ceaa2d9515cf0fa532e38a",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t2u"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t3u",
+      "source_location": "parent E0B-V18 raw_text[294:364)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V18"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": {
+        "type": "QUESTION_ABOUT",
+        "target_atom_id": "E0B-V18.3",
+        "status": "PRESENT"
+      },
+      "context_dependency": null,
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "PRESENT",
+          "value": "interrogative form visible in text",
+          "note": "form presence only; not gold resolution"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            32,
+            37
+          ],
+          "EXPLICIT_MARKER_TEXT": "скажи"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            23,
+            24
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            69,
+            70
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V18.4"
+    },
+    {
+      "atom_id": "E0B-V21.1",
+      "VERBATIM": true,
+      "raw_text": "А давай знаешь, что мы сделаем? Давай мы сделаем второй репозиторий с таким же названием, просто назовем исследовательский, и всё оттуда перенесем во второй. Всё, что необходимо. ",
+      "content_sha256": "6d67794bebda251158e1524b5c75f0793a034279041cfc1de099afc3e2e8d17d",
+      "exact_span": {
+        "parent_message_id": "t4u",
+        "parent_atom_id": "E0B-V21",
+        "start": 0,
+        "end": 179,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "second research repository fork/adapt"
+      },
+      "condition": {
+        "status": "NOT_PRESENT",
+        "value": null
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "repository"
+      },
+      "parent_message_id": "t4u",
+      "parent_atom_id": "E0B-V21",
+      "parent_raw_text_sha256": "bc07cf39a7b49b7895a3a72e76385bc244e499baaae14280eebb60e58d90b0d0",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t3s2"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t4u",
+      "source_location": "parent E0B-V21 raw_text[0:179)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V21"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": null,
+      "context_dependency": null,
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "PRESENT",
+          "value": "interrogative form visible in text",
+          "note": "form presence only; not gold resolution"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "PROPOSAL_LET_US",
+          "EXPLICIT_MARKER_SPAN": [
+            0,
+            7
+          ],
+          "EXPLICIT_MARKER_TEXT": "А давай"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "PROPOSAL_LET_US",
+          "EXPLICIT_MARKER_SPAN": [
+            32,
+            37
+          ],
+          "EXPLICIT_MARKER_TEXT": "Давай"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            30,
+            31
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V21.1"
+    },
+    {
+      "atom_id": "E0B-V21.2.1",
+      "VERBATIM": true,
+      "raw_text": "Но так сделаем его, чтобы он был заточен под kuzu, Ladybugdb, SQLite, PostgreSQL, и ещё под что-то, что ты считаешь нужным, что ты сможешь запустить и чтобы мы протестировали её. ",
+      "content_sha256": "358903b5d253e98071a5c077782b69ad023a2a3a683952837c3c088ff8f4a08d",
+      "exact_span": {
+        "parent_message_id": "t4u",
+        "parent_atom_id": "E0B-V21",
+        "start": 179,
+        "end": 358,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "second research repository fork/adapt"
+      },
+      "condition": {
+        "status": "PRESENT",
+        "value": "чтобы он был заточен под kuzu, Ladybugdb, SQLite, PostgreSQL, и ещё под что-то, что ты считаешь нужным, что ты сможешь з",
+        "clause_start": 20
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "Ladybug/Kuzu stack"
+      },
+      "parent_message_id": "t4u",
+      "parent_atom_id": "E0B-V21",
+      "parent_raw_text_sha256": "bc07cf39a7b49b7895a3a72e76385bc244e499baaae14280eebb60e58d90b0d0",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t3s2"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t4u",
+      "source_location": "parent E0B-V21 raw_text[179:358)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V21"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": {
+        "type": "CONSTRAINT_ON",
+        "target_atom_id": "E0B-V21.1",
+        "status": "PRESENT"
+      },
+      "context_dependency": null,
+      "further_split_of": "E0B-V21.2",
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            20,
+            25
+          ],
+          "EXPLICIT_MARKER_TEXT": "чтобы"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            151,
+            156
+          ],
+          "EXPLICIT_MARKER_TEXT": "чтобы"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V21.2"
+    },
+    {
+      "atom_id": "E0B-V21.2.2",
+      "VERBATIM": true,
+      "raw_text": "Там же есть уже готовый код, документация и так далее. Мы просто можем её адаптировать, не меняя основной репозиторий. Потому что",
+      "content_sha256": "3d931a40521c1646b10ec330b65c93e9c226ccde602d926e79555dc31c333249",
+      "exact_span": {
+        "parent_message_id": "t4u",
+        "parent_atom_id": "E0B-V21",
+        "start": 358,
+        "end": 487,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "second research repository fork/adapt"
+      },
+      "condition": {
+        "status": "PRESENT",
+        "value": "Потому что",
+        "clause_start": 119
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "repository"
+      },
+      "parent_message_id": "t4u",
+      "parent_atom_id": "E0B-V21",
+      "parent_raw_text_sha256": "bc07cf39a7b49b7895a3a72e76385bc244e499baaae14280eebb60e58d90b0d0",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t3s2"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t4u",
+      "source_location": "parent E0B-V21 raw_text[358:487)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V21"
+      },
+      "intentionally_compound": true,
+      "compound_reason": "CLAIM of existing code/docs + PROPOSAL to adapt + CONSTRAINT not changing main repo + truncated \"Потому что\"",
+      "relation": {
+        "type": "METHOD_CONSTRAINT_ON",
+        "target_atom_id": "E0B-V21.1",
+        "status": "PRESENT"
+      },
+      "context_dependency": null,
+      "further_split_of": "E0B-V21.2",
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "PRESENT",
+          "value": "explicit exclusion/constraint branch in text"
+        },
+        "rationale": {
+          "status": "PRESENT",
+          "value": "Потому что"
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONSTRAINT_ONLY_EXACT",
+          "EXPLICIT_MARKER_SPAN": [
+            88,
+            96
+          ],
+          "EXPLICIT_MARKER_TEXT": "не меняя"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "BECAUSE",
+          "EXPLICIT_MARKER_SPAN": [
+            119,
+            129
+          ],
+          "EXPLICIT_MARKER_TEXT": "Потому что"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V21.2"
+    },
+    {
+      "atom_id": "E0B-V31.1",
+      "VERBATIM": true,
+      "raw_text": "Так, а предлагаю знаешь что? Посмотри, как устроены другие мои проекты, которые ты здесь перечислил, да? Они в других ботах есть. Посмотри ихний README, как устроен. ",
+      "content_sha256": "12f2cc8a0849f5265d06dc78167416c618c4a0fbbf64636e8f2b1f151f0bc0ac",
+      "exact_span": {
+        "parent_message_id": "t5u",
+        "parent_atom_id": "E0B-V31",
+        "start": 0,
+        "end": 166,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "README/docs presentation parity with other projects"
+      },
+      "condition": {
+        "status": "NOT_PRESENT",
+        "value": null
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "README/docs presentation"
+      },
+      "parent_message_id": "t5u",
+      "parent_atom_id": "E0B-V31",
+      "parent_raw_text_sha256": "c33c2467343a5cc5c514545bd27e4e9e1dfe887e57e560ceb5ff108744ebbbbf",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t4s10"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t5u",
+      "source_location": "parent E0B-V31 raw_text[0:166)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V31"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": null,
+      "context_dependency": null,
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "PRESENT",
+          "value": "interrogative form visible in text",
+          "note": "form presence only; not gold resolution"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "PROPOSAL_LET_US",
+          "EXPLICIT_MARKER_SPAN": [
+            7,
+            16
+          ],
+          "EXPLICIT_MARKER_TEXT": "предлагаю"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            29,
+            37
+          ],
+          "EXPLICIT_MARKER_TEXT": "Посмотри"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            130,
+            138
+          ],
+          "EXPLICIT_MARKER_TEXT": "Посмотри"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            27,
+            28
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            103,
+            104
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V31.1"
+    },
+    {
+      "atom_id": "E0B-V31.2",
+      "VERBATIM": true,
+      "raw_text": "Я хочу, чтобы ты тоже так сделал: с эмодзи, красиво, с оформлением. Такое же оформление, документы README, текстовый и ещё какие-то там документы, красиво оформленные, и читабельно, да, для машины и для человека, для ИИ и для человека. Ты можешь изучить и сделать так?",
+      "content_sha256": "ba9e3c942f3132d8cd15da3c5690def3b2f8e39d68fd1d453a9336773cf0838e",
+      "exact_span": {
+        "parent_message_id": "t5u",
+        "parent_atom_id": "E0B-V31",
+        "start": 166,
+        "end": 434,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "README/docs presentation parity with other projects"
+      },
+      "condition": {
+        "status": "PRESENT",
+        "value": "чтобы ты тоже так сделал: с эмодзи, красиво, с оформлением. Такое же оформление, документы README, текстовый и ещё какие",
+        "clause_start": 8
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "README/docs presentation"
+      },
+      "parent_message_id": "t5u",
+      "parent_atom_id": "E0B-V31",
+      "parent_raw_text_sha256": "c33c2467343a5cc5c514545bd27e4e9e1dfe887e57e560ceb5ff108744ebbbbf",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t4s10"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t5u",
+      "source_location": "parent E0B-V31 raw_text[166:434)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V31"
+      },
+      "intentionally_compound": true,
+      "compound_reason": "PRESENTATION CONSTRAINT/PREFERENCE + closing capability QUESTION; question confirms the same request",
+      "relation": {
+        "type": "STYLE_CONSTRAINT_FOR_ACTION_IN",
+        "target_atom_id": "E0B-V31.1",
+        "status": "PRESENT"
+      },
+      "context_dependency": null,
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "PRESENT",
+          "value": "interrogative form visible in text",
+          "note": "form presence only; not gold resolution"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            267,
+            268
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            8,
+            13
+          ],
+          "EXPLICIT_MARKER_TEXT": "чтобы"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "PREFERENCE_ALWAYS",
+          "EXPLICIT_MARKER_SPAN": [
+            0,
+            13
+          ],
+          "EXPLICIT_MARKER_TEXT": "Я хочу, чтобы"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V31.2"
+    },
+    {
+      "atom_id": "E0B-V34.1",
+      "VERBATIM": true,
+      "raw_text": "А теперь можешь основного всё туда переносить, а потом будем думать, что заменять, что убирать, что переделывать. Мы же здесь можем экспериментировать, как хотим. ",
+      "content_sha256": "21c0163bcca05fbdb1428f12654bab7646fa723fdc34e6eb244058e02147bb1f",
+      "exact_span": {
+        "parent_message_id": "t6u",
+        "parent_atom_id": "E0B-V34",
+        "start": 0,
+        "end": 163,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "transfer fractal code/docs into lab repo"
+      },
+      "condition": {
+        "status": "NOT_PRESENT",
+        "value": null
+      },
+      "target": {
+        "status": "UNKNOWN",
+        "value": null
+      },
+      "parent_message_id": "t6u",
+      "parent_atom_id": "E0B-V34",
+      "parent_raw_text_sha256": "bc9b14029a1008b44d3fe765b31e1de7fd084bc46d9d474b2ad228dcb92cd02c",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t5s4"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t6u",
+      "source_location": "parent E0B-V34 raw_text[0:163)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V34"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": null,
+      "context_dependency": null,
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": false,
+          "EXPLICIT_MARKER_TYPE": "NONE",
+          "EXPLICIT_MARKER_SPAN": null,
+          "EXPLICIT_MARKER_TEXT": null,
+          "note": "Marker miss != semantic absence"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V34.1"
+    },
+    {
+      "atom_id": "E0B-V34.2",
+      "VERBATIM": true,
+      "raw_text": "Тебя можем, да, туда весь код и документацию перенести с фрактала?",
+      "content_sha256": "4ca4b22597962a4e805065a4c9a6429fa3297808c3b625227b715982259bb330",
+      "exact_span": {
+        "parent_message_id": "t6u",
+        "parent_atom_id": "E0B-V34",
+        "start": 163,
+        "end": 229,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "transfer fractal code/docs into lab repo"
+      },
+      "condition": {
+        "status": "NOT_PRESENT",
+        "value": null
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "fractal repo transfer"
+      },
+      "parent_message_id": "t6u",
+      "parent_atom_id": "E0B-V34",
+      "parent_raw_text_sha256": "bc9b14029a1008b44d3fe765b31e1de7fd084bc46d9d474b2ad228dcb92cd02c",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t5s4"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t6u",
+      "source_location": "parent E0B-V34 raw_text[163:229)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V34"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": {
+        "type": "CONFIRMATION_QUESTION_ABOUT",
+        "target_atom_id": "E0B-V34.1",
+        "status": "PRESENT"
+      },
+      "context_dependency": null,
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "PRESENT",
+          "value": "interrogative form visible in text",
+          "note": "form presence only; not gold resolution"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "QUESTION_MARK",
+          "EXPLICIT_MARKER_SPAN": [
+            65,
+            66
+          ],
+          "EXPLICIT_MARKER_TEXT": "?"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V34.2"
+    },
+    {
+      "atom_id": "E0B-V38.1",
+      "VERBATIM": true,
+      "raw_text": "смотри ladybugdb это как бы как kuzu но не замороженные а адаптированный в отличие от  kuzu который с прошлого года за архивированные ",
+      "content_sha256": "0ae8e8cdebdb69a82303670d06b39e4bb9bcb231d8acc11a4017bd0724e52229",
+      "exact_span": {
+        "parent_message_id": "t7u",
+        "parent_atom_id": "E0B-V38",
+        "start": 0,
+        "end": 134,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "DB adaptation + sandbox run on assistant computer"
+      },
+      "condition": {
+        "status": "NOT_PRESENT",
+        "value": null
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "Ladybug/Kuzu stack"
+      },
+      "parent_message_id": "t7u",
+      "parent_atom_id": "E0B-V38",
+      "parent_raw_text_sha256": "f9f3c641b8328a54f26add051f4e1561b1bdcf382a6bd39dc3d712cb02d1b3d7",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t6s3"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t7u",
+      "source_location": "parent E0B-V38 raw_text[0:134)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V38"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": null,
+      "context_dependency": null,
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": false,
+          "EXPLICIT_MARKER_TYPE": "NONE",
+          "EXPLICIT_MARKER_SPAN": null,
+          "EXPLICIT_MARKER_TEXT": null,
+          "note": "Marker miss != semantic absence"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V38.1"
+    },
+    {
+      "atom_id": "E0B-V38.2",
+      "VERBATIM": true,
+      "raw_text": "поэтому я тебе предлагаю вот что , ￼ изучи подробнее как они все устроены включая и другие db, и что можно перенести в этот проект ",
+      "content_sha256": "df04aa7dcab7f1c97db7fb9927a2ff9a215df61a0f56b44e7168d3b8d83633ee",
+      "exact_span": {
+        "parent_message_id": "t7u",
+        "parent_atom_id": "E0B-V38",
+        "start": 134,
+        "end": 265,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "DB adaptation + sandbox run on assistant computer"
+      },
+      "condition": {
+        "status": "NOT_PRESENT",
+        "value": null
+      },
+      "target": {
+        "status": "UNKNOWN",
+        "value": null
+      },
+      "parent_message_id": "t7u",
+      "parent_atom_id": "E0B-V38",
+      "parent_raw_text_sha256": "f9f3c641b8328a54f26add051f4e1561b1bdcf382a6bd39dc3d712cb02d1b3d7",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t6s3"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t7u",
+      "source_location": "parent E0B-V38 raw_text[134:265)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V38"
+      },
+      "intentionally_compound": false,
+      "compound_reason": null,
+      "relation": null,
+      "context_dependency": null,
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "PROPOSAL_LET_US",
+          "EXPLICIT_MARKER_SPAN": [
+            0,
+            24
+          ],
+          "EXPLICIT_MARKER_TEXT": "поэтому я тебе предлагаю"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            37,
+            42
+          ],
+          "EXPLICIT_MARKER_TEXT": "изучи"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "OPTIONAL_CAN",
+          "EXPLICIT_MARKER_SPAN": [
+            101,
+            106
+          ],
+          "EXPLICIT_MARKER_TEXT": "можно"
+        }
+      ],
+      "notes": "PROPOSAL boundary tightened to end of \"в этот проект \" ; purpose clause moved to .3",
+      "provenance_from_phase1c_atom_id": "E0B-V38.2"
+    },
+    {
+      "atom_id": "E0B-V38.3",
+      "VERBATIM": true,
+      "raw_text": "чтобы можно знаешь если например ну в песочнице запускаем точнее у тебя запускай мне в песочнице а у тебя на компьютере что адаптирование всего из этого бы у тебя работало бы лучше всего как бы сам проект был адаптированный вот нужно",
+      "content_sha256": "c477e297907d43f7ab7a34f74cfc3a89d724d1caf038caf668c783754764d07f",
+      "exact_span": {
+        "parent_message_id": "t7u",
+        "parent_atom_id": "E0B-V38",
+        "start": 265,
+        "end": 498,
+        "encoding": "utf-8 Unicode code points"
+      },
+      "sender_actor": "USER",
+      "content_origin": "USER_OWN",
+      "content_origin_note": "sender_actor != content_origin is possible; here both USER / USER_OWN",
+      "scope": {
+        "status": "PRESENT",
+        "value": "DB adaptation + sandbox run on assistant computer"
+      },
+      "condition": {
+        "status": "PRESENT",
+        "value": "если например ну в песочнице запускаем точнее у тебя запускай мне в песочнице а у тебя на компьютере что адаптирование в",
+        "clause_start": 19
+      },
+      "target": {
+        "status": "PRESENT",
+        "value": "sandbox execution"
+      },
+      "parent_message_id": "t7u",
+      "parent_atom_id": "E0B-V38",
+      "parent_raw_text_sha256": "f9f3c641b8328a54f26add051f4e1561b1bdcf382a6bd39dc3d712cb02d1b3d7",
+      "preceding_context_ref": {
+        "status": "PRESENT",
+        "ref": "prev_message_id=t6s3"
+      },
+      "source_id": "AGENT_CHAT:Labs",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_turn_id": "t7u",
+      "source_location": "parent E0B-V38 raw_text[265:498)",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "source_actor": "USER",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "auto_structural": {
+        "SOURCE": "USER",
+        "derived_from_parent": true,
+        "parent_atom_id": "E0B-V38"
+      },
+      "intentionally_compound": true,
+      "compound_reason": "PURPOSE (\"чтобы можно…\") + CONDITIONAL operational request (sandbox/computer adaptation); detaching purpose would orphan the condition",
+      "relation": {
+        "type": "OPERATIONAL_ELABORATION_OF",
+        "target_atom_id": "E0B-V38.2",
+        "status": "PRESENT"
+      },
+      "context_dependency": null,
+      "further_split_of": null,
+      "presence_fields": {
+        "rejected_branch": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "rationale": {
+          "status": "NOT_PRESENT",
+          "value": null
+        },
+        "decision": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        },
+        "open_loop": {
+          "status": "UNKNOWN",
+          "value": null,
+          "note": "Not inferred in 1D; for human TEXTUAL_EVIDENCE surface"
+        }
+      },
+      "GOLD_SURFACES": {
+        "TEXTUAL_EVIDENCE": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN"
+        },
+        "RETROSPECTIVE_USER_INTENT": {
+          "SEMANTIC_ACT": null,
+          "COMMITMENT": null,
+          "LIFECYCLE": null,
+          "AUTHORITY_EXERCISED": null,
+          "OPTIONAL_HUMAN_NOTE": null,
+          "status": "PENDING_HUMAN",
+          "note": "Independent of TEXTUAL_EVIDENCE; do not auto-merge if they diverge"
+        }
+      },
+      "requires_human_label": true,
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "HUMAN_GOLD": "NOT_CREATED",
+      "marker_aux": [
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "REQUEST_PLEASE",
+          "EXPLICIT_MARKER_SPAN": [
+            72,
+            80
+          ],
+          "EXPLICIT_MARKER_TEXT": "запускай"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            0,
+            5
+          ],
+          "EXPLICIT_MARKER_TEXT": "чтобы"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "CONDITIONAL_IF",
+          "EXPLICIT_MARKER_SPAN": [
+            19,
+            23
+          ],
+          "EXPLICIT_MARKER_TEXT": "если"
+        },
+        {
+          "EXPLICIT_MARKER_PRESENT": true,
+          "EXPLICIT_MARKER_TYPE": "OPTIONAL_CAN",
+          "EXPLICIT_MARKER_SPAN": [
+            6,
+            11
+          ],
+          "EXPLICIT_MARKER_TEXT": "можно"
+        }
+      ],
+      "notes": null,
+      "provenance_from_phase1c_atom_id": "E0B-V38.3"
+    }
+  ],
+  "non_user_atoms_unchanged_count": 32,
+  "non_user_atoms": [
+    {
+      "atom_id": "E0B-V01",
+      "source_id": "LAB-E0A-FIXTURE",
+      "source_artifact": "experiments/memory-governance-e0a/fixture.json",
+      "source_artifact_sha256": "3e1b0803cc6790afdc48dd7cb214ecda597930f5225b1dbc1ad028ee3d539f71",
+      "source_turn_id": "seed.goal.goal_id=goal-phase1-arch",
+      "source_location": "seed.goal.content",
+      "speaker_source_metadata": {
+        "role": "fixture_seed",
+        "field": "goal.content",
+        "source_actor": null,
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Phase 1 architecture choice",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Exact fixture seed goal.content; SOURCE=EXTERNAL (lab fixture artifact). Semantic axes null.",
+      "excerpt_ref": "provenance_excerpts/LAB-E0A-FIXTURE_copy.json",
+      "prior_atom_id": "E0B-A01",
+      "content_sha256": "97ad64e8d124af567d9b83177eddbf570aa0a3586479b410ee15682a3fbbfd27",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V02",
+      "source_id": "LAB-E0A-FIXTURE",
+      "source_artifact": "experiments/memory-governance-e0a/fixture.json",
+      "source_artifact_sha256": "3e1b0803cc6790afdc48dd7cb214ecda597930f5225b1dbc1ad028ee3d539f71",
+      "source_turn_id": "seed.open_loop.loop_id=loop-prod-auth",
+      "source_location": "seed.open_loop.content",
+      "speaker_source_metadata": {
+        "role": "fixture_seed",
+        "field": "open_loop.content",
+        "source_actor": null,
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Is Phase 1 production-authorized?",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Exact fixture seed open_loop.content; SOURCE=EXTERNAL. Semantic axes null.",
+      "excerpt_ref": "provenance_excerpts/LAB-E0A-FIXTURE_copy.json",
+      "prior_atom_id": "E0B-A02",
+      "content_sha256": "dc1114453c2187430fff3cf71d3175e6d337a962c1155f7a1d51230019a6c0d3",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V03",
+      "source_id": "LAB-E0A-FIXTURE",
+      "source_artifact": "experiments/memory-governance-e0a/fixture.json",
+      "source_artifact_sha256": "3e1b0803cc6790afdc48dd7cb214ecda597930f5225b1dbc1ad028ee3d539f71",
+      "source_turn_id": "evt-001",
+      "source_location": "steps[event_id=evt-001].content",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "event_type": "MODEL_PROPOSAL",
+        "step": 1,
+        "event_id": "evt-001"
+      },
+      "VERBATIM": true,
+      "raw_text": "Use Graphiti in Phase 1.",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Exact fixture event content; SOURCE from source_actor metadata. Semantic axes null. Fixture event_type is NOT E0-B gold.",
+      "excerpt_ref": "provenance_excerpts/LAB-E0A-FIXTURE_copy.json",
+      "prior_atom_id": "E0B-A03",
+      "content_sha256": "174e7271876fed6351c0163a6bcc53947597a853bbd9ad0f8cb00763ace5aad6",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V05",
+      "source_id": "LAB-E0A-FIXTURE",
+      "source_artifact": "experiments/memory-governance-e0a/fixture.json",
+      "source_artifact_sha256": "3e1b0803cc6790afdc48dd7cb214ecda597930f5225b1dbc1ad028ee3d539f71",
+      "source_turn_id": "evt-003",
+      "source_location": "steps[event_id=evt-003].content",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "event_type": "MODEL_PROPOSAL",
+        "step": 3,
+        "event_id": "evt-003"
+      },
+      "VERBATIM": true,
+      "raw_text": "Use Graphiti in Phase 1.",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Exact fixture event content; SOURCE from source_actor metadata. Semantic axes null. Fixture event_type is NOT E0-B gold.",
+      "excerpt_ref": "provenance_excerpts/LAB-E0A-FIXTURE_copy.json",
+      "prior_atom_id": "E0B-A05",
+      "content_sha256": "174e7271876fed6351c0163a6bcc53947597a853bbd9ad0f8cb00763ace5aad6",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V06",
+      "source_id": "LAB-E0A-FIXTURE",
+      "source_artifact": "experiments/memory-governance-e0a/fixture.json",
+      "source_artifact_sha256": "3e1b0803cc6790afdc48dd7cb214ecda597930f5225b1dbc1ad028ee3d539f71",
+      "source_turn_id": "evt-004",
+      "source_location": "steps[event_id=evt-004].content",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "event_type": "RESEARCH_CLAIM",
+        "step": 4,
+        "event_id": "evt-004"
+      },
+      "VERBATIM": true,
+      "raw_text": "Phase 1 is production-authorized.",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Exact fixture event content; SOURCE from source_actor metadata. Semantic axes null. Fixture event_type is NOT E0-B gold.",
+      "excerpt_ref": "provenance_excerpts/LAB-E0A-FIXTURE_copy.json",
+      "prior_atom_id": "E0B-A06",
+      "content_sha256": "45661e153d322f05188ae2f3d752b1744250ec9329f1c2a0b669acb05a8ea468",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V09",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "e4047f4975b8a6aa1226a9764166c7624fd103957e368abc577840204c06afec",
+      "source_message_id": "t0s0",
+      "source_turn_id": "t0s0",
+      "source_location": "transcript_entries[id=t0s0].raw_text[0:126]",
+      "span_start": 0,
+      "span_end": 126,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:32:35.628000+02:00",
+      "turn_order_seq": 5,
+      "immediate_local_context_ref": "prev_message_id=t0u",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Сейчас посмотрю, что обсуждали твои другие боты про систему, и скажу честно, что я реально могу запустить здесь — без догадок.",
+      "content_sha256": "e65b5506e2ad62fa187e687a0e7060c7b5a352509ed7c7a76eb6a30c0835378f",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t0s0",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V10",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "64ac79db7e54d64d3137de7a24a90a1d4b5198348a5e29d21c5e45ace430169f",
+      "source_message_id": "t0s1",
+      "source_turn_id": "t0s1",
+      "source_location": "transcript_entries[id=t0s1].raw_text[0:177]",
+      "span_start": 0,
+      "span_end": 177,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:33:05.410000+02:00",
+      "turn_order_seq": 6,
+      "immediate_local_context_ref": "prev_message_id=t0s0",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Нашёл след: речь про **Velantrim-Native-Kernel** (и экосистему Velantrim). Сейчас сверю по чатам Native-Kernel, что именно можно запускать, и что у системы статус — без выдумок.",
+      "content_sha256": "38cb373d457088516fd15f79c09aefee2476b66f6928460da27b7717f405b4a2",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t0s1",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V11",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "7b676f9b67a4a83d7a88c13922071e6b2aad82cf99a9b04f5e29481032d23181",
+      "source_message_id": "t0s3",
+      "source_turn_id": "t0s3",
+      "source_location": "transcript_entries[id=t0s3].raw_text[0:498]",
+      "span_start": 0,
+      "span_end": 498,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:34:42.196000+02:00",
+      "turn_order_seq": 8,
+      "immediate_local_context_ref": "prev_message_id=t0s1",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Коротко и по фактам — без выдумок.\n\n**Что я нашёл в других ботах**\n- Речь про экосистему **Velantrim** (GitHub `velantrian`): Native Kernel, Titan, Mentaury Soul и ещё несколько репо.\n- У **Native-Kernel** в памяти бота зафиксировано: `velantrian/velantrim-native-kernel`, статус research, **`runtime FROZEN`**, production = false, H11 не тестировали. В описании репо прямо: research, **not production-ready**.\n- У **Titan**: цель — локальный hardened `docker-compose`, но **Production authorized =",
+      "content_sha256": "461ada038b8134d36f2501e4a86261f116cc1488107e5c6f810dc1733cca628f",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t0s3",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V12",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "26dcf2a28b62b77c37dc06eb789fb111ffdf6ff321c72e6ae8190ed104d7858c",
+      "source_message_id": "t0s5",
+      "source_turn_id": "t0s5",
+      "source_location": "transcript_entries[id=t0s5].raw_text[0:478]",
+      "span_start": 0,
+      "span_end": 478,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:35:58.795000+02:00",
+      "turn_order_seq": 10,
+      "immediate_local_context_ref": "prev_message_id=t0s3",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Дополнил по соседним чатам (Chief of Staff и др.): отдельного runnable **System OS** на GitHub ещё нет (`GITHUB_NOT_CREATED`, пока Notion-first). Полный E2E (Titan↔Crystal↔Soul↔Continuum) у них же помечен как `NOT_VALIDATED` / `runtime_authorized: false` — это совпадает с тем, что я уже сказал.\n\nИтого без изменений: **целиком «как живую систему» — нет**; **отдельный репо на тесты — да**, когда скажешь какой. Docker у меня пока не стоит — для Titan Class-A это отдельный шаг.",
+      "content_sha256": "e7a9c67a7144f8a06bc25db2dbb324e082d8df1949d753fb95285a60c23d8566",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t0s5",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V14",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "454f22efe5c69d6e1ba4ebee7ff1c1072f6b0bf92940381ea5d140af3982c6fe",
+      "source_message_id": "t1s0",
+      "source_turn_id": "t1s0",
+      "source_location": "transcript_entries[id=t1s0].raw_text[0:124]",
+      "span_start": 0,
+      "span_end": 124,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:38:58.531000+02:00",
+      "turn_order_seq": 13,
+      "immediate_local_context_ref": "prev_message_id=t1u",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Сейчас гляну `graphiti-fractal` у `velantrian` — README, как запускается, и что из этого реально на моём Linux. Без догадок.",
+      "content_sha256": "ef80f222695d246ecc3154095d4151633fde416669a4b03da2e21cc779b314cc",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t1s0",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V15",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "eef2a6270e6b4229a19fee654735b69d25ec081b5406308ce12d858de2108432",
+      "source_message_id": "t1s1",
+      "source_turn_id": "t1s1",
+      "source_location": "transcript_entries[id=t1s1].raw_text[0:85]",
+      "span_start": 0,
+      "span_end": 85,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:39:07.877000+02:00",
+      "turn_order_seq": 14,
+      "immediate_local_context_ref": "prev_message_id=t1s0",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Репо нашлось как `velantrian/Graphiti_fractal` — сейчас читаю README и файлы запуска.",
+      "content_sha256": "c40482fc6f5d65bad36672b598520fca3038c81957a4874ede4b8134782ee35b",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t1s1",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V16",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "050f6577ac0228f3ec15168374214f0b0304677a65830cbac4675859fc3ce52d",
+      "source_message_id": "t1s2",
+      "source_turn_id": "t1s2",
+      "source_location": "transcript_entries[id=t1s2].raw_text[0:216]",
+      "span_start": 0,
+      "span_end": 216,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:39:38.980000+02:00",
+      "turn_order_seq": 15,
+      "immediate_local_context_ref": "prev_message_id=t1s1",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Да — **это уже гораздо более «собранный» проект**, чем System OS / frozen Native Kernel. Репо: [`velantrian/Graphiti_fractal`](https://github.com/velantrian/Graphiti_fractal) (Fractal Memory поверх Graphiti + Neo4j).",
+      "content_sha256": "cbb0974e2f7f6721fc4acb6b2d649512e713a70c2889c1c9fbd24937ac280549",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t1s2",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V19",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "067d592cabdbafd75db79767d5d7d5291513dbe323f6f3568ab6447ece1da64e",
+      "source_message_id": "t3s0",
+      "source_turn_id": "t3s0",
+      "source_location": "transcript_entries[id=t3s0].raw_text[0:181]",
+      "span_start": 0,
+      "span_end": 181,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:45:38.284000+02:00",
+      "turn_order_seq": 22,
+      "immediate_local_context_ref": "prev_message_id=t3u",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Хороший вопрос 🧭 Сейчас сверю по `Graphiti_fractal`: что у них ACTIVE, а что только research — и что из SQLite / Postgres / Kuzu / Ladybug реально поднять на моём Linux без выдумок.",
+      "content_sha256": "52b6e6f2eee78f2380492c3bf4576c45f5d91c47e53c0b4db4f6efe67c4e49f9",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t3s0",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V20",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "f4c4ce0e69482422cc5f6d346fe4db8abc9967d2af1a2c11a1f6ba0e1e5deabd",
+      "source_message_id": "t3s2",
+      "source_turn_id": "t3s2",
+      "source_location": "transcript_entries[id=t3s2].raw_text[0:497]",
+      "span_start": 0,
+      "span_end": 497,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:46:02.747000+02:00",
+      "turn_order_seq": 24,
+      "immediate_local_context_ref": "prev_message_id=t3s0",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Коротко и по фактам из `Graphiti_fractal` 🧾\n\n**1) Ladybug / Kuzu — легче поставить? Да. Заменить Neo4j в Fractal «как есть»? Нет (пока).**\n- 🐞 **LadybugDB** в доках: `ADJACENT / EVALUATE ONLY` (лёгкий embedded/serverless graph, successor Kùzu)\n- 📜 **Kùzu**: `HISTORICAL` (предшественник)\n- Матрица бэкендов прямо говорит: миграция **не авторизована**; совместимость с Graphiti, temporal episodes, UUID, constraints, search/vector — всё **`NOT VALIDATED`**\n- Их же инвариант: **один** durable graph",
+      "content_sha256": "77a2423d4615001fc2c31350be5efa6dff9c0d5add89228f668bff54bc9a77b1",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t3s2",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V22",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "dda41723ec65bb5136f802d047b0247e9ef08b0d385bcda4cbe5e3e7f8f7a467",
+      "source_message_id": "t4s0",
+      "source_turn_id": "t4s0",
+      "source_location": "transcript_entries[id=t4s0].raw_text[0:152]",
+      "span_start": 0,
+      "span_end": 152,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:52:36.394000+02:00",
+      "turn_order_seq": 27,
+      "immediate_local_context_ref": "prev_message_id=t4u",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Идея 🔥 — research-форк, основной `Graphiti_fractal` не трогаем. Сейчас коротко сверю, насколько Graphiti прибит к Neo4j, и предложу план без самообмана.",
+      "content_sha256": "ed506350140723d9a4b0f6d97d8172247daf2aa476b877a33f7d06519130ac28",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t4s0",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V23",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "ae8391ee1880427230a7d492fa50abf6a810d2899cce428a754d2a371b6ab042",
+      "source_message_id": "t4s1",
+      "source_turn_id": "t4s1",
+      "source_location": "transcript_entries[id=t4s1].raw_text[0:126]",
+      "span_start": 0,
+      "span_end": 126,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:52:58.224000+02:00",
+      "turn_order_seq": 28,
+      "immediate_local_context_ref": "prev_message_id=t4s0",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Идея отличная 🧪✅ Именно так research и должен жить: **основной `Graphiti_fractal` не трогаем**, эксперименты — во втором репо.",
+      "content_sha256": "6d82acfd69d7a0d23dd8da88f45198b774ee77161ea198d00666ac7a1a5779a0",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t4s1",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V24",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "dac02331cb80d1ddc6b9cf47fa4232cfed18b8108c7eb64f08551827a39bd2dc",
+      "source_message_id": "t4s3",
+      "source_turn_id": "t4s3",
+      "source_location": "transcript_entries[id=t4s3].raw_text[0:101]",
+      "span_start": 0,
+      "span_end": 101,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:53:14.689000+02:00",
+      "turn_order_seq": 31,
+      "immediate_local_context_ref": "prev_message_id=t4s1",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Супер 👍 Репо делаем, основной не трогаем. Как назовём research-форк? Можешь выбрать или вписать своё.",
+      "content_sha256": "d8535f97bc821596470f5a1b2930b8dc9fbd380a456675630601d8cdbfed84c4",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t4s3",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V25",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "5676baaf0f19b168427f5b3ff5b614827f150fc124021bf74540b62b0be968c9",
+      "source_message_id": "t4s5",
+      "source_turn_id": "t4s5",
+      "source_location": "transcript_entries[id=t4s5].raw_text[0:151]",
+      "span_start": 0,
+      "span_end": 151,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:54:23.149000+02:00",
+      "turn_order_seq": 34,
+      "immediate_local_context_ref": "prev_message_id=t4s3",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Отлично 🏷️ Имя: **`Graphiti_fractal_lab`**. Сейчас создам репо под `velantrian` (main не трогаю) и запущу сборку research-каркаса под Ladybug + SQLite.",
+      "content_sha256": "ea1a6c818e85cffe44f3931e5fd5cedc9a3014681934b8441d7cec3b8e4a23e8",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t4s5",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V26",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "8025be45ba40066572638a16b4fc41cc2fd120b13578815cab9d73db81223936",
+      "source_message_id": "t4s6",
+      "source_turn_id": "t4s6",
+      "source_location": "transcript_entries[id=t4s6].raw_text[0:184]",
+      "span_start": 0,
+      "span_end": 184,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:54:48.033000+02:00",
+      "turn_order_seq": 35,
+      "immediate_local_context_ref": "prev_message_id=t4s5",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Репо создано ✅ https://github.com/velantrian/Graphiti_fractal_lab  \nДальше cloud agent засеет research-каркас из `Graphiti_fractal` и заточит под Ladybug + SQLite (main не трогаем) 🧪🐞🪶",
+      "content_sha256": "06ab287f18e9ae33d30393086cfebc108dfd69175833475860794b84d48c3343",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t4s6",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V27",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "c740e737c77756322c1c2c218fad64a11a2e0012f34d27f6261e83fbe81b0401",
+      "source_message_id": "t4s7",
+      "source_turn_id": "t4s7",
+      "source_location": "transcript_entries[id=t4s7].raw_text[0:172]",
+      "span_start": 0,
+      "span_end": 172,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:55:11.418000+02:00",
+      "turn_order_seq": 36,
+      "immediate_local_context_ref": "prev_message_id=t4s6",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Cloud agent сейчас не стартует — у Cursor закончился лимит usage 💳  \nРепо уже есть; продолжаю сам: засею research-каркас через GitHub (main `Graphiti_fractal` не трогаю) 🛠️",
+      "content_sha256": "12ce915f719cd7b9b23f596790c11be51cba238fc80cbe15c6ea15e87665d774",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t4s7",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V28",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "9d6eceed1157e217b2a5f202345292e193427dc5ba157c4ec3b2760692e5df00",
+      "source_message_id": "t4s8",
+      "source_turn_id": "t4s8",
+      "source_location": "transcript_entries[id=t4s8].raw_text[0:156]",
+      "span_start": 0,
+      "span_end": 156,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:55:15.757000+02:00",
+      "turn_order_seq": 37,
+      "immediate_local_context_ref": "prev_message_id=t4s7",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Пока крутится bootstrap ⏳  \nСсылка уже живая: https://github.com/velantrian/Graphiti_fractal_lab  \nНапишу, как только каркас и smoke-тесты лягут в `main` 🐞🪶",
+      "content_sha256": "a6c37ff76b6a49e54e4337d15aab3049bba04e278dfcfba073f0e928ce7f9f05",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t4s8",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V29",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "82e6ce0866fd410b144c8011a0901208d3cd48308bc520c1612286362d4a791c",
+      "source_message_id": "t4s9",
+      "source_turn_id": "t4s9",
+      "source_location": "transcript_entries[id=t4s9].raw_text[0:100]",
+      "span_start": 0,
+      "span_end": 100,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:57:37.546000+02:00",
+      "turn_order_seq": 38,
+      "immediate_local_context_ref": "prev_message_id=t4s8",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Research-каркас уже в `main` ✅ Сейчас быстро сверю пуш и тесты — и кину тебе ссылку + как запускать.",
+      "content_sha256": "62b8b844503e8afd6b387b0fa6c2a0ea5f74555983bd9f147e440941550a965a",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t4s9",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V30",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "f45b7e460da2aae58b761465b2270ff2a7ac7b55cc3dc186fc9f27a84c210828",
+      "source_message_id": "t4s10",
+      "source_turn_id": "t4s10",
+      "source_location": "transcript_entries[id=t4s10].raw_text[0:183]",
+      "span_start": 0,
+      "span_end": 183,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T21:57:44.445000+02:00",
+      "turn_order_seq": 39,
+      "immediate_local_context_ref": "prev_message_id=t4s9",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Готово 🎉 Research-lab живёт на GitHub.\n\n**Репо:** https://github.com/velantrian/Graphiti_fractal_lab  \n**Коммит:** `9c6feb1` на `main`  \n**Основной** `Graphiti_fractal` — не трогали 🔒",
+      "content_sha256": "80d15e2e9bc6dfbaf15ece45255a7a9ac92291d4b55ad6f6c5ac30944fd614ae",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t4s10",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V32",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "48c5679e96a513ce96a4469b408cbbe20359d787963bddf80d45ed347b24f274",
+      "source_message_id": "t5s0",
+      "source_turn_id": "t5s0",
+      "source_location": "transcript_entries[id=t5s0].raw_text[0:170]",
+      "span_start": 0,
+      "span_end": 170,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T22:00:18.789000+02:00",
+      "turn_order_seq": 42,
+      "immediate_local_context_ref": "prev_message_id=t5u",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Да ✨ Сейчас смотрю README/доки у твоих репо (Fractal, Titan, Soul и др.) — стиль с эмодзи, human+AI — и так же оформлю `Graphiti_fractal_lab`. Основной Fractal не трогаю.",
+      "content_sha256": "5e5157e0c7e593ba406e603d502ecf56a1bcc6b479528407aba971cd8b37124a",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t5s0",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V33",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "e613d68c5b8fad90df3478eef300dcf58b44eb4ca81cabdce453483433b6558d",
+      "source_message_id": "t5s4",
+      "source_turn_id": "t5s4",
+      "source_location": "transcript_entries[id=t5s4].raw_text[0:253]",
+      "span_start": 0,
+      "span_end": 253,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T22:02:44.937000+02:00",
+      "turn_order_seq": 46,
+      "immediate_local_context_ref": "prev_message_id=t5s0",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Готово ✨ Доки теперь в стиле твоих Velantrim-репо (как Fractal / Titan / Soul).\n\n**Репо:** https://github.com/velantrian/Graphiti_fractal_lab  \n**Коммит:** `4684091` · `docs: Velantrim-style landing for RESEARCH lab`  \n**Upstream Fractal:** не трогали 🔒",
+      "content_sha256": "b1978508d20242cbb86662a9f0f10c33087933593a37e8669d744bf2fb7d7d77",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t5s4",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V35",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "65ef8c178b47170fd696831fcebae208ad0f95dd1e48e5e2012b2cc676306334",
+      "source_message_id": "t6s0",
+      "source_turn_id": "t6s0",
+      "source_location": "transcript_entries[id=t6s0].raw_text[0:184]",
+      "span_start": 0,
+      "span_end": 184,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T22:04:47.119000+02:00",
+      "turn_order_seq": 49,
+      "immediate_local_context_ref": "prev_message_id=t6u",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Да 📦 Переношу **весь код и документацию** из `Graphiti_fractal` → `Graphiti_fractal_lab`. Upstream не трогаю. Наш lab-каркас (Ladybug/SQLite) сохраню рядом — потом уже режем и меняем 🧪",
+      "content_sha256": "c0cc14fd5c217c50b97e16efdaf6cebfac7ee20f67888a4c4c110bbfb8bfb332",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t6s0",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V36",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "eea9841380a61536b59403e6111cac335b2bdc431ac6ed537d0bf0e976c5de76",
+      "source_message_id": "t6s1",
+      "source_turn_id": "t6s1",
+      "source_location": "transcript_entries[id=t6s1].raw_text[0:142]",
+      "span_start": 0,
+      "span_end": 142,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T22:04:59.024000+02:00",
+      "turn_order_seq": 50,
+      "immediate_local_context_ref": "prev_message_id=t6s0",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Копирую полное дерево Fractal в lab ⏳ (это чуть подольше). Как запушу — скажу SHA и что где лежит. Экспериментировать потом можно как угодно 🔬",
+      "content_sha256": "a8868e2bd18e86f34583a636935a3554a3917c158cc9b1d74ea6f4344c5f05c8",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t6s1",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V37",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "3718c83bb1ce8032d184662d1270dfd121343c7df6b7a2b55781155d8540a7c5",
+      "source_message_id": "t6s3",
+      "source_turn_id": "t6s3",
+      "source_location": "transcript_entries[id=t6s3].raw_text[0:305]",
+      "span_start": 0,
+      "span_end": 305,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T22:07:07.397000+02:00",
+      "turn_order_seq": 52,
+      "immediate_local_context_ref": "prev_message_id=t6s1",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Готово 🎉 Весь Fractal теперь лежит в lab — можно резать и менять как угодно.\n\n**Lab:** https://github.com/velantrian/Graphiti_fractal_lab  \n**Коммит:** `930279b` · полный mirror  \n**~242** tracked файла · есть и `core/`, и `src/fractal_lab/`  \n**Upstream** `Graphiti_fractal` @ `2437244` — **не тронут** 🔒",
+      "content_sha256": "6dedd9beafff510c8f45b276327821de7e0b0ddb7d76c999cff75bf13d22c17f",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t6s3",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V39",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "ac108afdbeff0d00850738414ba4c5e94b610d99585a6b84ae3e0ca38f88e602",
+      "source_message_id": "t7s0",
+      "source_turn_id": "t7s0",
+      "source_location": "transcript_entries[id=t7s0].raw_text[0:241]",
+      "span_start": 0,
+      "span_end": 241,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T22:10:25.590000+02:00",
+      "turn_order_seq": 55,
+      "immediate_local_context_ref": "prev_message_id=t7u",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Ок 🔎 Изучаю LadybugDB (живой форк), архивный Kùzu, SQLite/Postgres/DuckDB и связку с Graphiti — по репо, докам и отзывам. Потом пришлю отчёт: что реально лучше поднять у меня в песочнице, и почему Graphiti скорее всего не взлетит «как есть».",
+      "content_sha256": "903e88baf4984e066e6bd07f3712de722558ce510b29751121f6b1530d873e9b",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t7s0",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V40",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "98cbb2930e53aceba862ecfeeef275670f1735362b442a19cfdc282e6a386bbd",
+      "source_message_id": "t7s1",
+      "source_turn_id": "t7s1",
+      "source_location": "transcript_entries[id=t7s1].raw_text[0:228]",
+      "span_start": 0,
+      "span_end": 228,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T22:10:48.692000+02:00",
+      "turn_order_seq": 56,
+      "immediate_local_context_ref": "prev_message_id=t7s0",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Уже видно важное 📌 Kùzu на GitHub **archived** (окт 2025), Ladybug — живой форк (~1.7k⭐, пуш сегодня). Graphiti официально: Neo4j / FalkorDB / Neptune; **Kuzu deprecated**. Копаю ещё FalkorDBLite и что именно тянет твой Fractal.",
+      "content_sha256": "adbe469c254e84868ab4693da578eee1733914b3a97f249df570d398ae3a12eb",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t7s1",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V41",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "f5efb6bb1dcf6916ba231de515d198daf8d127ce2dcd0311830320b2e75815f7",
+      "source_message_id": "t7s2",
+      "source_turn_id": "t7s2",
+      "source_location": "transcript_entries[id=t7s2].raw_text[0:124]",
+      "span_start": 0,
+      "span_end": 124,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T22:11:32.167000+02:00",
+      "turn_order_seq": 57,
+      "immediate_local_context_ref": "prev_message_id=t7s1",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "# 📊 Отчёт: БД для песочницы Labs + Graphiti\n\nИсходники: GitHub/docs/PyPI + твой `Graphiti_fractal` (через API). Без выдумок.",
+      "content_sha256": "f2442c0a227bc882e24c14b4ec3d7b84834ebf595ae05d14a37e3c4b91e39b2e",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t7s2",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    },
+    {
+      "atom_id": "E0B-V42",
+      "source_id": "AGENT_CHAT:Labs",
+      "source_stream": "AGENT_CHAT",
+      "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+      "source_artifact_entry_sha256": "c42e7c9dbd61ad8cecf3e2ed5c86e7427250b5c4100a2c88a6df8e0eef07cfd4",
+      "source_message_id": "t8s0",
+      "source_turn_id": "t8s0",
+      "source_location": "transcript_entries[id=t8s0].raw_text[0:137]",
+      "span_start": 0,
+      "span_end": 137,
+      "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "timestamp": "2026-09-09T22:14:04.658000+02:00",
+      "turn_order_seq": 60,
+      "immediate_local_context_ref": "prev_message_id=t7s2",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "source_actor": "MODEL",
+        "agent_name": "Labs",
+        "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+        "event_type": null
+      },
+      "VERBATIM": true,
+      "raw_text": "Ок 🧪 Ставлю `graphiti-core` + FalkorDBLite и гоняю smoke у себя — скажу точно: соединилось / индексы / где упёрлось (ключ OpenAI и т.д.).",
+      "content_sha256": "5ec010774c0bcec36c5372c966c7dd9cd79ef4318903ff7f94b6f55b996ae754",
+      "requires_human_label": false,
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      },
+      "labels_pending_human_or_blank": {
+        "SPEECH_SEMANTIC_ACT": null,
+        "COMMITMENT": null,
+        "LIFECYCLE": null,
+        "AUTHORITY_CANDIDATE": null
+      },
+      "GROUND_TRUTH_STATUS": "PENDING",
+      "authority_sensitive_user": false,
+      "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+      "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t8s0",
+      "phase1d_note": "unchanged non-USER atom from Phase 1C corpus; not in human gold packet v2"
+    }
+  ],
+  "parent_messages_ref": "atoms_parent_messages.json"
+}

@@ -1,0 +1,216 @@
+{
+  "experiment": "E0-B",
+  "phase": "1B",
+  "title": "Typing reliability probe — Phase 1B prospective verbatim corpus capture",
+  "prepared_at": "2026-09-21T19:05:47+02:00",
+  "timezone_note": "Europe/Berlin (CEST / UTC+2)",
+  "lab_repo": "velantrian/Eiti-Wizard-Lab",
+  "branch_intended": "exp/e0b-typing-reliability",
+  "GROUND_TRUTH_STATUS": "PENDING",
+  "blind_run_status": "NOT_RUN",
+  "phase1b_action": "PROSPECTIVE_VERBATIM_CORPUS_CAPTURE",
+  "constraints": [
+    "No blind model classification in Phase 1B",
+    "Primary corpus admits ONLY VERBATIM=YES atoms with source_artifact + location + speaker",
+    "No inferred gold labels for authority-sensitive USER statements",
+    "SOURCE axis from metadata only (never LLM-guessed)",
+    "No PST-01, no Graphiti/Kuzu/FalkorDB, no new controller, no architecture promotion",
+    "Do not mutate experiments/memory-governance-e0a/** (read-only)",
+    "Owner repos Crystal/Native Kernel/Continuum/Mentaury*/Titan = READ-ONLY",
+    "Do not invent/reconstruct missing transcript text",
+    "Do not manufacture artificial classification examples to pad corpus"
+  ],
+  "axes": {
+    "SOURCE": [
+      "USER",
+      "MODEL",
+      "EXTERNAL",
+      "TOOL"
+    ],
+    "SPEECH_SEMANTIC_ACT": [
+      "DECISION",
+      "CONSTRAINT",
+      "PROPOSAL",
+      "CLAIM",
+      "QUESTION",
+      "HYPOTHESIS",
+      "RESULT",
+      "PREFERENCE",
+      "UNKNOWN"
+    ],
+    "COMMITMENT": [
+      "EXPLICIT",
+      "TENTATIVE",
+      "NONE",
+      "UNKNOWN"
+    ],
+    "LIFECYCLE": [
+      "OPEN",
+      "ACTIVE",
+      "REJECTED",
+      "SUPERSEDED",
+      "UNKNOWN"
+    ],
+    "AUTHORITY_CANDIDATE": [
+      "USER_AUTHORITY",
+      "MODEL_NONAUTHORITY",
+      "EXTERNAL_EVIDENCE",
+      "UNKNOWN"
+    ]
+  },
+  "sources": {
+    "Orchid": {
+      "status": "ORCHID_SOURCE_MISSING",
+      "lab_local": false,
+      "verbatim_transcript": "MISSING",
+      "atom_count": 0,
+      "provenance_file": "provenance_excerpts/Orchid_MISSING.md",
+      "notes": "Phase 1B re-confirmed MISSING; no fabricated atoms."
+    },
+    "LIVE-01": {
+      "status": "VERBATIM_TRANSCRIPT_MISSING",
+      "lab_local": false,
+      "verbatim_transcript": "MISSING",
+      "source_sha256_claimed": "e0e21160157b464c536e4e537cab4dd27cb625af4f901509adb7efdb45300fb5",
+      "atom_count_primary": 0,
+      "provenance_file": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "notes": "Phase 1B re-confirmed ABSENT on box; evidence surfaces only."
+    },
+    "SLOT-01": {
+      "status": "VERBATIM_TRANSCRIPT_MISSING",
+      "lab_local": false,
+      "verbatim_transcript": "MISSING",
+      "source_sha256_claimed": "d1e9cb984c8b86e329a0008d2f7b12feefddb1b0b5785fe2db0283d6b778332d",
+      "atom_count_primary": 0,
+      "provenance_file": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "notes": "Phase 1B re-confirmed ABSENT on box; evidence surfaces only."
+    },
+    "LAB-E0A-FIXTURE": {
+      "status": "PRESENT_LAB_LOCAL_VERBATIM",
+      "lab_local": true,
+      "path": "experiments/memory-governance-e0a/fixture.json",
+      "sha256": "3e1b0803cc6790afdc48dd7cb214ecda597930f5225b1dbc1ad028ee3d539f71",
+      "atom_count": 7,
+      "note": "Retained Phase 1A verified atoms E0B-V01..V07."
+    },
+    "AGENT_CHAT": {
+      "status": "PRESENT_PROSPECTIVE_VERBATIM",
+      "lab_local": true,
+      "path": "raw_messages.json (+ mirrored from agent-data/*/store.db transcript_entries)",
+      "raw_messages_sha256": "351554aa95a9b97922f8b0ae8b17da635f353b761173ceb03d01d04f41ad6c1d",
+      "provenance_file": "provenance_excerpts/AGENT_CHAT_CAPTURE.md",
+      "atom_count": 35,
+      "message_count": 35,
+      "note": "Prospective natural dialogue with message_id + timestampMs + speaker metadata."
+    }
+  },
+  "corpus_size": 52,
+  "target_range": [
+    30,
+    50
+  ],
+  "shortfall": "ATOMICITY_REPAIR applied: multi-act USER messages split into exact Unicode spans; human labels still PENDING; blind NOT_RUN",
+  "source_distribution": {
+    "USER": 20,
+    "MODEL": 30,
+    "EXTERNAL": 2
+  },
+  "source_axis_distribution": {
+    "USER": 20,
+    "MODEL": 30,
+    "EXTERNAL": 2
+  },
+  "requires_human_label_count": 20,
+  "requires_human_label_atom_ids": [
+    "E0B-V04",
+    "E0B-V07",
+    "E0B-V08.1",
+    "E0B-V08.2",
+    "E0B-V13",
+    "E0B-V17.1",
+    "E0B-V17.2",
+    "E0B-V18.1",
+    "E0B-V18.2",
+    "E0B-V18.3",
+    "E0B-V18.4",
+    "E0B-V21.1",
+    "E0B-V21.2",
+    "E0B-V31.1",
+    "E0B-V31.2",
+    "E0B-V34.1",
+    "E0B-V34.2",
+    "E0B-V38.1",
+    "E0B-V38.2",
+    "E0B-V38.3"
+  ],
+  "excluded_count": 7,
+  "exclusion_ledger": "atoms_excluded.json",
+  "provenance_coverage": {
+    "atoms_with_full_provenance": 42,
+    "total_primary": 42,
+    "coverage_pct": 100.0,
+    "definition": "full provenance = source_artifact + location/message_id + speaker + VERBATIM=YES exact text (+ content hash)"
+  },
+  "search_log_summary": [
+    "A) Lab remote branches: no NEW Orchid/LIVE-01/SLOT-01 transcript bodies",
+    "B) Notion: TCE evidence page only; comments empty; sessions API not available for verbatim event pull; Orchid dump absent",
+    "C) Drive: companion TCE doc only; no source_transcript_before_snapshot.txt / tce-live bodies",
+    "D) GitHub lab issues/PR comments: empty on #1–#7",
+    "E) Box: /workspace/tce-live-01 and tce-slot-01 ABSENT; claimed SHAs unmatched",
+    "F) AGENT_CHAT: /home/box/agent-data/agents/*/store.db transcript_entries — PRIMARY new verbatim source (Labs conversation)",
+    "G) Other lab logs: no additional stable-ID quoted dumps beyond agent stores + retained E0-A fixture"
+  ],
+  "phase_1c_action": "ATOMICITY_REPAIR",
+  "HUMAN_GOLD": "NOT_CREATED",
+  "atomicity_repair": {
+    "old_user_atom_count": 10,
+    "new_atomic_user_span_count": 20,
+    "old_corpus_total": 42,
+    "new_corpus_total": 52,
+    "parent_to_children": {
+      "E0B-V08": [
+        "E0B-V08.1",
+        "E0B-V08.2"
+      ],
+      "E0B-V17": [
+        "E0B-V17.1",
+        "E0B-V17.2"
+      ],
+      "E0B-V18": [
+        "E0B-V18.1",
+        "E0B-V18.2",
+        "E0B-V18.3",
+        "E0B-V18.4"
+      ],
+      "E0B-V21": [
+        "E0B-V21.1",
+        "E0B-V21.2"
+      ],
+      "E0B-V31": [
+        "E0B-V31.1",
+        "E0B-V31.2"
+      ],
+      "E0B-V34": [
+        "E0B-V34.1",
+        "E0B-V34.2"
+      ],
+      "E0B-V38": [
+        "E0B-V38.1",
+        "E0B-V38.2",
+        "E0B-V38.3"
+      ]
+    },
+    "kept_atomic": [
+      "E0B-V04",
+      "E0B-V07",
+      "E0B-V13"
+    ],
+    "provenance_coverage_primary": "100%"
+  },
+  "verbatim_atom_count": 52,
+  "primary_corpus_atom_count": 52,
+  "user_atoms_requiring_human_label": 20,
+  "corpus_total": 52,
+  "updated_at": "2026-09-21T20:47:09.838769+02:00",
+  "phase1c_action": "ATOMICITY_REPAIR"
+}

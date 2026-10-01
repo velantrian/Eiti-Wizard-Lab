@@ -3279,9 +3279,16 @@ function wizContinuityIsEnabled() {
   try { return localStorage.getItem(WIZ_CONTINUITY_KEY) === '1'; } catch (e) { return false; }
 }
 
+// Блок М3 выполняется раньше `let currentLang` (объявлен ниже по файлу),
+// а прямой `typeof currentLang` в TDZ бросает ReferenceError и роняет весь
+// остальной скрипт. Поэтому язык читаем только через безопасный помощник.
+function wizContinuityLangIsEn() {
+  try { return typeof currentLang !== 'undefined' && currentLang === 'en'; } catch (e) { return false; }
+}
+
 // Короткий статус для владельца (без сырого канона в UI).
 function wizContinuityStatusText(status) {
-  const en = (typeof currentLang !== 'undefined') && currentLang === 'en';
+  const en = wizContinuityLangIsEn();
   const map = {
     DISABLED: en ? 'Disabled' : 'Выключено',
     LOADING: en ? 'Loading…' : 'Загрузка…',
@@ -3294,16 +3301,20 @@ function wizContinuityStatusText(status) {
 }
 
 function wizContinuityRenderStatus() {
-  const sub = document.getElementById('continuityStatusSub');
-  const box = document.getElementById('cfgContinuity');
-  const st = window._wizContinuity || {};
-  if (box && box.checked !== (st.enabled === true)) box.checked = (st.enabled === true);
-  if (sub) {
-    let text = wizContinuityStatusText(st.status || 'DISABLED');
-    if (st.status === 'READY' && st.coreMeta) {
-      text += ' · ' + st.coreMeta.record_count + ' / ~' + st.coreMeta.approx_tokens;
+  try {
+    const sub = document.getElementById('continuityStatusSub');
+    const box = document.getElementById('cfgContinuity');
+    const st = window._wizContinuity || {};
+    if (box && box.checked !== (st.enabled === true)) box.checked = (st.enabled === true);
+    if (sub) {
+      let text = wizContinuityStatusText(st.status || 'DISABLED');
+      if (st.status === 'READY' && st.coreMeta) {
+        text += ' · ' + st.coreMeta.record_count + ' / ~' + st.coreMeta.approx_tokens;
+      }
+      sub.textContent = text;
     }
-    sub.textContent = text;
+  } catch (e) {
+    try { console.warn('[continuity] status:', (e && e.message) || e); } catch (_e) {}
   }
 }
 
@@ -3378,17 +3389,22 @@ function wizContinuitySetEnabled(on) {
 }
 
 // Инициализация тумблера (по умолчанию OFF — явное включение владельцем).
+// Обёрнуто в try/catch: инициализация дополнения не вправе ронять загрузку страницы.
 (function initContinuityToggle() {
-  const el = document.getElementById('cfgContinuity');
-  const on = wizContinuityIsEnabled();
-  window._wizContinuity.enabled = on;
-  window._wizContinuity.status = on ? 'LOADING' : 'DISABLED';
-  if (el) {
-    el.checked = on;
-    el.addEventListener('change', () => wizContinuitySetEnabled(el.checked));
+  try {
+    const el = document.getElementById('cfgContinuity');
+    const on = wizContinuityIsEnabled();
+    window._wizContinuity.enabled = on;
+    window._wizContinuity.status = on ? 'LOADING' : 'DISABLED';
+    if (el) {
+      el.checked = on;
+      el.addEventListener('change', () => wizContinuitySetEnabled(el.checked));
+    }
+    wizContinuityRenderStatus();
+    if (on) wizContinuityRefresh();
+  } catch (e) {
+    try { console.warn('[continuity] init:', (e && e.message) || e); } catch (_e) {}
   }
-  wizContinuityRenderStatus();
-  if (on) wizContinuityRefresh();
 })();
 
 

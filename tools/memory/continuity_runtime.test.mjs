@@ -345,6 +345,12 @@ test('М3 Т16: RNE/подсказки/TTS/Grok Voice/поиск/память б
   }
   // Отдельного ИИ-пути генерации заголовков нет.
   assert.equal((html.match(/async function \w*[Tt]itle\w*\(/g) || []).length, 0);
+  // Регрессия smoke: блок М3 выполняется раньше `let currentLang`, поэтому язык
+  // читается только через безопасный помощник (голый typeof в TDZ ронял страницу).
+  const contSlice = html.slice(html.indexOf('── М3 Continuity Context'), html.indexOf('── Service Worker registration'));
+  assert.ok(contSlice.includes('function wizContinuityLangIsEn()'));
+  const contCode = contSlice.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
+  assert.equal((contCode.match(/currentLang/g) || []).length, 2);
 });
 
 // ── М3-Т17: тесты М2 продолжают проходить ──────────────────────────────────

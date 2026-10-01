@@ -1037,3 +1037,52 @@ test('35: приватный локатор в envelope.admission_reason отк�
     assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, true);
   }
 });
+
+// ── 36. М2.1.1 Б-02: точные ключи relations[] — только rel и target ──────────
+test('36: лишний ключ в relations[] отклоняется, байты журнала неизменны', () => {
+  const случаи = [
+    ['лишний ключ page_id в связи', 'page_id', 'abc123def456'],
+    ['лишний ключ file_id в связи', 'file_id', 'abc123def456'],
+    ['лишний ключ document_id в связи', 'document_id', 'abc123def456'],
+    ['лишний ключ locator в связи', 'locator', 'alias:SRC-FAKE'],
+    ['лишний ключ url в связи', 'url', 'https://example.com/abc'],
+    ['лишний ключ token в связи', 'token', 'abc123def456'],
+    ['лишний ключ secret в связи', 'secret', 'abc123def456'],
+    ['лишний ключ credentials в связи', 'credentials', 'abc123def456'],
+  ];
+  for (const [название, ключ, значение] of случаи) {
+    const журнал = временныйЖурнал();
+    const до = размерЖурнала(журнал);
+    const событие = допустимоеСобытие('evt-m211-b02-001', 'OBS-M211-B02-001', null);
+    событие.record.relations = [{ rel: 'RELATED_TO', target: 'OQ-01', [ключ]: значение }];
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false, название);
+    assert.ok(проверка.errors.some(e => e.includes('запрещённый ключ') || e.includes(ключ)), название + ': ' + проверка.errors.join(' | '));
+    const итог = appendObserved(событие, { ledgerPath: журнал });
+    assert.equal(итог.ok, false, название);
+    const после = размерЖурнала(журнал);
+    assert.deepEqual(после, до, название + ': байты журнала обязаны остаться неизменными');
+    assert.deepEqual(после, { байты: 0, строки: 0 }, название);
+  }
+  // Путь Б: точные ключи связи не зависят от формы источника.
+  {
+    const журнал = временныйЖурнал();
+    const до = размерЖурнала(журнал);
+    const событие = допустимоеСобытиеПутьБ('evt-m211-b02-002', 'OBS-M211-B02-002', null);
+    событие.record.relations = [{ rel: 'RELATED_TO', target: 'OQ-01', page_id: 'abc123' }];
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false);
+    assert.ok(проверка.errors.some(e => e.includes('запрещённый ключ')), проверка.errors.join(' | '));
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, false);
+    assert.deepEqual(размерЖурнала(журнал), до);
+  }
+  // Допустимая связь только с rel и target по-прежнему проходит.
+  {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытие('evt-m211-b02-allow-001', 'OBS-M211-B02-ALLOW-001', null);
+    событие.record.relations = [{ rel: 'RELATED_TO', target: 'OQ-01' }];
+    assert.equal(validateEvent(событие, { ledgerPath: журнал }).ok, true);
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, true);
+    assert.equal(размерЖурнала(журнал).строки, 1);
+  }
+});

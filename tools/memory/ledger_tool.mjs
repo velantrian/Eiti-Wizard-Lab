@@ -429,7 +429,11 @@ export function validateEvent(event, opts = {}) {
   // Проверка целей связей против канона.
   if (Array.isArray(rec.relations)) {
     for (const rel of rec.relations) {
-      if (!rel || typeof rel !== 'object') { errors.push('запись: элемент relations обязан быть объектом {rel, target}'); continue; }
+      if (!rel || typeof rel !== 'object' || Array.isArray(rel)) { errors.push('запись: элемент relations обязан быть объектом {rel, target}'); continue; }
+      // Точные ключи связи: только rel и target, любой иной ключ означает отказ с закрытием.
+      for (const к of Object.keys(rel)) {
+        if (к !== 'rel' && к !== 'target') errors.push(`запись: связь содержит запрещённый ключ ${к} (разрешены только rel/target)`);
+      }
       if (!SEED_RELS.includes(rel.rel)) errors.push(`запись: связь ${String(rel.rel)} запрещена`);
       if (typeof rel.target !== 'string' || rel.target === '') errors.push('запись: связь target обязана быть непустой строкой');
       else if (!идКанона.has(rel.target)) errors.push(`запись: связь target ${String(rel.target)} отсутствует в каноне`);

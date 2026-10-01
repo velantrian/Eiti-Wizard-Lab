@@ -367,11 +367,33 @@ test('13: malformed цепочка и форк приводят к отказу 
   }
 });
 
-// ── Реальный журнал остаётся пустым ─────────────────────────────────────────
-test('реальный журнал event_ledger.jsonl остаётся пустым после тестов', () => {
-  // Все тесты выше писали только во временные файлы.
+// ── Реальный журнал сохраняет целостность append-only ──────────────────────────
+test('реальный журнал event_ledger.jsonl сохраняет целостность append-only', () => {
+  // Все тесты выше писали только во временные файлы. Реальный журнал может законно
+  // содержать настоящие события OBSERVED (например, дымовой прогон М2.1), поэтому
+  // пустота не требуется — требуется целостность append-only.
   const сырьё = fs.existsSync(DEFAULT_LEDGER) ? fs.readFileSync(DEFAULT_LEDGER, 'utf8') : '';
-  assert.equal(сырьё, '');
+  if (сырьё !== '') {
+    assert.equal(сырьё.endsWith('\n'), true, 'непустой журнал обязан завершаться переводом строки');
+    const строки = сырьё.split('\n');
+    assert.equal(строки[строки.length - 1], '', 'последний фрагмент после финального перевода строки обязан быть пустым');
+    for (const [индекс, строка] of строки.slice(0, -1).entries()) {
+      assert.notEqual(строка, '', `строка ${индекс + 1} не должна быть пустой`);
+      JSON.parse(строка); // malformed строка роняет тест
+    }
+  }
+  const журнал = loadLedger(DEFAULT_LEDGER);
+  assert.equal(журнал.ok, true, 'цепочка журнала: ' + журнал.errors.join(' | '));
+  if (сырьё !== '') {
+    assert.ok(журнал.tip, 'непустой журнал обязан иметь кончик');
+    assert.ok(журнал.lineCount > 0, 'непустой журнал обязан содержать строки');
+  }
+  // Каждое событие реального журнала — только OBSERVED/OBSERVE без authorized_by.
+  for (const { parsed } of журнал.events) {
+    assert.equal(parsed.envelope.admission_state, 'OBSERVED');
+    assert.equal(parsed.envelope.event_kind, 'OBSERVE');
+    assert.ok(parsed.envelope.authorized_by === null || parsed.envelope.authorized_by === undefined);
+  }
 });
 
 // ── Снимок реальных файлов до и после (защита от мутаций) ───────────────────
@@ -383,7 +405,11 @@ test('снимок реальных файлов: канон, манифест �
   assert.equal(сид.records.length, 79);
   const повтор = снимокРеальныхФайлов();
   assert.deepEqual(повтор.хеши, снимок.хеши);
-  assert.equal(повтор.журнал, '');
+  // Тест писал только во временный журнал: реальный журнал не изменился за время теста.
+  // Пустота не требуется — законные события OBSERVED допустимы.
+  assert.equal(повтор.журнал, снимок.журнал);
+  const проверка = loadLedger(DEFAULT_LEDGER);
+  assert.equal(проверка.ok, true, 'цепочка журнала: ' + проверка.errors.join(' | '));
 });
 
 // ── 16. Блокировка удерживается: второй писатель получает LEDGER_BUSY ───────

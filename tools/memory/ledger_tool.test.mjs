@@ -1,4 +1,4 @@
-// Тесты журнала М2.1: 13 приёмных случаев (локально, детерминированно, без моделей).
+// Тесты журнала М2.1.1: приёмные случаи М2.1 плюс исключающий выбор источника (локально, без моделей).
 // Все дописывания идут во временные журналы. Реальные канон, манифест,
 // CURRENT_ORIENTATION, паспорт и wiz_ref/рантайм не мутируют.
 // Запуск: node --test tools/memory/ledger_tool.test.mjs
@@ -11,7 +11,7 @@ import { spawn } from 'node:child_process';
 import { ROOT, DEFAULT_SEED, DEFAULT_MANIFEST, DEFAULT_LEDGER, validateEvent, appendObserved, checkHash, loadLedger, sha256File, sha256Bytes, acquireLedgerLock, releaseLedgerLock, ledgerLockDir, LEDGER_LOCK_INFO } from './ledger_tool.mjs';
 import { loadSeed, loadSeed as загрузитьСид } from './seed_tool.mjs';
 
-// Базовый коммит вехи М1 (только формат 40 hex проверяется в М2.1).
+// Базовый коммит вехи М1 (только формат 40 hex проверяется в М2.1.1).
 const БАЗОВЫЙ_КОММИТ = 'b8db5d7e16a23832ee1b2695d26c9c6bbbec33f7';
 
 // Чтение текущего канонического хеша из манифеста.
@@ -77,6 +77,47 @@ function допустимоеСобытие(идСобытия = 'evt-m2-1-0001'
   return {
     envelope: допустимыйКонверт(идСобытия, prior, переопределенияКонверта),
     record: { ...допустимаяЗапись(идЗаписи), ...переопределенияЗаписи },
+  };
+}
+
+// Допустимый событийно-локальный источник Пути Б (без регистрации в сиде).
+function допустимыйНаблюдаемыйИсточник(переопределения = {}) {
+  return {
+    kind: 'CHAT_OBSERVATION',
+    label: 'Наблюдение из рабочего чата от 2026-10-01',
+    surface_class: 'chat',
+    provenance_status: 'UNREGISTERED_EVENT_LOCAL',
+    ...переопределения,
+  };
+}
+
+// Допустимая запись Пути Б: без source/source_kind, с observed_source и происхождением USER_RAW.
+function допустимаяЗаписьПутьБ(ид = 'OBS-M2-1001', переопределенияНабл = {}, переопределенияЗаписи = {}) {
+  return {
+    id: ид,
+    type: 'OPEN_QUESTION',
+    statement: 'Наблюдение журнала М2.1.1 Пути Б: пример без учётных данных и приватных ссылок.',
+    status: 'OPEN',
+    observed_source: допустимыйНаблюдаемыйИсточник(переопределенияНабл),
+    scope: 'наблюдение',
+    provenance: 'USER_RAW',
+    valid_from: '2026-10-01',
+    updated_at: '2026-10-01',
+    details_pointer: 'карантинное наблюдение, не канон',
+    relations: [{ rel: 'RELATED_TO', target: 'OQ-01' }],
+    related_to: [],
+    supersedes: null,
+    superseded_by: null,
+    keywords: 'наблюдение путь-б журнал',
+    ...переопределенияЗаписи,
+  };
+}
+
+// Допустимое событие Пути Б целиком.
+function допустимоеСобытиеПутьБ(идСобытия = 'evt-m2-1-1-0001', идЗаписи = 'OBS-M2-1001', prior = null, переопределенияКонверта = {}, переопределенияНабл = {}, переопределенияЗаписи = {}) {
+  return {
+    envelope: допустимыйКонверт(идСобытия, prior, переопределенияКонверта),
+    record: допустимаяЗаписьПутьБ(идЗаписи, переопределенияНабл, переопределенияЗаписи),
   };
 }
 
@@ -367,11 +408,32 @@ test('13: malformed цепочка и форк приводят к отказу 
   }
 });
 
-// ── Реальный журнал остаётся пустым ─────────────────────────────────────────
-test('реальный журнал event_ledger.jsonl остаётся пустым после тестов', () => {
-  // Все тесты выше писали только во временные файлы.
+// ── Реальный журнал сохраняет целостность append-only ──────────────────────────
+test('реальный журнал event_ledger.jsonl сохраняет целостность append-only', () => {
+  // Все тесты выше писали только во временные файлы. Реальный журнал может законно
+  // содержать настоящие события OBSERVED, поэтому пустота не требуется — требуется целостность.
   const сырьё = fs.existsSync(DEFAULT_LEDGER) ? fs.readFileSync(DEFAULT_LEDGER, 'utf8') : '';
-  assert.equal(сырьё, '');
+  if (сырьё !== '') {
+    assert.equal(сырьё.endsWith('\n'), true, 'непустой журнал обязан завершаться переводом строки');
+    const строки = сырьё.split('\n');
+    assert.equal(строки[строки.length - 1], '', 'последний фрагмент после финального перевода строки обязан быть пустым');
+    for (const [индекс, строка] of строки.slice(0, -1).entries()) {
+      assert.notEqual(строка, '', `строка ${индекс + 1} не должна быть пустой`);
+      JSON.parse(строка); // malformed строка роняет тест
+    }
+  }
+  const журнал = loadLedger(DEFAULT_LEDGER);
+  assert.equal(журнал.ok, true, 'цепочка журнала: ' + журнал.errors.join(' | '));
+  if (сырьё !== '') {
+    assert.ok(журнал.tip, 'непустой журнал обязан иметь кончик');
+    assert.ok(журнал.lineCount > 0, 'непустой журнал обязан содержать строки');
+  }
+  // Каждое событие реального журнала — только OBSERVED/OBSERVE без authorized_by.
+  for (const { parsed } of журнал.events) {
+    assert.equal(parsed.envelope.admission_state, 'OBSERVED');
+    assert.equal(parsed.envelope.event_kind, 'OBSERVE');
+    assert.ok(parsed.envelope.authorized_by === null || parsed.envelope.authorized_by === undefined);
+  }
 });
 
 // ── Снимок реальных файлов до и после (защита от мутаций) ───────────────────
@@ -383,7 +445,11 @@ test('снимок реальных файлов: канон, манифест �
   assert.equal(сид.records.length, 79);
   const повтор = снимокРеальныхФайлов();
   assert.deepEqual(повтор.хеши, снимок.хеши);
-  assert.equal(повтор.журнал, '');
+  // Тест писал только во временный журнал: реальный журнал не изменился за время теста.
+  // Пустота не требуется — законные события OBSERVED допустимы.
+  assert.equal(повтор.журнал, снимок.журнал);
+  const проверка = loadLedger(DEFAULT_LEDGER);
+  assert.equal(проверка.ok, true, 'цепочка журнала: ' + проверка.errors.join(' | '));
 });
 
 // ── 16. Блокировка удерживается: второй писатель получает LEDGER_BUSY ───────
@@ -640,4 +706,285 @@ test('24: несоответствие поля манифеста байтам 
   assert.deepEqual(размерЖурнала(журнал), { байты: 0, строки: 0 });
   // Реальные файлы не тронуты.
   assert.equal(sha256File(DEFAULT_SEED), каноническийХеш());
+});
+
+// ── 25. М2.1.1 Путь Б: допустимый наблюдаемый источник проходит ─────────────
+test('25: Путь Б с допустимым observed_source проходит и дописывается', () => {
+  const журнал = временныйЖурнал();
+  const событие = допустимоеСобытиеПутьБ('evt-m211-0001', 'OBS-M211-0001', null);
+  // Ключи Пути А отсутствуют (нуль не допускается).
+  assert.equal('source' in событие.record, false);
+  assert.equal('source_kind' in событие.record, false);
+  const проверка = validateEvent(событие, { ledgerPath: журнал });
+  assert.equal(проверка.ok, true, 'валидация Пути Б: ' + проверка.errors.join(' | '));
+  const итог = appendObserved(событие, { ledgerPath: журнал });
+  assert.equal(итог.ok, true, 'дописывание Пути Б: ' + итог.errors.join(' | '));
+  assert.equal(размерЖурнала(журнал).строки, 1);
+  const состояние = loadLedger(журнал);
+  assert.equal(состояние.ok, true);
+  assert.equal(состояние.tip, 'evt-m211-0001');
+  // Путь А без изменений: зарегистрированный источник по-прежнему проходит.
+  const журналА = временныйЖурнал();
+  assert.equal(validateEvent(допустимоеСобытие('evt-m211-a-001', 'OBS-M211-A-001', null), { ledgerPath: журналА }).ok, true);
+  assert.equal(appendObserved(допустимоеСобытие('evt-m211-a-001', 'OBS-M211-A-001', null), { ledgerPath: журналА }).ok, true);
+});
+
+// ── 26. М2.1.1 Путь Б: notion и drive с безопасной меткой проходят ──────────
+test('26: Путь Б с surface_class notion и drive и безопасной меткой проходит', () => {
+  const случаи = [
+    ['ноушен без ссылки', { kind: 'NOTION_PAGE', label: 'Заметка из личной базы знаний без ссылки', surface_class: 'notion' }, 'SOURCE_DOC'],
+    ['драйв без ссылки', { kind: 'DRIVE_DOC', label: 'Рабочий документ без ссылки и идентификаторов', surface_class: 'drive' }, 'SOURCE_DOC'],
+    ['локальный чат', { kind: 'CHAT_OBSERVATION', label: 'Наблюдение из чата без ссылки', surface_class: 'chat' }, 'USER_RAW'],
+    ['публичная сеть', { kind: 'PUBLIC_WEB', label: 'Публичная статья без приватной ссылки', surface_class: 'public_web' }, 'SOURCE_DOC'],
+    ['иное заявленное', { kind: 'OTHER_DECLARED', label: 'Иной заявленный источник без ссылки', surface_class: 'other' }, 'USER_RAW'],
+    ['локальный гитхаб', { kind: 'GITHUB_REPO', label: 'Публичный репозиторий без приватного локатора', surface_class: 'github' }, 'SOURCE_DOC'],
+    ['локальный вид', { kind: 'AI_ASSEMBLY', label: 'Сборка модели без ссылки', surface_class: 'local' }, 'AI_SUMMARY'],
+  ];
+  случаи.forEach(([название, набл, происхождение], индекс) => {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытиеПутьБ(`evt-m211-safe-${индекс}`, `OBS-M211-SAFE-${индекс}`, null, {}, набл, { provenance: происхождение });
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, true, название + ': ' + проверка.errors.join(' | '));
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, true, название);
+  });
+});
+
+// ── 27. М2.1.1 Путь Б: канон не меняется ────────────────────────────────────
+test('27: дописывание Пути Б не меняет байты канона и манифеста', () => {
+  const доСида = sha256File(DEFAULT_SEED);
+  const доМанифеста = fs.readFileSync(DEFAULT_MANIFEST, 'utf8');
+  const журнал = временныйЖурнал();
+  const событие = допустимоеСобытиеПутьБ('evt-m211-canon-001', 'OBS-M211-CANON-001', null);
+  assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, true);
+  assert.equal(checkHash({ ledgerPath: журнал }).ok, true);
+  assert.equal(sha256File(DEFAULT_SEED), доСида);
+  assert.equal(sha256File(DEFAULT_SEED), каноническийХеш());
+  assert.equal(fs.readFileSync(DEFAULT_MANIFEST, 'utf8'), доМанифеста);
+  assert.equal(JSON.parse(доМанифеста).admission_implementation, 'ABSENT');
+});
+
+// ── 28. М2.1.1: голый технический ид без ссылки проходит ────────────────────
+test('28: метка Пути Б с голым УУИД без приватной ссылки проходит', () => {
+  const журнал = временныйЖурнал();
+  const событие = допустимоеСобытиеПутьБ('evt-m211-uuid-001', 'OBS-M211-UUID-001', null, {}, {
+    kind: 'OTHER_DECLARED',
+    label: 'Ид эксперимента 550e8400-e29b-41d4-a716-446655440000 без ссылки',
+    surface_class: 'local',
+  });
+  const проверка = validateEvent(событие, { ledgerPath: журнал });
+  assert.equal(проверка.ok, true, 'голый ид не равен локатору: ' + проверка.errors.join(' | '));
+  assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, true);
+  // Заявление без дефисов также проходит.
+  const журнал2 = временныйЖурнал();
+  const событие2 = допустимоеСобытиеПутьБ('evt-m211-uuid-002', 'OBS-M211-UUID-002', null, {}, {
+    kind: 'CHAT_OBSERVATION',
+    label: 'Наблюдение 550e8400e29b41d4a716446655440000 без ссылки',
+    surface_class: 'chat',
+  });
+  assert.equal(validateEvent(событие2, { ledgerPath: журнал2 }).ok, true);
+});
+
+// ── 29. М2.1.1: исключающий выбор отклоняет пусто и обе формы ────────────────
+test('29: отсутствие источника и обе формы сразу отклоняются', () => {
+  // Случай а: ни одной формы.
+  {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытие('evt-m211-xor-001', 'OBS-M211-XOR-001', null);
+    delete событие.record.source;
+    delete событие.record.source_kind;
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false);
+    assert.ok(проверка.errors.some(e => e.includes('SOURCE_XOR_REQUIRED')), проверка.errors.join(' | '));
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, false);
+    assert.deepEqual(размерЖурнала(журнал), { байты: 0, строки: 0 });
+  }
+  // Случай б: обе формы сразу.
+  {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытие('evt-m211-xor-002', 'OBS-M211-XOR-002', null);
+    событие.record.observed_source = допустимыйНаблюдаемыйИсточник();
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false);
+    assert.ok(проверка.errors.some(e => e.includes('SOURCE_XOR_BOTH')), проверка.errors.join(' | '));
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, false);
+    assert.deepEqual(размерЖурнала(журнал), { байты: 0, строки: 0 });
+  }
+  // Случай в: Путь Б с ключом source равным нуль — всё равно обе формы (нуль не допускается).
+  {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытиеПутьБ('evt-m211-xor-003', 'OBS-M211-XOR-003', null);
+    событие.record.source = null;
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false);
+    assert.ok(проверка.errors.some(e => e.includes('SOURCE_XOR_BOTH')), проверка.errors.join(' | '));
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, false);
+  }
+  // Случай г: Путь А неполный (только source без source_kind) — отказ.
+  {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытие('evt-m211-xor-004', 'OBS-M211-XOR-004', null);
+    delete событие.record.source_kind;
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false);
+    assert.ok(проверка.errors.some(e => e.includes('source_kind') || e.includes('Путь А')), проверка.errors.join(' | '));
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, false);
+  }
+});
+
+// ── 30. М2.1.1 Путь А: поддельный алиас отклоняется ──────────────────────────
+test('30: поддельный алиас канона и несоответствие вида отклоняются', () => {
+  const случаи = [
+    ['поддельный алиас', с => { с.record.source = 'SRC-FAKE-2026-10-01'; с.record.source_kind = 'NOTION_PAGE'; }, 'seed.sources'],
+    ['несоответствие вида', с => { с.record.source = 'SRC-N-GENESIS'; с.record.source_kind = 'DRIVE_DOC'; }, 'source_kind'],
+    ['пустой алиас', с => { с.record.source = ''; }, 'отсутствует'],
+  ];
+  for (const [название, мутация, метка] of случаи) {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытие('evt-m211-fake-001', 'OBS-M211-FAKE-001', null);
+    мутация(событие);
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false, название);
+    assert.ok(проверка.errors.some(e => e.includes(метка) || e.includes('source')), название + ': ' + проверка.errors.join(' | '));
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, false, название);
+    assert.deepEqual(размерЖурнала(журнал), { байты: 0, строки: 0 }, название);
+  }
+});
+
+// ── 31. М2.1.1: приватная ссылка в метке и учётные данные отклоняются ────────
+test('31: приватный локатор в метке и учётные данные отклоняются', () => {
+  const случаи = [
+    ['ноушен ссылка в метке', { label: 'смотреть https://notion.so/abc123 внутри' }, 'QUARANTINE_PRIVATE_LOCATOR'],
+    ['ноушен сайт в метке', { label: 'смотреть https://example.notion.site/abc внутри' }, 'QUARANTINE_PRIVATE_LOCATOR'],
+    ['приложение ноушен в метке', { label: 'смотреть https://app.notion.com/abc внутри' }, 'QUARANTINE_PRIVATE_LOCATOR'],
+    ['гугл документы в метке', { label: 'смотреть https://docs.google.com/document/d/abc внутри' }, 'QUARANTINE_PRIVATE_LOCATOR'],
+    ['гугл драйв в метке', { label: 'смотреть https://drive.google.com/file/d/abc внутри' }, 'QUARANTINE_PRIVATE_LOCATOR'],
+    ['учётные данные в метке', { label: 'пример с api_key=sk-abc123XYZ4567890 внутри' }, 'QUARANTINE_CREDENTIAL'],
+    ['токен в метке', { label: 'пример token: abcdef1234567890XYZ внутри' }, 'QUARANTINE_CREDENTIAL'],
+  ];
+  for (const [название, набл, метка] of случаи) {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытиеПутьБ('evt-m211-quarantine-001', 'OBS-M211-QUARANTINE-001', null, {}, набл);
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false, название);
+    assert.ok(проверка.errors.some(e => e.includes(метка)), название + ': ' + проверка.errors.join(' | '));
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, false, название);
+    assert.deepEqual(размерЖурнала(журнал), { байты: 0, строки: 0 }, название);
+  }
+  // Учётные данные в заявлении Пути Б также отклоняются.
+  {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытиеПутьБ('evt-m211-quarantine-002', 'OBS-M211-QUARANTINE-002', null, {}, {}, { statement: 'пример password: hunter2-hunter2 внутри' });
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false);
+    assert.ok(проверка.errors.some(e => e.includes('QUARANTINE_CREDENTIAL')), проверка.errors.join(' | '));
+  }
+});
+
+// ── 32. М2.1.1 Путь Б: неверные перечисления и ключи отклоняются ─────────────
+test('32: неверные kind, surface, provenance_status и ключи Пути Б отклоняются', () => {
+  const случаи = [
+    ['неверный kind', с => { с.record.observed_source.kind = 'FAKE_KIND'; }, 'kind'],
+    ['неверный surface_class', с => { с.record.observed_source.surface_class = 'мессенджер'; }, 'surface_class'],
+    ['неверный provenance_status', с => { с.record.observed_source.provenance_status = 'VERIFIED'; }, 'provenance_status'],
+    ['пустая метка', с => { с.record.observed_source.label = ''; }, 'label'],
+    ['метка только пробелы', с => { с.record.observed_source.label = '   '; }, 'label'],
+    ['метка длиннее 200', с => { с.record.observed_source.label = 'я'.repeat(201); }, 'label'],
+    ['метка не строка', с => { с.record.observed_source.label = 42; }, 'label'],
+    ['отсутствует kind', с => { delete с.record.observed_source.kind; }, 'отсутствует'],
+    ['лишний ключ alias', с => { с.record.observed_source.alias = 'SRC-FAKE'; }, 'запрещённый'],
+    ['лишний ключ url', с => { с.record.observed_source.url = 'https://example.com'; }, 'запрещённый'],
+    ['лишний ключ page_id', с => { с.record.observed_source.page_id = 'abc123'; }, 'запрещённый'],
+    ['лишний ключ file_id', с => { с.record.observed_source.file_id = 'abc123'; }, 'запрещённый'],
+    ['лишний ключ document_id', с => { с.record.observed_source.document_id = 'abc123'; }, 'запрещённый'],
+    ['лишний ключ title', с => { с.record.observed_source.title = 'Название'; }, 'запрещённый'],
+    ['лишний ключ notion_page', с => { с.record.observed_source.notion_page = 'x'; }, 'запрещённый'],
+    ['лишний ключ drive_file', с => { с.record.observed_source.drive_file = 'x'; }, 'запрещённый'],
+    ['лишний ключ token', с => { с.record.observed_source.token = 'abc'; }, 'запрещённый'],
+    ['лишний ключ reachable', с => { с.record.observed_source.reachable = 'YES'; }, 'запрещённый'],
+    ['произвольный лишний ключ', с => { с.record.observed_source.лишний = 'x'; }, 'неизвестный ключ'],
+    ['не объект', с => { с.record.observed_source = 'строка'; }, 'объектом'],
+    ['нуль вместо объекта', с => { с.record.observed_source = null; }, 'объектом'],
+  ];
+  for (const [название, мутация, метка] of случаи) {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытиеПутьБ('evt-m211-enum-001', 'OBS-M211-ENUM-001', null);
+    мутация(событие);
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false, название);
+    assert.ok(проверка.errors.some(e => e.includes(метка) || e.includes('observed_source')), название + ': ' + проверка.errors.join(' | '));
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, false, название);
+    assert.deepEqual(размерЖурнала(журнал), { байты: 0, строки: 0 }, название);
+  }
+  // Границы метки: 1 и 200 проходят, 0 и 201 отклоняются (границы уже проверены выше частично).
+  {
+    const журнал = временныйЖурнал();
+    const событие1 = допустимоеСобытиеПутьБ('evt-m211-bound-001', 'OBS-M211-BOUND-001', null, {}, { label: 'я' });
+    assert.equal(validateEvent(событие1, { ledgerPath: журнал }).ok, true);
+    const событие200 = допустимоеСобытиеПутьБ('evt-m211-bound-002', 'OBS-M211-BOUND-002', null, {}, { label: 'я'.repeat(200) });
+    assert.equal(validateEvent(событие200, { ledgerPath: временныйЖурнал() }).ok, true);
+  }
+});
+
+// ── 33. М2.1.1: согласованность происхождения для обоих путей ────────────────
+test('33: происхождение USER_STATEMENT требует вида USER_STATEMENT на обоих путях', () => {
+  // Путь А: верный вид проходит, неверный отклоняется.
+  {
+    const журнал = временныйЖурнал();
+    const верное = допустимоеСобытие('evt-m211-prov-a-001', 'OBS-M211-PROV-A-001', null);
+    assert.equal(верное.record.provenance, 'USER_STATEMENT_2026-09-29');
+    assert.equal(верное.record.source_kind, 'USER_STATEMENT');
+    assert.equal(validateEvent(верное, { ledgerPath: журнал }).ok, true);
+    const журнал2 = временныйЖурнал();
+    const неверное = допустимоеСобытие('evt-m211-prov-a-002', 'OBS-M211-PROV-A-002', null, {}, { source: 'SRC-N-GENESIS', source_kind: 'NOTION_PAGE' });
+    assert.equal(неверное.record.provenance, 'USER_STATEMENT_2026-09-29');
+    const проверка = validateEvent(неверное, { ledgerPath: журнал2 });
+    assert.equal(проверка.ok, false);
+    assert.ok(проверка.errors.some(e => e.includes('USER_STATEMENT')), проверка.errors.join(' | '));
+  }
+  // Путь Б: верный вид проходит, неверный отклоняется.
+  {
+    const журнал = временныйЖурнал();
+    const верное = допустимоеСобытиеПутьБ('evt-m211-prov-b-001', 'OBS-M211-PROV-B-001', null, {}, { kind: 'USER_STATEMENT', label: 'Заявление пользователя без ссылки', surface_class: 'local' }, { provenance: 'USER_STATEMENT_2026-09-29' });
+    assert.equal(validateEvent(верное, { ledgerPath: журнал }).ok, true);
+    const журнал2 = временныйЖурнал();
+    const неверное = допустимоеСобытиеПутьБ('evt-m211-prov-b-002', 'OBS-M211-PROV-B-002', null, {}, { kind: 'CHAT_OBSERVATION' }, { provenance: 'USER_STATEMENT_2026-09-29' });
+    const проверка = validateEvent(неверное, { ledgerPath: журнал2 });
+    assert.equal(проверка.ok, false);
+    assert.ok(проверка.errors.some(e => e.includes('USER_STATEMENT')), проверка.errors.join(' | '));
+    assert.equal(appendObserved(неверное, { ledgerPath: журнал2 }).ok, false);
+  }
+});
+
+// ── 34. М2.1.1 Путь Б: ADMIT и authorized_by отклоняются ─────────────────────
+test('34: Путь Б с ADMIT или не-нуль authorized_by отклоняется', () => {
+  // ADMIT от ИИ.
+  {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытиеПутьБ('evt-m211-admit-001', 'OBS-M211-ADMIT-001', null, { admission_state: 'ADMITTED', event_kind: 'ADMIT' });
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false);
+    assert.ok(проверка.errors.some(e => e.includes('ADMISSION_IMPLEMENTATION_ABSENT') || e.includes('AI_MAY_NOT_ADMIT')), проверка.errors.join(' | '));
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, false);
+    assert.deepEqual(размерЖурнала(журнал), { байты: 0, строки: 0 });
+  }
+  // ADMIT от человека также отклоняется (реализация отсутствует).
+  {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытиеПутьБ('evt-m211-admit-002', 'OBS-M211-ADMIT-002', null, {
+      admission_state: 'ADMITTED', event_kind: 'ADMIT', source_actor: 'SYSTEM:cron', recorded_by: 'HUMAN:ruslan',
+    });
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false);
+    assert.ok(проверка.errors.some(e => e.includes('ADMISSION_IMPLEMENTATION_ABSENT')), проверка.errors.join(' | '));
+  }
+  // authorized_by не нуль.
+  {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытиеПутьБ('evt-m211-admit-003', 'OBS-M211-ADMIT-003', null, { authorized_by: 'HUMAN:ruslan' });
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false);
+    assert.ok(проверка.errors.some(e => e.includes('authorized_by')), проверка.errors.join(' | '));
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, false);
+    assert.deepEqual(размерЖурнала(журнал), { байты: 0, строки: 0 });
+  }
 });

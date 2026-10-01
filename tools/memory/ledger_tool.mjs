@@ -1,20 +1,23 @@
 #!/usr/bin/env node
-// Инструмент журнала М2.1 — только OBSERVED, неизменяемый карантинный слой (без зависимостей).
+// Инструмент журнала М2.1.1 — только OBSERVED, неизменяемый карантинный слой (без зависимостей).
 //
 //   node tools/memory/ledger_tool.mjs validate-event <событие.json> [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]
 //   node tools/memory/ledger_tool.mjs append-observed <событие.json> [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]
 //   node tools/memory/ledger_tool.mjs check-hash [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]
 //
-// Правила вехи М2.1:
+// Правила вехи М2.1.1 (надмножество М2.1, только OBSERVED):
 // - ИИ МОЖЕТ ДОПИСЫВАТЬ OBSERVED; ИИ НЕ МОЖЕТ ДОПУСКАТЬ В КАНОН.
 // - Дописывание только неизменяемое (append-only). Карантин означает отказ ДО дописывания.
+// - Источник записи — строгий ИСКЛЮЧАЮЩИЙ выбор: Путь А (source+source_kind из сида) или Путь Б (observed_source).
+// - Событийно-локальное не равно канону, реестру, допущенному и проверенному.
 // - Критическая секция: appendObserved сериализует писателей блокировкой каталога (mkdir exclusive).
 //   Граница гарантии — только ОДНА общая локальная файловая система. Не распределённый консенсус.
 // - Хеш base_canonical_sha256 обязан равняться хешу БАЙТОВ сида и полю манифеста, иначе отказ с закрытием.
 // - Имя base_manifest_hash запрещено.
 // - Порядок задают цепочка prior_event_id и физический порядок строк; метка времени только метаданные.
 // - Форк или malformed строка означают FAIL CLOSED CONFLICT.
-// - Канон, манифест, CURRENT_ORIENTATION, паспорт и wiz_ref в М2.1 не мутируют.
+// - Канон, манифест, CURRENT_ORIENTATION, паспорт и wiz_ref в М2.1.1 не мутируют.
+// - recorded_by — заявленная логическая метка писателя, а не проверенная личность (см. ниже).
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -28,28 +31,47 @@ export const DEFAULT_SEED = path.join(ROOT, 'docs', 'memory', 'ruslan-orientatio
 export const DEFAULT_MANIFEST = path.join(ROOT, 'docs', 'memory', 'manifest.json');
 export const DEFAULT_LEDGER = path.join(ROOT, 'docs', 'memory', 'event_ledger.jsonl');
 
-// Перечисления конверта М2.1.
+// Перечисления конверта М2.1.1.
 export const ADMISSION_STATES = ['OBSERVED', 'ADMITTED', 'QUARANTINED', 'REJECTED'];
 export const EVENT_KINDS = ['OBSERVE', 'ADMIT', 'SUPERSEDE', 'CONFLICT_MARK'];
 export const WRITER_MODES = ['READ_WRITE_PR'];
 export const ACTOR_CLASSES = ['HUMAN', 'AI', 'SYSTEM'];
 
 // Разрешённые ключи конверта и записи.
+// В М2.1.1 source/source_kind убраны из безусловных обязательных: их наличие проверяет ИСКЛЮЧАЮЩИЙ выбор.
 export const ENVELOPE_KEYS = ['event_id', 'timestamp', 'admission_state', 'event_kind', 'source_actor', 'recorded_by',
   'authorized_by', 'base_canonical_sha256', 'base_manifest_file_sha256', 'base_commit_sha', 'prior_event_id',
   'applies_to_event_id', 'admission_reason', 'writer_mode'];
-export const RECORD_REQUIRED = ['id', 'type', 'statement', 'status', 'source', 'source_kind', 'scope', 'provenance',
+export const RECORD_REQUIRED = ['id', 'type', 'statement', 'status', 'scope', 'provenance',
   'valid_from', 'updated_at', 'details_pointer', 'relations'];
 export const RECORD_OPTIONAL = ['related_to', 'supersedes', 'superseded_by', 'keywords'];
-export const RECORD_ALLOWED = [...RECORD_REQUIRED, ...RECORD_OPTIONAL];
-// Запрещённые в М2.1 ключи записи (карантин).
+// Ключи источника под управлением ИСКЛЮЧАЮЩЕГО выбора: Путь А (source+source_kind) или Путь Б (observed_source).
+export const RECORD_SOURCE_KEYS = ['source', 'source_kind', 'observed_source'];
+export const RECORD_ALLOWED = [...RECORD_REQUIRED, ...RECORD_OPTIONAL, ...RECORD_SOURCE_KEYS];
+// Запрещённые в М2.1.1 ключи записи (карантин).
 export const RECORD_FORBIDDEN_M21 = ['authority', 'evidence', 'confidence', 'validity'];
+
+// Перечисления событийно-локального источника М2.1.1 (Путь Б).
+// Виды сида плюс событийно-локальные виды; событийно-локальное не равно канону.
+export const OBS_SOURCE_KINDS = ['USER_STATEMENT', 'NOTION_PAGE', 'DRIVE_DOC', 'GITHUB_REPO', 'AI_ASSEMBLY',
+  'CHAT_OBSERVATION', 'PUBLIC_WEB', 'OTHER_DECLARED'];
+export const OBS_SURFACE_CLASSES = ['local', 'github', 'public_web', 'chat', 'notion', 'drive', 'other'];
+export const OBS_PROVENANCE_STATUSES = ['UNREGISTERED_EVENT_LOCAL'];
+export const OBSERVED_SOURCE_REQUIRED = ['kind', 'label', 'surface_class', 'provenance_status'];
+// Запрещённые ключи внутри observed_source: идентификаторы, локаторы, секреты и метаданные канона.
+// Метка label — единственный носитель названия; поле title запрещено (использовать label).
+export const OBSERVED_SOURCE_FORBIDDEN = ['alias', 'url', 'locator', 'id', 'page_id', 'file_id', 'document_id',
+  'token', 'secret', 'credentials',
+  'authority_class', 'currentness', 'role', 'use_for', 'do_not_use_for', 'reachable', 'fetched_at',
+  'last_edited', 'export_kind', 'title'];
 
 // Шаблоны форматов.
 const RE_EVENT_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const RE_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/;
 const RE_HEX64 = /^[0-9a-f]{64}$/;
 const RE_HEX40 = /^[0-9a-f]{40}$/;
+// Метка актёра КЛАСС:идентификатор. Это заявленная логическая метка писателя, а не проверенная личность:
+// самозаявленная метка не равна подтверждённой личности, не равна коммитеру гита и не равна криптодоказательству.
 const RE_ACTOR = /^(HUMAN|AI|SYSTEM):\S{1,64}$/;
 
 // Шаблоны карантина: учётные данные.
@@ -67,13 +89,14 @@ const QUARANTINE_CREDENTIAL_RES = [
   /(^|[^A-Za-z])cookie\s*[:=]\s*['"]?\S{4,}/i,
 ];
 // Шаблоны карантина: приватные локаторы.
+// Политика М2.1.1: произвольный технический идентификатор не равен приватному локатору.
+// Голый УУИД-подобный токен вне приватного УРЛ-контекста не отклоняется (ложные срабатывания на ид событий).
 const QUARANTINE_LOCATOR_RES = [
   /notion\.so\//i,
   /notion\.site\//i,
   /app\.notion\.com/i,
   /docs\.google\.com/i,
   /drive\.google\.com/i,
-  /\b[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}\b/i,
 ];
 
 // Вычисление SHA-256 байтов и файлов.
@@ -231,9 +254,25 @@ export function validateEvent(event, opts = {}) {
   // Неизвестные ключи конверта.
   for (const k of Object.keys(env)) if (!ENVELOPE_KEYS.includes(k)) errors.push(`неизвестный ключ конверта: ${k}`);
   // Запрещённые ключи записи (карантин).
-  for (const k of RECORD_FORBIDDEN_M21) if (k in rec) errors.push(`QUARANTINE_FORBIDDEN_KEYS: ключ ${k} запрещён в М2.1`);
-  // Неизвестные ключи записи.
+  for (const k of RECORD_FORBIDDEN_M21) if (k in rec) errors.push(`QUARANTINE_FORBIDDEN_KEYS: ключ ${k} запрещён в М2.1.1`);
+  // Неизвестные ключи записи (разрешён новый observed_source).
   for (const k of Object.keys(rec)) if (!RECORD_ALLOWED.includes(k)) errors.push(`неизвестный ключ записи: ${k}`);
+  // Строгий ИСКЛЮЧАЮЩИЙ выбор источника М2.1.1: ровно одна форма.
+  // Путь А: source+source_kind из сида, observed_source отсутствует.
+  // Путь Б: только observed_source, ключи source/source_kind отсутствуют (нуль не допускается).
+  const естьНаблюдаемый = 'observed_source' in rec;
+  const естьКлючиСида = ('source' in rec) || ('source_kind' in rec);
+  let путьА = false;
+  let путьБ = false;
+  if (естьНаблюдаемый && естьКлючиСида) {
+    errors.push('SOURCE_XOR_BOTH: запрещены одновременно source/source_kind и observed_source (ровно одна форма)');
+  } else if (!естьНаблюдаемый && !естьКлючиСида) {
+    errors.push('SOURCE_XOR_REQUIRED: требуется ровно одна форма источника: source+source_kind или observed_source');
+  } else if (естьНаблюдаемый) {
+    путьБ = true;
+  } else {
+    путьА = true;
+  }
   // Обязательные поля конверта.
   for (const f of ['event_id', 'timestamp', 'admission_state', 'event_kind', 'source_actor', 'recorded_by', 'base_canonical_sha256', 'base_commit_sha', 'writer_mode']) {
     if (env[f] === undefined || env[f] === null || env[f] === '') errors.push(`конверт: отсутствует ${f}`);
@@ -245,8 +284,9 @@ export function validateEvent(event, opts = {}) {
   }
   if (env.admission_state !== undefined && env.admission_state !== null && !ADMISSION_STATES.includes(env.admission_state)) errors.push(`конверт: неверный admission_state ${String(env.admission_state)}`);
   if (env.event_kind !== undefined && env.event_kind !== null && !EVENT_KINDS.includes(env.event_kind)) errors.push(`конверт: неверный event_kind ${String(env.event_kind)}`);
-  if (env.writer_mode !== undefined && env.writer_mode !== null && !WRITER_MODES.includes(env.writer_mode)) errors.push(`конверт: неверный writer_mode ${String(env.writer_mode)} (в М2.1 только READ_WRITE_PR)`);
+  if (env.writer_mode !== undefined && env.writer_mode !== null && !WRITER_MODES.includes(env.writer_mode)) errors.push(`конверт: неверный writer_mode ${String(env.writer_mode)} (в М2.1.1 только READ_WRITE_PR)`);
   for (const f of ['source_actor', 'recorded_by']) {
+    // Проверка recorded_by/source_actor — только форма метки; самозаявленная метка не равна проверенной личности.
     if (env[f] !== undefined && env[f] !== null && !RE_ACTOR.test(String(env[f]))) errors.push(`конверт: неверный ${f} ${String(env[f])} (ожидается КЛАСС:идентификатор)`);
   }
   if (env.authorized_by !== undefined && env.authorized_by !== null && !RE_ACTOR.test(String(env.authorized_by))) errors.push(`конверт: неверный authorized_by ${String(env.authorized_by)}`);
@@ -258,12 +298,12 @@ export function validateEvent(event, opts = {}) {
     if (v !== undefined && v !== null && !RE_EVENT_ID.test(String(v))) errors.push(`конверт: неверный ${f} ${String(v)}`);
   }
   if (env.admission_reason !== undefined && env.admission_reason !== null && typeof env.admission_reason !== 'string') errors.push('конверт: admission_reason обязан быть строкой или null');
-  // Правило только OBSERVED в М2.1 (ADMIT не реализован).
+  // Правило только OBSERVED в М2.1.1 (ADMIT не реализован).
   if (env.admission_state !== undefined && env.admission_state !== null && env.admission_state !== 'OBSERVED') {
-    errors.push(`ADMISSION_IMPLEMENTATION_ABSENT: admission_state ${String(env.admission_state)} запрещён в М2.1 (только OBSERVED)`);
+    errors.push(`ADMISSION_IMPLEMENTATION_ABSENT: admission_state ${String(env.admission_state)} запрещён в М2.1.1 (только OBSERVED)`);
   }
   if (env.event_kind !== undefined && env.event_kind !== null && env.event_kind !== 'OBSERVE') {
-    errors.push(`ADMISSION_IMPLEMENTATION_ABSENT: event_kind ${String(env.event_kind)} запрещён в М2.1 (только OBSERVE)`);
+    errors.push(`ADMISSION_IMPLEMENTATION_ABSENT: event_kind ${String(env.event_kind)} запрещён в М2.1.1 (только OBSERVE)`);
   }
   // Правило ИИ: ИИ может писать только OBSERVED.
   const writer = String(env.recorded_by || '');
@@ -315,7 +355,7 @@ export function validateEvent(event, opts = {}) {
   if (rec.status !== undefined && rec.status !== null && !SEED_STATUSES.includes(rec.status)) errors.push(`запись: неверный status ${String(rec.status)}`);
   if (rec.provenance !== undefined && rec.provenance !== null && !SEED_PROVENANCE.includes(rec.provenance)) errors.push(`запись: неверный provenance ${String(rec.provenance)}`);
   if (rec.id !== undefined && rec.id !== null && (typeof rec.id !== 'string' || rec.id.trim() === '')) errors.push('запись: неверный id');
-  for (const f of ['statement', 'source', 'source_kind', 'scope', 'valid_from', 'updated_at', 'details_pointer']) {
+  for (const f of ['statement', 'scope', 'valid_from', 'updated_at', 'details_pointer']) {
     if (rec[f] !== undefined && rec[f] !== null && typeof rec[f] !== 'string') errors.push(`запись: поле ${f} обязано быть строкой`);
   }
   if (rec.relations !== undefined && rec.relations !== null && !Array.isArray(rec.relations)) errors.push('запись: relations обязан быть массивом');
@@ -325,17 +365,65 @@ export function validateEvent(event, opts = {}) {
     const v = rec[f];
     if (v !== undefined && v !== null && typeof v !== 'string') errors.push(`запись: поле ${f} обязано быть строкой или null`);
   }
-  // Сверка источника и вида источника с сидом.
+  // Сверка источника по ИСКЛЮЧАЮЩЕМУ выбору М2.1.1.
   const источники = new Map((seed.sources || []).map(s => [s.alias, s]));
   const идКанона = new Set((seed.records || []).map(r => r.id));
-  if (rec.source !== undefined && rec.source !== null && typeof rec.source === 'string') {
-    const s = источники.get(rec.source);
-    if (!s) errors.push(`запись: source ${String(rec.source)} отсутствует в seed.sources`);
-    else if (rec.source_kind !== undefined && rec.source_kind !== null && s.kind !== rec.source_kind) {
-      errors.push(`запись: source_kind ${String(rec.source_kind)} не совпадает с kind ${String(s.kind)} источника ${String(s.alias)}`);
+  if (путьА) {
+    // Путь А: зарегистрированный источник сида, observed_source отсутствует.
+    for (const f of ['source', 'source_kind']) {
+      if (rec[f] === undefined || rec[f] === null || rec[f] === '') errors.push(`запись: отсутствует ${f} (Путь А требует source+source_kind)`);
+      else if (typeof rec[f] !== 'string') errors.push(`запись: поле ${f} обязано быть строкой`);
     }
-    if (rec.provenance === 'USER_STATEMENT_2026-09-29' && s && s.kind !== 'USER_STATEMENT') {
-      errors.push('запись: provenance USER_STATEMENT_2026-09-29 требует источник вида USER_STATEMENT');
+    if (typeof rec.source === 'string' && rec.source !== '') {
+      const s = источники.get(rec.source);
+      if (!s) errors.push(`запись: source ${String(rec.source)} отсутствует в seed.sources`);
+      else if (typeof rec.source_kind === 'string' && rec.source_kind !== '' && s.kind !== rec.source_kind) {
+        errors.push(`запись: source_kind ${String(rec.source_kind)} не совпадает с kind ${String(s.kind)} источника ${String(s.alias)}`);
+      }
+      if (rec.provenance === 'USER_STATEMENT_2026-09-29' && s && s.kind !== 'USER_STATEMENT') {
+        errors.push('запись: provenance USER_STATEMENT_2026-09-29 требует источник вида USER_STATEMENT');
+      }
+    }
+  } else if (путьБ) {
+    // Путь Б: событийно-локальный источник без обращения к сиду и без мутации канона.
+    // Событийно-локальное не равно канону, реестру, допущенному и проверенному.
+    const набл = rec.observed_source;
+    if (!набл || typeof набл !== 'object' || Array.isArray(набл)) {
+      errors.push('запись: observed_source обязан быть объектом {kind, label, surface_class, provenance_status}');
+    } else {
+      // Запрещённые ключи внутри observed_source (идентификаторы, локаторы, секреты, метаданные канона).
+      for (const з of OBSERVED_SOURCE_FORBIDDEN) {
+        if (з in набл) errors.push(`запись: observed_source запрещённый ключ ${з} (разрешены только kind/label/surface_class/provenance_status)`);
+      }
+      // Префиксные запреты notion_*/drive_* (любой регистр).
+      for (const к of Object.keys(набл)) {
+        const нижний = String(к).toLowerCase();
+        if (нижний.startsWith('notion_') || нижний.startsWith('notion-') || нижний.startsWith('drive_') || нижний.startsWith('drive-')) {
+          errors.push(`запись: observed_source запрещённый ключ ${к} (префикс notion_*/drive_* запрещён)`);
+        }
+      }
+      // Ровно четыре разрешённых ключа.
+      for (const о of OBSERVED_SOURCE_REQUIRED) {
+        if (!(о in набл)) errors.push(`запись: observed_source отсутствует ${о}`);
+      }
+      for (const к of Object.keys(набл)) {
+        if (!OBSERVED_SOURCE_REQUIRED.includes(к)) errors.push(`запись: observed_source неизвестный ключ ${к} (разрешены только kind/label/surface_class/provenance_status)`);
+      }
+      // Перечисления Пути Б.
+      if ('kind' in набл && !OBS_SOURCE_KINDS.includes(набл.kind)) errors.push(`запись: observed_source неверный kind ${String(набл.kind)}`);
+      if ('surface_class' in набл && !OBS_SURFACE_CLASSES.includes(набл.surface_class)) errors.push(`запись: observed_source неверный surface_class ${String(набл.surface_class)}`);
+      if ('provenance_status' in набл && !OBS_PROVENANCE_STATUSES.includes(набл.provenance_status)) errors.push(`запись: observed_source неверный provenance_status ${String(набл.provenance_status)} (в М2.1.1 только UNREGISTERED_EVENT_LOCAL)`);
+      // Метка: публичная строка длиной 1..200.
+      if ('label' in набл) {
+        const м = набл.label;
+        if (typeof м !== 'string') errors.push('запись: observed_source label обязана быть строкой');
+        else if (м.length < 1 || м.length > 200) errors.push(`запись: observed_source label обязана быть длиной 1..200 (получено ${м.length})`);
+        else if (м.trim() === '') errors.push('запись: observed_source label не должна состоять только из пробелов');
+      }
+      // Согласованность происхождения: заявление пользователя требует вида USER_STATEMENT.
+      if (rec.provenance === 'USER_STATEMENT_2026-09-29' && 'kind' in набл && набл.kind !== 'USER_STATEMENT') {
+        errors.push('запись: provenance USER_STATEMENT_2026-09-29 требует observed_source.kind USER_STATEMENT');
+      }
     }
   }
   // Проверка целей связей против канона.
@@ -360,6 +448,7 @@ export function validateEvent(event, opts = {}) {
   }
   if (rec.status === 'SUPERSEDED' && !rec.superseded_by) errors.push('запись: статус SUPERSEDED требует superseded_by');
   // Карантинное сканирование строк (учётные данные и приватные локаторы).
+  // Покрывает observed_source целиком (метка входит в строки записи).
   const строки = [];
   collectStrings({ envelope: env, record: rec }, строки);
   for (const s of строки) {
@@ -368,6 +457,7 @@ export function validateEvent(event, opts = {}) {
     }
   }
   // Приватные локаторы проверяются только в записи (конверт содержит только технические идентификаторы).
+  // Политика: голый технический ид без приватного УРЛ-контекста не отклоняется.
   const строкиЗаписи = [];
   collectStrings(rec, строкиЗаписи);
   for (const s of строкиЗаписи) {
@@ -471,7 +561,7 @@ export function checkHash(opts = {}) {
     errors.push(`STALE_CANONICAL_HASH: файл сида ${хешСида} не равен manifest.canonical_content_sha256 ${String(полеКанона)}`);
   }
   if (manifest.admission_implementation !== 'ABSENT') {
-    errors.push(`манифест: admission_implementation обязан быть ABSENT в М2.1, получено ${String(manifest.admission_implementation)}`);
+    errors.push(`манифест: admission_implementation обязан быть ABSENT в М2.1.1, получено ${String(manifest.admission_implementation)}`);
   }
   const журнал = loadLedger(ledgerPath);
   if (!журнал.ok) {

@@ -2193,6 +2193,23 @@ main {
         </div>
 
         <div class="card">
+          <div class="card-title" data-i18n="card_continuity">🧭 Continuity Context</div>
+          <p data-i18n="continuity_desc" style="font-size:0.85rem;color:var(--text-dim);margin-bottom:15px;line-height:1.5">
+            Read-only ориентация для чата и агента из проверенного пакета М2. При смене провайдера/модели orientation подставляется сама.
+          </p>
+          <div class="toggle-row" style="margin-bottom:0">
+            <div>
+              <div class="toggle-label" data-i18n="tog_continuity">Continuity Context</div>
+              <div class="toggle-sub" id="continuityStatusSub">Выключено</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="cfgContinuity">
+              <div class="toggle-track"></div>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
           <div class="card-title" id="sysInfoToggle" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between">
             <span data-i18n="card_about">🔍 О системе</span>
             <span id="sysInfoArrow" style="font-size:0.75rem;transition:transform 0.25s">▼</span>
@@ -3235,11 +3252,237 @@ async function wizBuildCleanResumeContext(userText) {
 }
 
 function wizRecordOutboundPayload(meta) {
-  window.__wizLastOutboundPayload = meta;
+  // Диагностическая копия редактируется: полный блок непрерывности заменяется
+  // плейсхолдером (сырой контекст не логируется), метаданные сохраняются.
+  // Реальный сетевой пейлоад провайдера не меняется — правится только копия.
+  let safe = meta;
   try {
-    if (window.__wizPayloadLog) window.__wizPayloadLog.push(meta);
+    safe = wizRedactContinuityDeep(meta);
+  } catch (e) {
+    try { console.warn('[continuity] redact:', (e && e.message) || e); } catch (_e) {}
+    safe = { mode: (meta && meta.mode) || null, ts: (meta && meta.ts) || Date.now(),
+      continuity: (meta && meta.continuity) || null, redaction_error: true };
+  }
+  window.__wizLastOutboundPayload = safe;
+  try {
+    if (window.__wizPayloadLog) window.__wizPayloadLog.push(safe);
   } catch (e) {}
 }
+
+// ── М3 Continuity Context (read-only рантайм-мост) ─────────────────────────
+// Источник — committed-артефакт docs/memory/context-bootstrap.runtime.json,
+// собранный официальной точкой М2 exportContext({ format: 'json' }).
+// READ ONLY: загрузчик только читает и проверяет; записей в Canon, манифест,
+// реестр событий, admission и SNAP нет. FULL_BOOTSTRAP != RUNTIME_CORE.
+// Инжект разрешён только в центральные инструкции sendMessage() (чат и агент)
+// и только при статусе READY. Clean Resume имеет абсолютный приоритет:
+// при активном resume блок не добавляется никуда (CONTINUITY_INJECTION = SKIPPED).
+// Утилиты (RNE, подсказки, анализ памяти, TTS, Grok Voice, веб-поиск,
+// testApiConnection, L1/L2) помощник wizContinuityCompose не вызывают.
+const WIZ_CONTINUITY_KEY = 'wiz_lab_continuity_enabled';
+const WIZ_CONTINUITY_BOOTSTRAP_URL = 'docs/memory/context-bootstrap.runtime.json';
+const WIZ_CONTINUITY_MANIFEST_URL = 'docs/memory/manifest.json';
+window._wizContinuity = { enabled: false, status: 'DISABLED', blockText: null, coreMeta: null, errors: [] };
+window._wizContinuityLastMeta = null;
+let _wizContinuityModule = null;
+// Поколение асинхронных запросов (защита от гонки владельца OFF/ON).
+// Протокол = createContinuityRequestTracker в модуле: refresh берёт поколение
+// до первого await, выключение его обесценивает, перед каждой записью состояния
+// проверяется свежесть. Счётчик локальный — нужен до загрузки модуля.
+let _wizContinuitySeq = 0;
+
+function wizContinuityIsEnabled() {
+  try { return localStorage.getItem(WIZ_CONTINUITY_KEY) === '1'; } catch (e) { return false; }
+}
+
+// Блок М3 выполняется раньше `let currentLang` (объявлен ниже по файлу),
+// а прямой `typeof currentLang` в TDZ бросает ReferenceError и роняет весь
+// остальной скрипт. Поэтому язык читаем только через безопасный помощник.
+function wizContinuityLangIsEn() {
+  try { return typeof currentLang !== 'undefined' && currentLang === 'en'; } catch (e) { return false; }
+}
+
+// Короткий статус для владельца (без сырого канона в UI).
+function wizContinuityStatusText(status) {
+  const en = wizContinuityLangIsEn();
+  const map = {
+    DISABLED: en ? 'Disabled' : 'Выключено',
+    LOADING: en ? 'Loading…' : 'Загрузка…',
+    READY: en ? 'Ready' : 'Готов',
+    STALE: en ? 'Stale — not injected' : 'Устарело — не инжектится',
+    INTEGRITY_FAIL: en ? 'Integrity error — not injected' : 'Ошибка целостности — не инжектится',
+    LOAD_ERROR: en ? 'Load error — not injected' : 'Ошибка загрузки — не инжектится'
+  };
+  return map[status] || map.DISABLED;
+}
+
+function wizContinuityRenderStatus() {
+  try {
+    const sub = document.getElementById('continuityStatusSub');
+    const box = document.getElementById('cfgContinuity');
+    const st = window._wizContinuity || {};
+    if (box && box.checked !== (st.enabled === true)) box.checked = (st.enabled === true);
+    if (sub) {
+      let text = wizContinuityStatusText(st.status || 'DISABLED');
+      if (st.status === 'READY' && st.coreMeta) {
+        text += ' · ' + st.coreMeta.record_count + ' / ~' + st.coreMeta.approx_tokens;
+      }
+      sub.textContent = text;
+    }
+  } catch (e) {
+    try { console.warn('[continuity] status:', (e && e.message) || e); } catch (_e) {}
+  }
+}
+
+// Единственная точка инжекта М3. Синхронная: работает с кэшированным ядром.
+// Возвращает { instructions, continuity }. При недоступном модуле — закрыто.
+// Тотальная: никогда не бросает — дополнение не вправе ломать отправку сообщений.
+function wizContinuityCompose(baseInstructions, opts) {
+  const cleanResumeActive = !!(opts && opts.cleanResumeActive);
+  try {
+    const st = window._wizContinuity || {};
+    if (_wizContinuityModule && typeof _wizContinuityModule.composeInstructions === 'function') {
+      return _wizContinuityModule.composeInstructions(baseInstructions, {
+        enabled: st.enabled === true,
+        status: st.status || 'DISABLED',
+        blockText: st.blockText || null,
+        coreMeta: st.coreMeta || null,
+        cleanResumeActive
+      });
+    }
+    const enabled = st.enabled === true;
+    return {
+      instructions: baseInstructions,
+      continuity: {
+        enabled, status: 'LOAD_ERROR', injected: false,
+        canonical_sha: null, record_count: 0, char_count: 0,
+        skipped_reason: cleanResumeActive ? 'clean_resume' : (enabled ? 'integrity_fail' : 'disabled')
+      }
+    };
+  } catch (e) {
+    try { console.warn('[continuity] compose:', (e && e.message) || e); } catch (_e) {}
+    return {
+      instructions: baseInstructions,
+      continuity: {
+        enabled: false, status: 'LOAD_ERROR', injected: false,
+        canonical_sha: null, record_count: 0, char_count: 0,
+        skipped_reason: cleanResumeActive ? 'clean_resume' : 'integrity_fail'
+      }
+    };
+  }
+}
+
+async function wizContinuityRefresh() {
+  const _seq = ++_wizContinuitySeq;
+  const st = window._wizContinuity || {};
+  const wasReady = st.status === 'READY';
+  window._wizContinuity = { enabled: true, status: 'LOADING', blockText: null, coreMeta: null, errors: [], req: _seq };
+  wizContinuityRenderStatus();
+  try {
+    if (!_wizContinuityModule) {
+      _wizContinuityModule = await import('./continuity-runtime.mjs');
+    }
+    // Протухший запрос (OFF или более новый ON) — молча выйти, ничего не писать.
+    if (_seq !== _wizContinuitySeq) return;
+    const res = await _wizContinuityModule.loadContinuityRuntime({
+      bootstrapUrl: WIZ_CONTINUITY_BOOTSTRAP_URL,
+      manifestUrl: WIZ_CONTINUITY_MANIFEST_URL
+    });
+    if (_seq !== _wizContinuitySeq) return;
+    if (res.status === 'READY') {
+      window._wizContinuity = {
+        enabled: true, status: 'READY', blockText: res.blockText,
+        coreMeta: {
+          canonical_sha: res.meta.canonical_sha, record_count: res.meta.record_count,
+          char_count: res.meta.char_count, approx_tokens: res.meta.approx_tokens
+        },
+        errors: [], req: _seq
+      };
+    } else if (wasReady) {
+      // Был READY, ревалидация не прошла: помечаем STALE, старое ядро не инжектим.
+      window._wizContinuity = { enabled: true, status: 'STALE', blockText: null, coreMeta: null, errors: res.errors || [], req: _seq };
+    } else {
+      window._wizContinuity = { enabled: true, status: res.status, blockText: null, coreMeta: null, errors: res.errors || [], req: _seq };
+    }
+  } catch (e) {
+    if (_seq !== _wizContinuitySeq) return;
+    // Модуль не загрузился (сеть/file://): закрыто, без частичного контекста.
+    window._wizContinuity = { enabled: true, status: wasReady ? 'STALE' : 'LOAD_ERROR', blockText: null, coreMeta: null, errors: [String((e && e.message) || e)], req: _seq };
+  }
+  wizContinuityRenderStatus();
+}
+
+function wizContinuitySetEnabled(on) {
+  try { localStorage.setItem(WIZ_CONTINUITY_KEY, on ? '1' : '0'); } catch (e) {}
+  if (!on) {
+    // Обесценить все pending-запросы: их поздний ответ не должен воскрешать ON.
+    _wizContinuitySeq += 1;
+    window._wizContinuity = { enabled: false, status: 'DISABLED', blockText: null, coreMeta: null, errors: [], req: _wizContinuitySeq };
+    wizContinuityRenderStatus();
+    return;
+  }
+  wizContinuityRefresh();
+}
+
+// ── Редактура диагностики ────────────────────────────────────────────────
+// Каноническая семантика спанов — redactContinuityBlocks в модуле. Здесь та же
+// семантика продублирована запасным вариантом: модуль может быть ещё не загружен
+// (Continuity OFF), а диагностику пишем всегда. Литералы маркеров живут только
+// в этом регионе М3 (см. тест: все вхождения — внутри региона).
+var WIZ_CONTINUITY_REDACTED = '[CONTINUITY ORIENTATION — REDACTED]';
+
+function wizRedactContinuityText(s) {
+  if (typeof s !== 'string' || s.indexOf('[CONTINUITY ORIENTATION') === -1) return s;
+  try {
+    if (_wizContinuityModule && typeof _wizContinuityModule.redactContinuityBlocks === 'function') {
+      return _wizContinuityModule.redactContinuityBlocks(s);
+    }
+  } catch (e) {}
+  // Запасной вариант без модуля: только завершённые спаны START..END.
+  var START = '[CONTINUITY ORIENTATION — READ ONLY]';
+  var END = '[/CONTINUITY ORIENTATION]';
+  var out = s;
+  for (;;) {
+    var a = out.indexOf(START);
+    if (a === -1) break;
+    var b = out.indexOf(END, a + START.length);
+    if (b === -1) break;
+    out = out.slice(0, a) + WIZ_CONTINUITY_REDACTED + out.slice(b + END.length);
+  }
+  return out;
+}
+
+function wizRedactContinuityDeep(v) {
+  if (typeof v === 'string') return wizRedactContinuityText(v);
+  if (Array.isArray(v)) return v.map(wizRedactContinuityDeep);
+  if (v && typeof v === 'object') {
+    var o = {};
+    for (var k in v) {
+      if (Object.prototype.hasOwnProperty.call(v, k)) o[k] = wizRedactContinuityDeep(v[k]);
+    }
+    return o;
+  }
+  return v;
+}
+
+// Инициализация тумблера (по умолчанию OFF — явное включение владельцем).
+// Обёрнуто в try/catch: инициализация дополнения не вправе ронять загрузку страницы.
+(function initContinuityToggle() {
+  try {
+    const el = document.getElementById('cfgContinuity');
+    const on = wizContinuityIsEnabled();
+    window._wizContinuity.enabled = on;
+    window._wizContinuity.status = on ? 'LOADING' : 'DISABLED';
+    if (el) {
+      el.checked = on;
+      el.addEventListener('change', () => wizContinuitySetEnabled(el.checked));
+    }
+    wizContinuityRenderStatus();
+    if (on) wizContinuityRefresh();
+  } catch (e) {
+    try { console.warn('[continuity] init:', (e && e.message) || e); } catch (_e) {}
+  }
+})();
 
 
 // ── Service Worker registration ──────────────────────────────────────────
@@ -6474,7 +6717,7 @@ function wizGrokReasoningEffort(model) {
   return wizNormalizeGrokRequest(model).reasoning_effort;
 }
 
-async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userText, typing, historyEl, currentChatId, _wizUsedWeb }) {
+async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userText, typing, historyEl, currentChatId, _wizUsedWeb, cleanResumeActive }) {
   const _liveId = typing.dataset.liveId;
   const _textEl = document.getElementById(_liveId + '-text');
   const _senderEl = document.getElementById(_liveId + '-sender');
@@ -6490,6 +6733,11 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
 5. ОБЯЗАТЕЛЬНО заверши ответ ОБЫЧНЫМ ТЕКСТОМ на русском после всех инструментов — расскажи пользователю что сделал / что нашёл. Без финального текста пользователь не увидит результата.
 6. Никогда не возвращай пустой ответ. Если инструменты не нужны и ответить нечего — напиши хотя бы короткое подтверждение.`;
   const instructions = userInstr ? `${userInstr}\n\n${toolSysPrompt}` : toolSysPrompt;
+  // М3 Continuity (read-only): то же ограниченное ядро через единый помощник.
+  // Цикл инструментов недостижим при активном Clean Resume (только панель агента
+  // и только вне resume-ветки), флаг проброшен явно для единой семантики.
+  const _contTool = wizContinuityCompose(instructions, { cleanResumeActive: !!cleanResumeActive });
+  const toolInstructions = _contTool.instructions;
 
   const history = [{ role:'user', text: userText }];
   let liveLog = '';
@@ -6514,7 +6762,7 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
     if (provider === 'deepseek') {
       apiUrl = 'https://api.deepseek.com/v1/chat/completions';
       headers = { 'Content-Type':'application/json', 'Authorization': `Bearer ${apiKey}` };
-      const msgs = [{ role:'system', content: instructions }];
+      const msgs = [{ role:'system', content: toolInstructions }];
       for (const h of history) {
         if (h.role === 'user') msgs.push({ role:'user', content: h.text });
         else if (h.role === 'assistant') {
@@ -6554,7 +6802,7 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
       const _gemTC = wizGeminiThinkingConfig(model, _gemMax);
       body = {
         contents,
-        systemInstruction: { parts:[{ text: instructions }] },
+        systemInstruction: { parts:[{ text: toolInstructions }] },
         tools: _agentToolsToGemini(),
         generationConfig: {
           maxOutputTokens: _gemMax,
@@ -6629,7 +6877,7 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
       if (provider === 'deepseek') {
         apiUrl = 'https://api.deepseek.com/v1/chat/completions';
         headers = { 'Content-Type':'application/json', 'Authorization': `Bearer ${apiKey}` };
-        const msgs = [{ role:'system', content: instructions + '\n\nЗаверши ответ обычным текстом — расскажи пользователю что сделал.' }];
+        const msgs = [{ role:'system', content: toolInstructions + '\n\nЗаверши ответ обычным текстом — расскажи пользователю что сделал.' }];
         for (const h of history) {
           if (h.role === 'user') msgs.push({ role:'user', content: h.text });
           else if (h.role === 'assistant') {
@@ -6662,7 +6910,7 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
         }
         body = {
           contents,
-          systemInstruction: { parts:[{ text: instructions + '\n\nЗаверши ответ обычным текстом — расскажи пользователю что сделал.' }] },
+          systemInstruction: { parts:[{ text: toolInstructions + '\n\nЗаверши ответ обычным текстом — расскажи пользователю что сделал.' }] },
           generationConfig: { maxOutputTokens: 2000 }
         };
       }
@@ -6927,11 +7175,17 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
     if (_cr) {
       instructions = _cr.instructions;
       messageWithFiles = _cr.messageWithFiles;
+      // М3: при активном Clean Resume непрерывность НЕ инжектится
+      // (CONTINUITY_INJECTION = SKIPPED, чистота исходящей границы).
+      const _contClean = wizContinuityCompose(instructions, { cleanResumeActive: true });
+      instructions = _contClean.instructions;
+      window._wizContinuityLastMeta = _contClean.continuity;
       wizRecordOutboundPayload({
         mode: 'clean_resume',
         snapshotId: _cr.snapshotId,
         instructions,
         messageWithFiles,
+        continuity: window._wizContinuityLastMeta,
         ts: Date.now()
       });
     }
@@ -7027,10 +7281,18 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
     try { const c = await getL3Context(); if (c) messageWithFiles += c; } catch(e) {}
   }
 
+  // М3 Continuity (read-only): ограниченное runtime-ядро добавляется только
+  // в центральные инструкции обычного пути (ровно один блок, детерминированно).
+  // Сериализация под провайдеры ниже не меняется.
+  const _cont = wizContinuityCompose(instructions, { cleanResumeActive: false });
+  instructions = _cont.instructions;
+  window._wizContinuityLastMeta = _cont.continuity;
+
   wizRecordOutboundPayload({
     mode: 'normal',
     instructions,
     messageWithFiles,
+    continuity: window._wizContinuityLastMeta,
     ts: Date.now()
   });
   } // end else !clean resume
@@ -7147,7 +7409,8 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
           provider, model, apiKey,
           userInstr: userInstr,
           userText: messageWithFiles,
-          typing, historyEl, currentChatId, _wizUsedWeb
+          typing, historyEl, currentChatId, _wizUsedWeb,
+          cleanResumeActive: _wizResumeOn
         });
         // Кнопки 📋 🔊 в финальный пузырь
         const _msgId = 'msg-' + Date.now();
@@ -9244,6 +9507,9 @@ const LANGS = {
     tab_history:'История', tab_files:'Файлы', tab_settings:'Настройки',
     // card titles
     card_provider:'🔌 Провайдер (Чат)', card_instructions:'📋 Инструкции',
+    card_continuity:'🧭 Continuity Context',
+    continuity_desc:'Read-only ориентация для чата и агента из проверенного пакета М2. При смене провайдера/модели orientation подставляется сама.',
+    tog_continuity:'Continuity Context',
     tog_agent_same:'⚡ Агент — тот же провайдер что у чата',
     tog_agent_same_sub:'Выключи чтобы выбрать для агента отдельную модель',
     lbl_agent_provider:'API Provider — Агент', lbl_agent_model:'Модель — Агент',
@@ -9504,6 +9770,9 @@ const LANGS = {
     tab_chat:'Chat', tab_agent:'Agent', tab_memory:'Memory',
     tab_history:'History', tab_files:'Files', tab_settings:'Settings',
     card_provider:'🔌 Provider (Chat)', card_instructions:'📋 Instructions',
+    card_continuity:'🧭 Continuity Context',
+    continuity_desc:'Read-only orientation for chat and agent from the verified M2 package. Switching provider/model keeps orientation without manual copy.',
+    tog_continuity:'Continuity Context',
     tog_agent_same:'⚡ Agent — same provider as chat',
     tog_agent_same_sub:'Turn off to pick a separate model for the agent',
     lbl_agent_provider:'API Provider — Agent', lbl_agent_model:'Model — Agent',
@@ -9787,6 +10056,7 @@ function applyLang(lang) {
   if (typeof tabVisibilityInit === 'function' && document.getElementById('tab-toggles-list')) tabVisibilityInit();
   if (typeof _eitiUpdateSearchProviderUI === 'function') { try { _eitiUpdateSearchProviderUI(); } catch(e){} }
   if (typeof _setProviderUI === 'function') { try { const p = document.getElementById('cfgProvider')?.value; if (p) _setProviderUI(p); } catch(e){} }
+  if (typeof wizContinuityRenderStatus === 'function') { try { wizContinuityRenderStatus(); } catch(e){} }
   if (typeof memPanelRender === 'function' && document.getElementById('memEntriesList')) { try { memPanelRender(); } catch(e){} }
   if (typeof renderProjectsList === 'function' && document.getElementById('projectsList')) { try { renderProjectsList(); } catch(e){} }
   if (typeof loadChatMessages === 'function' && activePanel === 'chat') { try { loadChatMessages(); } catch(e){} }

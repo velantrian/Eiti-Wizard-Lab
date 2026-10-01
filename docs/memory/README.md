@@ -8,12 +8,16 @@
 | `SOURCE_REGISTRY.md` | Реестр источников: роль, use-for, do-not-use-for, reachable, найденные конфликты. |
 | `../../tools/memory/seed_tool.mjs` | Node без зависимостей: `validate`, `stats`, `render-start-view`, `search`, `export-lab`, `export-context`. |
 | `AI_CONTEXT_BOOTSTRAP.md` | Провайдер-нейтральный контекст М2 (`eiti-context-bootstrap/1`): сборка из канона через ворота целостности. |
+| `context-bootstrap.runtime.json` | Производный runtime-артефакт М3 (DERIVED): побайтовая копия `exportContext({ format: 'json' })`, читается браузером. Руками не править — пересобирать командой ниже. |
+| `AI_CONTEXT_RUNTIME.md` | Read-only рантайм-мост М3: загрузчик, ограниченное ядро (35 записей), инжект в центральные инструкции, Clean Resume purity. |
+| `../../continuity-runtime.mjs` | Модуль М3 без зависимостей: проверка пакета, отбор/рендер ядра, композиция инструкций, `fetch`-загрузчик. |
 
 ```bash
 node tools/memory/seed_tool.mjs validate
 node tools/memory/seed_tool.mjs render-start-view --out        # → docs/memory/CURRENT_ORIENTATION.md
 node tools/memory/seed_tool.mjs search "Что остаётся открытым?" --k 5
 node tools/memory/seed_tool.mjs export-context --format json   # провайдер-нейтральный пакет М2 (или --format md)
+node tools/memory/seed_tool.mjs export-context --format json --out docs/memory/context-bootstrap.runtime.json  # М3: пересборка runtime-артефакта (только через exportContext)
 node tools/memory/seed_tool.mjs export-lab --out private-memory/ruslan-orientation-seed.private.jsonl \
      [--locators private-memory/source-locators.private.json]
 node --test tools/memory/

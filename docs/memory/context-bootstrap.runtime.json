@@ -1,0 +1,815 @@
+{
+  "schema": "eiti-context-bootstrap/1",
+  "role": "PROVIDER_NEUTRAL_ORIENTATION",
+  "carrier_version": "M1",
+  "canonical_content_sha256": "e0ee19c49a587691a4068354ca521d5f5b8d9f1d84d2957ec129120f3cefedc0",
+  "canonical_record_count": 79,
+  "seed_version": "2026-09-29.1",
+  "as_of": "2026-09-29",
+  "interpretation_rules": [
+    "BOOTSTRAP!=CANON: производная ориентация, пересобирается из канона; не источник истины.",
+    "BOOTSTRAP!=FULL HISTORY: HISTORICAL/SUPERSEDED исключены из текущих секций; CURRENT_STATE!=HISTORY.",
+    "BOOTSTRAP!=MEMORY ADMISSION: чтение не записывает память; ADMISSION_IMPLEMENTATION=ABSENT.",
+    "BOOTSTRAP!=USER DECISION: MODEL_PROPOSAL!=USER_DECISION; AI_SUMMARY!=USER_STATEMENT.",
+    "UNKNOWN!=FALSE; NOT RETRIEVED!=ABSENT; HYPOTHESIS!=FACT.",
+    "RESEARCH_RESULT!=VERIFIED_TRUTH; ENGINEERING_RESULT действует только в своём scope.",
+    "SUPERSEDED!=DELETED: superseded/history живут в каноне, здесь исключены из current.",
+    "MODEL READING != MODEL OWNING MEMORY; PROVIDER != MEMORY_OWNER.",
+    "Сохранять id/type/status/source/provenance/scope/updated_at/details_pointer дословно.",
+    "Детали — только по details_pointer; приватные локаторы не разрешать."
+  ],
+  "sections": {
+    "who": [
+      {
+        "id": "UID-01",
+        "type": "USER_IDENTITY",
+        "status": "CURRENT",
+        "statement": "Руслан — исследователь когнитивных систем (cognitive-systems researcher).",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "identity",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "UID-02",
+        "type": "USER_IDENTITY",
+        "status": "CURRENT",
+        "statement": "Изучает память человека, мышление, retrieval, контекст, понимание, перенос между ситуациями, графовые системы, SQLite, RAG/CAG и другие подходы к памяти и извлечению.",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "research interests",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "UID-03",
+        "type": "USER_IDENTITY",
+        "status": "CURRENT",
+        "statement": "Изучает когницию людей, животных, птиц, рыб, насекомых, бактерий, растений, грибов; чувства, аффект, значимость; работы советских, российских, американских, европейских и азиатских учёных.",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "research interests",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      }
+    ],
+    "north_star": [
+      {
+        "id": "UG-01",
+        "type": "USER_GOAL",
+        "status": "CURRENT",
+        "statement": "Цель исследования: не копировать биологию буквально, а извлекать функциональные принципы, полезные для искусственной когнитивной системы.",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "research goal",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "UG-02",
+        "type": "USER_GOAL",
+        "status": "CURRENT",
+        "statement": "Ближняя цель: реально работающий умный ассистент / Exo-Cortex, который помогает Руслану не терять нить, хранить исследования, понимать связи, видеть текущее/решённое/открытое, возвращаться после пауз и продолжать без ручной реконструкции.",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "near goal",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "UG-03",
+        "type": "USER_GOAL",
+        "status": "CURRENT",
+        "statement": "Дальняя цель: инновационная система, полезная Руслану, разработчикам, исследователям и, возможно, для более крупных человеческих проблем.",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "far goal",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "UM-01",
+        "type": "USER_MOTIVATION",
+        "status": "CURRENT",
+        "statement": "Жизненный контекст: желание материальной стабильности и долгосрочной возможности заниматься этой работой. Это USER_MOTIVATION, НЕ системное требование.",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "motivation (not a system requirement)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "UM-02",
+        "type": "USER_MOTIVATION",
+        "status": "CURRENT",
+        "statement": "Текущая человеческая боль: потеря исследовательской нити между чатами, инструментами и документами.",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "current pain",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      }
+    ],
+    "current_priority": [
+      {
+        "id": "CP-01",
+        "type": "CURRENT_PRIORITY",
+        "status": "CURRENT",
+        "statement": "Текущая практическая цель: одна точка входа для ориентации — этот паспорт.",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "current practical goal",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "CP-02",
+        "type": "CURRENT_PRIORITY",
+        "status": "CURRENT",
+        "statement": "Желаемый UX: свежая AI-сессия, фраза «Посмотри мой паспорт / память и скажи, где мы» → восстановить identity, цели, приоритеты, активную линию, решённое/открытое, источники и следующий bounded шаг без чтения сотен документов.",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "desired UX",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      }
+    ],
+    "active_threads": [
+      {
+        "id": "AT-01",
+        "type": "ACTIVE_THREAD",
+        "status": "CURRENT",
+        "statement": "Карта исследования: EVENT/INFORMATION → STORE → RETRIEVE → INTERPRET → RELATE TO CURRENT CONTEXT → TRANSFER PRINCIPLE → ACT/DECIDE → REVISE/LEARN.",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "research map",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "AT-HAP",
+        "type": "ACTIVE_THREAD",
+        "status": "CURRENT",
+        "statement": "HAP-01 изучает прежде всего AVAILABLE RECORDED HISTORY → LATER BEHAVIOR (как доступная записанная история влияет на последующее поведение).",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "HAP-01 scope",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "AT-03",
+        "type": "ACTIVE_THREAD",
+        "status": "UNKNOWN",
+        "statement": "По источнику (2026-09-27/28): приоритет программы — E0-B Issue #8 / provenance disposition; SIGNET-TRACE-01 = BLOCKED_AT_STEP_0_BY_SOURCE_GAP; Protocol v0.1 не валидирован и не фальсифицирован. Актуальность на сегодня не подтверждена.",
+        "source": "SRC-N-RUSLAN-RESEARCH",
+        "provenance": "SOURCE_DOC",
+        "scope": "research program state as-of 2026-09-28 (STORED != CURRENT)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-RUSLAN-RESEARCH записи 2026-09-27 «Memory admission / authority checkpoint», 2026-09-28 «SOURCE-RECOVERY-01-R1»"
+      },
+      {
+        "id": "AT-04",
+        "type": "ACTIVE_THREAD",
+        "status": "UNKNOWN",
+        "statement": "По источнику (2026-09-29): вопрос «цифровая личность / душа» разделён на три линии — continuity, agency / life-like autonomy, subjectivity; SUBJECT-POLE = UNRESOLVED; следующий этап там — Claim Registry → Source Audit → Model Cards v2.",
+        "source": "SRC-N-RUSLAN-RESEARCH",
+        "provenance": "SOURCE_DOC",
+        "scope": "research line state as-of 2026-09-29; активность не подтверждена пользователем",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-RUSLAN-RESEARCH «2026-09-29 — Soul / Self / Subject / Continuity reconciliation»"
+      }
+    ],
+    "known": [
+      {
+        "id": "RR-SM-01",
+        "type": "RESEARCH_RESULT",
+        "status": "ENGINEERING_RESULT",
+        "statement": "Simple Memory v0.1 (SQLite; без LLM, embeddings, vector/graph DB): SAVE → PROCESS CLOSE → FRESH PROCESS → RETRIEVE → RESUME. Synthetic smoke: MEMORY_SAVE=PASS, SELECTIVE_RETRIEVAL=PASS, RESUME_NEXT_STEP=PASS, HONEST_EMPTY=PASS.",
+        "source": "SRC-D-SIMPLE-MEMORY-HANDOFF",
+        "provenance": "SOURCE_DOC",
+        "scope": "bounded functionality прототипа на synthetic tests; не понимание, не личность",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-SIMPLE-MEMORY-HANDOFF §2"
+      },
+      {
+        "id": "RR-SM-02",
+        "type": "RESEARCH_RESULT",
+        "status": "ENGINEERING_RESULT",
+        "statement": "На реальном материале (inventory 36 записей) показана цепочка: external SQLite memory → fresh bot/process → recovered context → coherent semantic synthesis.",
+        "source": "SRC-D-SIMPLE-MEMORY-HANDOFF",
+        "provenance": "SOURCE_DOC",
+        "scope": "одна рабочая среда; recall-бот = Grok (verdict ≠ Canon)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-SIMPLE-MEMORY-HANDOFF §3–4"
+      },
+      {
+        "id": "RR-LAB-01",
+        "type": "RESEARCH_RESULT",
+        "status": "ENGINEERING_RESULT",
+        "statement": "В main Eiti-Wizard-Lab (2bad547) есть reference memory wiz_ref_* в SQLite (sql.js): JSONL-импорт wiz-ref-jsonl/1, явный поиск ref_search, статусы/источники/provenance сохраняются, без авто-инъекции в чат. IMPLEMENTED != ACTIVATED.",
+        "source": "SRC-GH-LAB-MAIN",
+        "provenance": "SOURCE_DOC",
+        "scope": "cached state as-of 2026-09-29 — проверять live GitHub",
+        "updated_at": "2026-09-29",
+        "details_pointer": "docs/REFERENCE_MEMORY.md; wiz-ref-memory.js"
+      },
+      {
+        "id": "RR-FM16",
+        "type": "RESEARCH_RESULT",
+        "status": "RESEARCH_RESULT",
+        "statement": "FM-16: ranking ≠ qualification — CrossEncoder давал более сильный ranking signal, чем embedding baseline, но один глобальный порог не стал достаточным механизмом qualification; Honest Empty не доказан.",
+        "source": "SRC-D-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "frozen mixed fixture, Graphiti line",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-VISION §12 (2026-09-11)"
+      },
+      {
+        "id": "RR-CONT",
+        "type": "RESEARCH_RESULT",
+        "status": "RESEARCH_RESULT",
+        "statement": "CONT-E0T (2026-09-13): CLAIM_B_SUPPORT = UNDERDETERMINED (все 4 пары BOTH_INADEQUATE); сырые run-артефакты не восстановлены (REPRODUCIBILITY_PACKAGE = NOT_SEALED). Не доказывает, что история не нужна.",
+        "source": "SRC-D-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "bounded confirmatory run, один reader",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-VISION §19, §21"
+      },
+      {
+        "id": "RR-METHOD",
+        "type": "RESEARCH_RESULT",
+        "status": "RESEARCH_RESULT",
+        "statement": "По checkpoint 2026-09-26 «установлено в своей области»: MEMORY ≠ TRUTH, RETRIEVAL ≠ EVIDENCE, MODEL_PROPOSAL ≠ USER_DECISION, GOOD CONTINUATION ≠ CORRECT STATE, GOOD HANDOFF ≠ LEARNING.",
+        "source": "SRC-N-RUSLAN-RESEARCH",
+        "provenance": "SOURCE_DOC",
+        "scope": "методологические различия по заявлению источника; не архитектурные инварианты",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-RUSLAN-RESEARCH «Memory / Experience / Understanding — Research State Checkpoint · 2026-09-26»"
+      }
+    ],
+    "known_limitations": [
+      {
+        "id": "KL-HAP",
+        "type": "KNOWN_LIMITATION",
+        "status": "CURRENT",
+        "statement": "HAP-01 НЕ устанавливает: качество retrieval, изменение весов, live authorship, личность, субъектность, сознание.",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "HAP-01 boundaries",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "KL-HAP-SRC",
+        "type": "KNOWN_LIMITATION",
+        "status": "UNKNOWN",
+        "statement": "HAP-01 не найден ни в одном прочитанном источнике (Notion/Drive, 2026-09-29): описание — только из заявления пользователя; owner, артефакт и статус эксперимента UNKNOWN.",
+        "source": "SRC-AI-ASSEMBLY-2026-09-29",
+        "provenance": "AI_SUMMARY",
+        "scope": "source coverage",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-AI-ASSEMBLY-2026-09-29"
+      },
+      {
+        "id": "KL-SM-03",
+        "type": "KNOWN_LIMITATION",
+        "status": "OPEN",
+        "statement": "Для практической памяти НЕ доказано: blind free-form discovery без тематических заголовков, selective retrieval на большой базе, cross-machine/cross-device переносимость, learning/adaptation, понимание личности в сильном смысле.",
+        "source": "SRC-D-SIMPLE-MEMORY-HANDOFF",
+        "provenance": "SOURCE_DOC",
+        "scope": "limits of RR-SM-01/02",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-SIMPLE-MEMORY-HANDOFF §3–4"
+      }
+    ],
+    "open": [
+      {
+        "id": "OQ-05",
+        "type": "OPEN_QUESTION",
+        "status": "OPEN",
+        "statement": "Retrieval — отдельная проблема: что, когда и почему извлекать, и насколько это релевантно; HAP-01 её не решает (RETRIEVAL != UNDERSTANDING).",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "retrieval quality",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "OQ-01",
+        "type": "OPEN_QUESTION",
+        "status": "OPEN",
+        "statement": "Какой минимальный внешний state нужен AI, чтобы новый контекст понимал не только «что было сказано», но и «куда мы идём и почему»?",
+        "source": "SRC-D-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "orientation",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-VISION §11 (2026-09-11), §14 (без изменения)"
+      },
+      {
+        "id": "OQ-02",
+        "type": "OPEN_QUESTION",
+        "status": "OPEN",
+        "statement": "Что минимально необходимо системе для устойчивой «ориентации», не превращая её в огромный prompt?",
+        "source": "SRC-D-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "orientation",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-VISION §9"
+      },
+      {
+        "id": "OQ-03",
+        "type": "OPEN_QUESTION",
+        "status": "OPEN",
+        "statement": "Кто и как решает, что новая информация достойна долговременного сохранения (admission)?",
+        "source": "SRC-D-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "memory admission",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-VISION §9"
+      },
+      {
+        "id": "OQ-04",
+        "type": "OPEN_QUESTION",
+        "status": "OPEN",
+        "statement": "Какие способности человека и животных действительно полезно переносить как вычислительные принципы, а какие являются только метафорами?",
+        "source": "SRC-D-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "donor transfer",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-VISION §9; SRC-N-GENESIS §20"
+      },
+      {
+        "id": "OQ-06",
+        "type": "OPEN_QUESTION",
+        "status": "OPEN",
+        "statement": "Как по raw multi-turn dialogue восстанавливать текущую orientation без false pivot / missed pivot; как автоматически замечать смену цели?",
+        "source": "SRC-N-RUSLAN-RESEARCH",
+        "provenance": "SOURCE_DOC",
+        "scope": "orientation reconstruction (UNKNOWN / NOT VALIDATED по checkpoint 2026-09-26)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-RUSLAN-RESEARCH checkpoint 2026-09-26"
+      },
+      {
+        "id": "OQ-07",
+        "type": "OPEN_QUESTION",
+        "status": "UNKNOWN",
+        "statement": "Субъектность и сознание: SUBJECT-POLE = UNRESOLVED; consciousness / subjective experience = UNKNOWN; стабильная цифровая индивидуальность не валидирована.",
+        "source": "SRC-N-RUSLAN-RESEARCH",
+        "provenance": "SOURCE_DOC",
+        "scope": "subjectivity",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-RUSLAN-RESEARCH 2026-09-29 и checkpoint 2026-09-26"
+      },
+      {
+        "id": "OQ-08",
+        "type": "OPEN_QUESTION",
+        "status": "OPEN",
+        "statement": "Как сохранять open option set / NOT_CHOSEN и исправлять ошибочное prior state, не храня ошибку бесконечно; как различать identity, текущее внимание, working state, долговременную память и historical self?",
+        "source": "SRC-N-GENESIS",
+        "provenance": "SOURCE_DOC",
+        "scope": "personal memory",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-GENESIS §20"
+      },
+      {
+        "id": "OQ-09",
+        "type": "OPEN_QUESTION",
+        "status": "OPEN",
+        "statement": "Honest Empty: как отличать отсутствие релевантной памяти от retrieval failure, ambiguity и отсутствия evidence (в Graphiti-линии HONEST_EMPTY = NOT_ESTABLISHED; в synthetic smoke Simple Memory — PASS, другой scope).",
+        "source": "SRC-D-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "retrieval",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-VISION §7, §12; SRC-D-SIMPLE-MEMORY-HANDOFF §2"
+      }
+    ],
+    "next": [
+      {
+        "id": "NA-START",
+        "type": "NEXT_ACTION",
+        "status": "CURRENT",
+        "statement": "Старт сессии: прочитать CURRENT_ORIENTATION.md / паспорт → определить, относится ли разговор к существующей цели, новой гипотезе, evidence, эксперименту или open question → только затем открыть 1–2 источника из SOURCE MAP; для implementation — live GitHub.",
+        "source": "SRC-D-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "session start (адаптация AI START RULE Vision §10 + Atlas)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-VISION §10; SRC-N-ATLAS AI START RULE"
+      },
+      {
+        "id": "NA-END",
+        "type": "NEXT_ACTION",
+        "status": "CURRENT",
+        "statement": "Конец сессии: не копировать чат; добавлять только то, что меняет цель/понимание, создаёт/уточняет гипотезу, добавляет evidence, закрывает/создаёт open question, меняет статус идеи или маршрут — с датой, источником и уровнем утверждения; историю не переписывать.",
+        "source": "SRC-D-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "session end (AI END RULE Vision §10)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-VISION §10"
+      },
+      {
+        "id": "NA-01",
+        "type": "NEXT_ACTION",
+        "status": "OPEN",
+        "statement": "Предложение (MODEL_PROPOSAL, не решение пользователя): вручную импортировать export-lab JSONL в Lab (Память → 📖 Reference memory → Import JSONL), затем в свежей сессии проверить «Посмотри мой паспорт и скажи, где мы» и записать наблюдённые провалы.",
+        "source": "SRC-AI-ASSEMBLY-2026-09-29",
+        "provenance": "AI_SUMMARY",
+        "scope": "next bounded step (proposal)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "docs/memory/README.md"
+      },
+      {
+        "id": "DF-01",
+        "type": "DEFERRED_ITEM",
+        "status": "DEFERRED",
+        "statement": "TCE-CARRYFORWARD-01 и TCE-BEACON-SHIFT-01 подготовлены/описаны, НЕ запускаются без отдельного GO (выводы TCE-проб здесь не цитируются как результаты).",
+        "source": "SRC-N-GENESIS",
+        "provenance": "SOURCE_DOC",
+        "scope": "TCE line",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-GENESIS §23–24"
+      },
+      {
+        "id": "DF-02",
+        "type": "DEFERRED_ITEM",
+        "status": "DEFERRED",
+        "statement": "FM-17-pre ablation: integrity GO получен, но REAL_ANNOTATION и A0–A3 = NOT_EXECUTED; запуск только после отдельной явной авторизации.",
+        "source": "SRC-D-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "Graphiti retrieval line",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-VISION §12"
+      },
+      {
+        "id": "DF-03",
+        "type": "DEFERRED_ITEM",
+        "status": "DEFERRED",
+        "statement": "Mentaury Soul B0/B1/C1: v0.1 = HISTORICAL_UNEXECUTED_PREREGISTRATION (custody не восстановлен); для v0.2 recoverability должна предшествовать executability.",
+        "source": "SRC-D-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "Soul experiment governance",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-VISION §20 (2026-09-13)"
+      },
+      {
+        "id": "DF-04",
+        "type": "DEFERRED_ITEM",
+        "status": "DEFERRED",
+        "statement": "SEM-REV (TRACK B) — отдельная строгая научная линия; не продолжать автоматически и не блокировать ею практическую память.",
+        "source": "SRC-D-SIMPLE-MEMORY-HANDOFF",
+        "provenance": "SOURCE_DOC",
+        "scope": "SEM-REV",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-SIMPLE-MEMORY-HANDOFF §1, §14"
+      },
+      {
+        "id": "DF-05",
+        "type": "DEFERRED_ITEM",
+        "status": "DEFERRED",
+        "statement": "Широкий literature sweep = CLOSED_FOR_NOW; новая top-level архитектура / новый experiment ID / runtime- или Canon-promotion = NO (по состоянию 2026-09-25).",
+        "source": "SRC-N-RUSLAN-RESEARCH",
+        "provenance": "SOURCE_DOC",
+        "scope": "research program",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-RUSLAN-RESEARCH «Research Trajectory» §13"
+      },
+      {
+        "id": "DF-06",
+        "type": "DEFERRED_ITEM",
+        "status": "DEFERRED",
+        "statement": "PAL-CONTAM-01 (обучение адаптера на user-authored данных под влиянием модели) — CANDIDATE EXPERIMENT · NOT RUN · NOT AUTHORIZED.",
+        "source": "SRC-N-RUSLAN-RESEARCH",
+        "provenance": "SOURCE_DOC",
+        "scope": "candidate experiment",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-RUSLAN-RESEARCH 2026-09-27"
+      }
+    ],
+    "projects": [
+      {
+        "id": "PP-CRYSTAL",
+        "type": "PROJECT_POINTER",
+        "status": "CURRENT",
+        "statement": "💠 Crystal — evidence, provenance, memory admission, trusted state (узкое trusted local-first memory/evidence ядро). Релевантность паспорту: косвенная (admission/provenance), в этом шаге не активен.",
+        "source": "SRC-N-ATLAS",
+        "provenance": "SOURCE_DOC",
+        "scope": "role as described in source; live state → owning GitHub",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-ATLAS + SRC-D-SIMPLE-MEMORY-HANDOFF §11"
+      },
+      {
+        "id": "PP-TITAN",
+        "type": "PROJECT_POINTER",
+        "status": "CURRENT",
+        "statement": "🗿 Titan — orchestration: providers/models/tools, retrieval composition, adapters, research infra; capability ≠ permission. Релевантность: не активен в этом шаге.",
+        "source": "SRC-N-ATLAS",
+        "provenance": "SOURCE_DOC",
+        "scope": "role as described in source; live state → owning GitHub",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-ATLAS + SRC-D-SIMPLE-MEMORY-HANDOFF §11"
+      },
+      {
+        "id": "PP-NATIVE",
+        "type": "PROJECT_POINTER",
+        "status": "CURRENT",
+        "statement": "🧬 Native Kernel — technology-neutral semantic invariants/obligations памяти и работы с информацией. Релевантность: семантика различий; не активен в этом шаге.",
+        "source": "SRC-N-ATLAS",
+        "provenance": "SOURCE_DOC",
+        "scope": "role as described in source; live state → owning GitHub",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-ATLAS + SRC-D-SIMPLE-MEMORY-HANDOFF §11"
+      },
+      {
+        "id": "PP-SOUL",
+        "type": "PROJECT_POINTER",
+        "status": "CURRENT",
+        "statement": "🌀 Mentaury Soul — cognition / beliefs / self / identity / goals / values / relationships. Релевантность: линия личности/субъекта (AT-04), не приоритет сейчас.",
+        "source": "SRC-N-ATLAS",
+        "provenance": "SOURCE_DOC",
+        "scope": "role as described in source; live state → owning GitHub",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-ATLAS + SRC-D-SIMPLE-MEMORY-HANDOFF §11"
+      },
+      {
+        "id": "PP-MKERNEL",
+        "type": "PROJECT_POINTER",
+        "status": "CURRENT",
+        "statement": "🪁 Mentaury-Kernel — cross-domain composition, provenance preservation, declared loss, non-escalation; под ним в Notion живёт хроника «Ruslan Исследования». Релевантность: хранилище хроники.",
+        "source": "SRC-N-ATLAS",
+        "provenance": "SOURCE_DOC",
+        "scope": "role as described in source; live state → owning GitHub",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-ATLAS + SRC-D-SIMPLE-MEMORY-HANDOFF §11"
+      },
+      {
+        "id": "PP-CONTINUUM",
+        "type": "PROJECT_POINTER",
+        "status": "CURRENT",
+        "statement": "🌎 Continuum — falsifiable research функциональной continuity процесса между потерянными/заменёнными контекстами (resume/reopen, current state vs history). Релевантность: ближайший owner вопроса «где мы» в исследовательском смысле.",
+        "source": "SRC-N-ATLAS",
+        "provenance": "SOURCE_DOC",
+        "scope": "role as described in source; live state → owning GitHub",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-ATLAS + SRC-D-SIMPLE-MEMORY-HANDOFF §11"
+      },
+      {
+        "id": "PP-COGOS",
+        "type": "PROJECT_POINTER",
+        "status": "CURRENT",
+        "statement": "🚀 Cognitive OS — routing / model / tool / evaluation profile. В Atlas видна как «🚀 AI Architecture» под Titan (concept/research, не runtime). Релевантность: не активна в этом шаге.",
+        "source": "SRC-D-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "role as described in source; live state → owning GitHub",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-VISION + SRC-D-SIMPLE-MEMORY-HANDOFF §11"
+      },
+      {
+        "id": "PP-CLOS",
+        "type": "PROJECT_POINTER",
+        "status": "CURRENT",
+        "statement": "⚗️ CLOS — cognitive research blueprint / methodology; по источнику 2026-09-25 там живёт IR-01 (goal/context/rationale test line). Релевантность: не активна в этом шаге.",
+        "source": "SRC-D-SIMPLE-MEMORY-HANDOFF",
+        "provenance": "SOURCE_DOC",
+        "scope": "role as described in source; live state → owning GitHub",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-SIMPLE-MEMORY-HANDOFF §11"
+      },
+      {
+        "id": "PP-GRAPHITI",
+        "type": "PROJECT_POINTER",
+        "status": "CURRENT",
+        "statement": "🕸 Graphiti Fractal / Lab — graph memory / retrieval relevance research profile, bounded experiments (FM-13→FM-17-pre). Релевантность: retrieval-линия (OQ-05, OQ-09).",
+        "source": "SRC-D-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "role as described in source; live state → owning GitHub",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-D-VISION + SRC-D-SIMPLE-MEMORY-HANDOFF §11"
+      },
+      {
+        "id": "PP-ATLAS",
+        "type": "PROJECT_POINTER",
+        "status": "CURRENT",
+        "statement": "🧭 Atlas — навигация: где искать owning документацию и evidence; не authority. Релевантность: SOURCE MAP паспорта опирается на него.",
+        "source": "SRC-N-ATLAS",
+        "provenance": "SOURCE_DOC",
+        "scope": "role as described in source; live state → owning GitHub",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-ATLAS + SRC-D-SIMPLE-MEMORY-HANDOFF §11"
+      },
+      {
+        "id": "PP-SVL",
+        "type": "PROJECT_POINTER",
+        "status": "CURRENT",
+        "statement": "🔬 State Validation Lab — bounded empirical validation contracts; по источнику 2026-09-25 — semantic owner для relation/applicability/causal trace (relation-integrity preflight). Релевантность: не активна в этом шаге.",
+        "source": "SRC-N-RUSLAN-RESEARCH",
+        "provenance": "SOURCE_DOC",
+        "scope": "role as described in source; live state → owning GitHub",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-N-RUSLAN-RESEARCH + SRC-D-SIMPLE-MEMORY-HANDOFF §11"
+      },
+      {
+        "id": "PP-LAB",
+        "type": "PROJECT_POINTER",
+        "status": "CURRENT",
+        "statement": "🧪 Eiti-Wizard-Lab — песочница: Simple Memory v0.1 (ветка), reference memory wiz_ref (main), этот паспорт. Релевантность: ВЫСОКАЯ — здесь реализуется точка входа (CP-01).",
+        "source": "SRC-GH-LAB-MAIN",
+        "provenance": "SOURCE_DOC",
+        "scope": "role as described in source; live state → owning GitHub",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-GH-LAB-MAIN + SRC-D-SIMPLE-MEMORY-HANDOFF §11"
+      }
+    ],
+    "sources": [
+      {
+        "id": "SP-N-RUSLAN-RESEARCH",
+        "type": "SOURCE_POINTER",
+        "status": "CURRENT",
+        "statement": "Смотреть за историей идеи: хроника «Ruslan Исследования» (Notion) — chronology, provenance, почему менялась позиция; НЕ текущая истина.",
+        "source": "SRC-N-RUSLAN-RESEARCH",
+        "provenance": "SOURCE_DOC",
+        "scope": "source pointer (reachable 2026-09-29)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "docs/memory/SOURCE_REGISTRY.md#SRC-N-RUSLAN-RESEARCH"
+      },
+      {
+        "id": "SP-N-GENESIS",
+        "type": "SOURCE_POINTER",
+        "status": "CURRENT",
+        "statement": "Смотреть за историей идеи цифровой личности: Genesis & Research Chronicle (Notion) — USER RAW vs AI-интерпретация, эволюция памяти, OPEN §20.",
+        "source": "SRC-N-GENESIS",
+        "provenance": "SOURCE_DOC",
+        "scope": "source pointer (reachable 2026-09-29)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "docs/memory/SOURCE_REGISTRY.md#SRC-N-GENESIS"
+      },
+      {
+        "id": "SP-D-RUSLAN-RESEARCH",
+        "type": "SOURCE_POINTER",
+        "status": "CURRENT",
+        "statement": "Зеркало хроники в Drive: MASTER CHRONOLOGY (карта реконструкции истории идеи); сверять с Notion — не идентичны.",
+        "source": "SRC-D-RUSLAN-RESEARCH",
+        "provenance": "SOURCE_DOC",
+        "scope": "source pointer (reachable 2026-09-29)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "docs/memory/SOURCE_REGISTRY.md#SRC-D-RUSLAN-RESEARCH"
+      },
+      {
+        "id": "SP-N-ATLAS",
+        "type": "SOURCE_POINTER",
+        "status": "CURRENT",
+        "statement": "Навигация по проектам: Knowledge Atlas (PROJECT → ROLE → OWNER SOURCE → WHEN TO USE); не authority.",
+        "source": "SRC-N-ATLAS",
+        "provenance": "SOURCE_DOC",
+        "scope": "source pointer (reachable 2026-09-29)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "docs/memory/SOURCE_REGISTRY.md#SRC-N-ATLAS"
+      },
+      {
+        "id": "SP-N-VISION",
+        "type": "SOURCE_POINTER",
+        "status": "CURRENT",
+        "statement": "Vision Journal (Notion): founder intent, открытые вопросы, AI START/END RULE, запись 2026-09-29.",
+        "source": "SRC-N-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "source pointer (reachable 2026-09-29)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "docs/memory/SOURCE_REGISTRY.md#SRC-N-VISION"
+      },
+      {
+        "id": "SP-D-VISION",
+        "type": "SOURCE_POINTER",
+        "status": "CURRENT",
+        "statement": "Vision Journal (Drive): главный источник для паспорта — исходная мысль, цели, open questions, journal entries 11–21.",
+        "source": "SRC-D-VISION",
+        "provenance": "SOURCE_DOC",
+        "scope": "source pointer (reachable 2026-09-29)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "docs/memory/SOURCE_REGISTRY.md#SRC-D-VISION"
+      },
+      {
+        "id": "SP-D-WORKING-MASTER",
+        "type": "SOURCE_POINTER",
+        "status": "CURRENT",
+        "statement": "Смотреть за текущей исследовательской архитектурой: Unified Cognitive System Architecture — Working Master (Drive); статусы STABLE CORE / WORKING SYNTHESIS / OPEN RESEARCH / HISTORICAL; не Canon, не runtime.",
+        "source": "SRC-D-WORKING-MASTER",
+        "provenance": "SOURCE_DOC",
+        "scope": "source pointer (reachable 2026-09-29)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "docs/memory/SOURCE_REGISTRY.md#SRC-D-WORKING-MASTER"
+      },
+      {
+        "id": "SP-D-RESEARCH-PROGRAM",
+        "type": "SOURCE_POINTER",
+        "status": "CURRENT",
+        "statement": "Смотреть за методологией и текущей исследовательской программой: Cognitive System Research Program (Drive); CURRENT MODEL ≠ FINAL MODEL.",
+        "source": "SRC-D-RESEARCH-PROGRAM",
+        "provenance": "SOURCE_DOC",
+        "scope": "source pointer (reachable 2026-09-29)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "docs/memory/SOURCE_REGISTRY.md#SRC-D-RESEARCH-PROGRAM"
+      },
+      {
+        "id": "SP-D-SIMPLE-MEMORY",
+        "type": "SOURCE_POINTER",
+        "status": "CURRENT",
+        "statement": "Simple Memory Handoff (Drive): что сделано с практической памятью; implementation donor, не authority.",
+        "source": "SRC-D-SIMPLE-MEMORY-HANDOFF",
+        "provenance": "SOURCE_DOC",
+        "scope": "source pointer (reachable 2026-09-29)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "docs/memory/SOURCE_REGISTRY.md#SRC-D-SIMPLE-MEMORY-HANDOFF"
+      },
+      {
+        "id": "SP-GH-SIMPLE-MEMORY",
+        "type": "SOURCE_POINTER",
+        "status": "CURRENT",
+        "statement": "Код Simple Memory v0.1: Eiti-Wizard-Lab, ветка experiment/simple-memory-resume-v0.1 @7fbabd2 (не влита в main).",
+        "source": "SRC-GH-LAB-SIMPLE-MEMORY",
+        "provenance": "SOURCE_DOC",
+        "scope": "source pointer (reachable 2026-09-29)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "docs/memory/SOURCE_REGISTRY.md#SRC-GH-LAB-SIMPLE-MEMORY"
+      },
+      {
+        "id": "SP-GH-LAB-MAIN",
+        "type": "SOURCE_POINTER",
+        "status": "CURRENT",
+        "statement": "Eiti-Wizard-Lab main: Lab memory (SQLite + wiz_ref), docs/REFERENCE_MEMORY.md, этот паспорт (docs/memory/).",
+        "source": "SRC-GH-LAB-MAIN",
+        "provenance": "SOURCE_DOC",
+        "scope": "source pointer (reachable 2026-09-29)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "docs/memory/SOURCE_REGISTRY.md#SRC-GH-LAB-MAIN"
+      }
+    ],
+    "invariants": [
+      {
+        "id": "INV-06",
+        "type": "INVARIANT",
+        "status": "CURRENT",
+        "statement": "STORE EVERYTHING != PUT EVERYTHING IN ACTIVE CONTEXT. PASSPORT → SOURCE MAP → DETAIL ON DEMAND.",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "принцип чтения паспорта (не архитектурный инвариант)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "INV-01",
+        "type": "INVARIANT",
+        "status": "CURRENT",
+        "statement": "RETRIEVAL != UNDERSTANDING; RETRIEVAL != EVIDENCE; EVIDENCE != BELIEF; BELIEF != TRUTH",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "non-conflation (reading discipline)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "INV-02",
+        "type": "INVARIANT",
+        "status": "CURRENT",
+        "statement": "STORED != CURRENT; CURRENT != IMPORTANT; IMPORTANT != TRUE; HISTORICAL != CURRENT",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "non-conflation (reading discipline)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "INV-03",
+        "type": "INVARIANT",
+        "status": "CURRENT",
+        "statement": "MODEL_PROPOSAL != USER_DECISION; AI SUMMARY != USER RAW; UNKNOWN != FALSE; NOT RETRIEVED != ABSENT",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "non-conflation (reading discipline)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "INV-04",
+        "type": "INVARIANT",
+        "status": "CURRENT",
+        "statement": "RESEARCH != RUNTIME; SPEC != IMPLEMENTATION; IMPLEMENTED != ACTIVATED; TESTED != PRODUCTION AUTHORIZED",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "non-conflation (reading discipline)",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      },
+      {
+        "id": "INV-05",
+        "type": "INVARIANT",
+        "status": "CURRENT",
+        "statement": "Паспорт — ORIENTATION, не архитектурный authority. Никогда не превращать: AI-текст → убеждение пользователя, AI-рекомендацию → решение, историческое → текущее, гипотезу → факт, наличие документа → evidence, извлечённый текст → истину. При конфликте источника с более новым заявлением пользователя — историю сохранить, текущее пометить отдельно.",
+        "source": "SRC-USER-2026-09-29",
+        "provenance": "USER_STATEMENT_2026-09-29",
+        "scope": "passport authority boundary",
+        "updated_at": "2026-09-29",
+        "details_pointer": "SRC-USER-2026-09-29 — заявление пользователя"
+      }
+    ]
+  }
+}

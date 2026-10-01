@@ -1,0 +1,33 @@
+# Проверка слоя памяти (только чтение и временные журналы, без развёртывания)
+name: слой-памяти
+
+on:
+  push:
+    paths:
+      - 'docs/memory/**'
+      - 'tools/memory/**'
+      - '.github/workflows/memory-layer.yml'
+  pull_request:
+    paths:
+      - 'docs/memory/**'
+      - 'tools/memory/**'
+      - '.github/workflows/memory-layer.yml'
+
+jobs:
+  память:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Получить код
+        uses: actions/checkout@v4
+      - name: Установить Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Тесты журнала
+        run: node --test tools/memory/ledger_tool.test.mjs
+      - name: Тесты сида
+        run: node --test tools/memory/seed_tool.test.mjs
+      - name: Сверка хеша
+        run: node tools/memory/ledger_tool.mjs check-hash
+      - name: Проверка сида
+        run: node tools/memory/seed_tool.mjs validate

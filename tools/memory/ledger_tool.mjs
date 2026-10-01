@@ -8,7 +8,9 @@
 // Правила вехи М2.1:
 // - ИИ МОЖЕТ ДОПИСЫВАТЬ OBSERVED; ИИ НЕ МОЖЕТ ДОПУСКАТЬ В КАНОН.
 // - Дописывание только неизменяемое (append-only). Карантин означает отказ ДО дописывания.
-// - Хеш base_canonical_sha256 обязан равняться manifest.canonical_content_sha256, иначе отказ с закрытием.
+// - Критическая секция: appendObserved сериализует писателей блокировкой каталога (mkdir exclusive).
+//   Граница гарантии — только ОДНА общая локальная файловая система. Не распределённый консенсус.
+// - Хеш base_canonical_sha256 обязан равняться хешу БАЙТОВ сида и полю манифеста, иначе отказ с закрытием.
 // - Имя base_manifest_hash запрещено.
 // - Порядок задают цепочка prior_event_id и физический порядок строк; метка времени только метаданные.
 // - Форк или malformed строка означают FAIL CLOSED CONFLICT.
@@ -77,6 +79,78 @@ const QUARANTINE_LOCATOR_RES = [
 // Вычисление SHA-256 байтов и файлов.
 export function sha256Bytes(buf) { return crypto.createHash('sha256').update(buf).digest('hex'); }
 export function sha256File(p) { return sha256Bytes(fs.readFileSync(p)); }
+
+// Блокировка журнала для сериализации писателей на одной локальной файловой системе.
+// Атомарность захвата обеспечивается исключительным созданием каталога (mkdir без recursive).
+// Это НЕ распределённая блокировка между клонами, машинами и ветками.
+export const LEDGER_LOCK_SUFFIX = '.lock';
+export const LEDGER_LOCK_INFO = 'info.json';
+export const LEDGER_LOCK_STALE_MS = 60000;
+
+// Путь каталога блокировки для заданного журнала.
+export function ledgerLockDir(ledgerPath) { return String(ledgerPath) + LEDGER_LOCK_SUFFIX; }
+
+// Возраст блокировки по времени модификации каталога (миллисекунды, null при ошибке).
+function возрастБлокировкиПоМодификации(lockDir) {
+  try {
+    const стат = fs.statSync(lockDir);
+    return Date.now() - стат.mtimeMs;
+  } catch { return null; }
+}
+
+// Захват блокировки: одна попытка, без ожидания и без авто-повторов.
+// Успех: {ok:true, lockDir, info}. Занято: {ok:false, busy:true}. Устарело: {ok:false, stale:true}.
+// Устаревшая блокировка НЕ удаляется автоматически — требуется ручной разбор.
+export function acquireLedgerLock(ledgerPath, opts = {}) {
+  const staleMs = opts.staleMs ?? LEDGER_LOCK_STALE_MS;
+  const lockDir = ledgerLockDir(ledgerPath);
+  try { fs.mkdirSync(path.dirname(String(ledgerPath)), { recursive: true }); } catch {}
+  try {
+    fs.mkdirSync(lockDir);
+  } catch (e) {
+    const код = e && e.code ? String(e.code) : '';
+    if (код !== '' && код !== 'EEXIST') {
+      return { ok: false, errors: [`LEDGER_BUSY/LOCK_HELD: невозможно захватить блокировку ${lockDir}: ${String(e && e.message || e)}`], warnings: [], busy: true, lockDir };
+    }
+    // Блокировка уже удерживается — читаем сведения для различения занято/устарело.
+    let сведения = null;
+    let сведенияПрочитаны = false;
+    try {
+      const сырьё = fs.readFileSync(path.join(lockDir, LEDGER_LOCK_INFO), 'utf8');
+      сведения = JSON.parse(сырьё);
+      сведенияПрочитаны = true;
+    } catch { сведенияПрочитаны = false; }
+    if (сведенияПрочитаны && сведения && typeof сведения.acquiredAt === 'number') {
+      const возраст = Date.now() - сведения.acquiredAt;
+      const идПроцесса = сведения.pid ?? '?';
+      if (возраст > staleMs) {
+        return { ok: false, errors: [`STALE_LOCK_REQUIRES_REVIEW: блокировка ${lockDir} устарела (возраст ${возраст} мс > ${staleMs} мс, pid ${String(идПроцесса)}). Авто-удаление запрещено, требуется ручной разбор.`], warnings: [], stale: true, lockDir };
+      }
+      return { ok: false, errors: [`LEDGER_BUSY/LOCK_HELD: журнал заблокирован ${lockDir} (pid ${String(идПроцесса)}, возраст ${возраст} мс). Повторите позже без изменения порядка.`], warnings: [], busy: true, lockDir };
+    }
+    // Сведения отсутствуют или повреждены: оцениваем возраст по модификации каталога.
+    const возрастФс = возрастБлокировкиПоМодификации(lockDir);
+    if (возрастФс !== null && возрастФс > staleMs) {
+      return { ok: false, errors: [`STALE_LOCK_REQUIRES_REVIEW: блокировка ${lockDir} без сведений старше ${staleMs} мс (возраст ${Math.round(возрастФс)} мс). Авто-удаление запрещено, требуется ручной разбор.`], warnings: [], stale: true, lockDir };
+    }
+    return { ok: false, errors: [`LEDGER_BUSY/LOCK_HELD: журнал заблокирован ${lockDir} (сведения недоступны, только что захвачена или повреждена). Повторите позже.`], warnings: [], busy: true, lockDir };
+  }
+  // Захват успешен — записываем сведения о владельце.
+  const сведения = { pid: process.pid, acquiredAt: Date.now(), ledger: String(ledgerPath) };
+  try {
+    fs.writeFileSync(path.join(lockDir, LEDGER_LOCK_INFO), JSON.stringify(сведения));
+  } catch (e) {
+    try { releaseLedgerLock(lockDir); } catch {}
+    return { ok: false, errors: [`LEDGER_BUSY/LOCK_HELD: невозможно записать сведения блокировки ${lockDir}: ${String(e && e.message || e)}`], warnings: [], busy: true, lockDir };
+  }
+  return { ok: true, errors: [], warnings: [], lockDir, info: сведения };
+}
+
+// Освобождение блокировки (лучшая попытка, ошибки игнорируются).
+export function releaseLedgerLock(lockDir) {
+  try { fs.rmSync(String(lockDir), { recursive: true, force: true }); } catch {}
+  return true;
+}
 
 // Загрузка манифеста и сида.
 export function loadManifest(p = DEFAULT_MANIFEST) { return JSON.parse(fs.readFileSync(p, 'utf8')); }
@@ -207,11 +281,23 @@ export function validateEvent(event, opts = {}) {
     if (env.source_actor !== undefined && env.source_actor !== null && String(env.authorized_by) === String(env.source_actor)) errors.push('ACTOR_SEPARATION: authorized_by обязан отличаться от source_actor');
   }
   // Сверка хешей (отказ с закрытием при устаревшей базе).
+  // Тройная сверка: хеш БАЙТОВ сида == поле манифеста == заявленный base_canonical_sha256.
+  // Доверять только полю манифеста без чтения байтов запрещено (защита от TOCTOU и подмены).
   const ожидаемыйКанон = manifest.canonical_content_sha256;
+  let хешБайтовСида = null;
+  try { хешБайтовСида = sha256File(seedPath); } catch { errors.push('сид: невозможно вычислить хеш байтов сида'); }
   if (typeof ожидаемыйКанон !== 'string' || !RE_HEX64.test(ожидаемыйКанон)) {
     errors.push('манифест: неверное поле canonical_content_sha256');
-  } else if (env.base_canonical_sha256 !== undefined && env.base_canonical_sha256 !== null && String(env.base_canonical_sha256) !== ожидаемыйКанон) {
-    errors.push(`STALE_CANONICAL_HASH: base_canonical_sha256 ${String(env.base_canonical_sha256)} не равен manifest.canonical_content_sha256 ${ожидаемыйКанон}`);
+  } else {
+    if (хешБайтовСида && хешБайтовСида !== ожидаемыйКанон) {
+      errors.push(`STALE_CANONICAL_HASH: хеш байтов сида ${хешБайтовСида} не равен manifest.canonical_content_sha256 ${ожидаемыйКанон}`);
+    }
+    if (env.base_canonical_sha256 !== undefined && env.base_canonical_sha256 !== null && хешБайтовСида && String(env.base_canonical_sha256) !== хешБайтовСида) {
+      errors.push(`STALE_CANONICAL_HASH: base_canonical_sha256 ${String(env.base_canonical_sha256)} не равен хешу байтов сида ${хешБайтовСида}`);
+    }
+    if (env.base_canonical_sha256 !== undefined && env.base_canonical_sha256 !== null && String(env.base_canonical_sha256) !== ожидаемыйКанон) {
+      errors.push(`STALE_CANONICAL_HASH: base_canonical_sha256 ${String(env.base_canonical_sha256)} не равен manifest.canonical_content_sha256 ${ожидаемыйКанон}`);
+    }
   }
   if (env.base_manifest_file_sha256 !== undefined && env.base_manifest_file_sha256 !== null) {
     let текущийХешМанифеста = null;
@@ -310,25 +396,48 @@ export function validateEvent(event, opts = {}) {
   return { ok: errors.length === 0, errors, warnings };
 }
 
-// Дописывание только OBSERVED одной строкой (append-only, без перезаписи).
+// Дописывание только OBSERVED одной строкой (fail-closed локальная критическая секция).
+// Порядок: захват блокировки → перепроверка внутри блокировки → дописывание одной строки → освобождение в finally.
+// Проверка до блокировки НЕДОСТАТОЧНА одна: все зависимые от состояния проверки повторяются внутри.
+// Граница гарантии: сериализация писателей только на ОДНОЙ общей локальной файловой системе.
 export function appendObserved(event, opts = {}) {
   const ledgerPath = opts.ledgerPath || DEFAULT_LEDGER;
-  const проверка = validateEvent(event, opts);
-  if (!проверка.ok) return { ok: false, errors: проверка.errors, warnings: проверка.warnings };
-  // Повторная защита: только OBSERVED/OBSERVE и null authorized_by.
-  const env = event.envelope;
-  if (env.admission_state !== 'OBSERVED' || env.event_kind !== 'OBSERVE') {
-    return { ok: false, errors: ['append-observed пишет только неизменяемый OBSERVED'], warnings: проверка.warnings };
+  const manifestPath = opts.manifestPath || DEFAULT_MANIFEST;
+  const seedPath = opts.seedPath || DEFAULT_SEED;
+  const staleMs = opts.lockStaleMs ?? opts.staleMs ?? LEDGER_LOCK_STALE_MS;
+  // Шаг 1: захват блокировки без ожидания и без скрытых повторов.
+  const захват = acquireLedgerLock(ledgerPath, { staleMs });
+  if (!захват.ok) return { ok: false, errors: захват.errors, warnings: захват.warnings || [], busy: захват.busy, stale: захват.stale };
+  try {
+    // Шаги 2–6 внутри блокировки: перечитать журнал, манифест, байты сида и перепроверить всё.
+    const проверка = validateEvent(event, { ledgerPath, manifestPath, seedPath });
+    if (!проверка.ok) return { ok: false, errors: проверка.errors, warnings: проверка.warnings };
+    // Повторная защита: только OBSERVED/OBSERVE и null authorized_by.
+    const env = event.envelope;
+    if (env.admission_state !== 'OBSERVED' || env.event_kind !== 'OBSERVE') {
+      return { ok: false, errors: ['append-observed пишет только неизменяемый OBSERVED'], warnings: проверка.warnings };
+    }
+    if (env.authorized_by !== undefined && env.authorized_by !== null) {
+      return { ok: false, errors: ['append-observed требует authorized_by null/отсутствует'], warnings: проверка.warnings };
+    }
+    // Шаг 7: дописывание ровно одной строки с fsync (append-only, без перезаписи).
+    const строка = JSON.stringify(event) + '\n';
+    fs.mkdirSync(path.dirname(ledgerPath), { recursive: true });
+    let дескриптор = null;
+    try {
+      дескриптор = fs.openSync(ledgerPath, 'a');
+      fs.writeSync(дескриптор, строка, null, 'utf8');
+      try { fs.fsyncSync(дескриптор); } catch {}
+    } catch (e) {
+      return { ok: false, errors: [`журнал: невозможно дописать строку: ${String(e && e.message || e)}`], warnings: проверка.warnings };
+    } finally {
+      if (дескриптор !== null) { try { fs.closeSync(дескриптор); } catch {} }
+    }
+    return { ok: true, errors: [], warnings: проверка.warnings, event_id: env.event_id };
+  } finally {
+    // Шаг 8: освобождение блокировки всегда.
+    releaseLedgerLock(захват.lockDir);
   }
-  if (env.authorized_by !== undefined && env.authorized_by !== null) {
-    return { ok: false, errors: ['append-observed требует authorized_by null/отсутствует'], warnings: проверка.warnings };
-  }
-  // Атомарное дописывание одной строки с переводом строки.
-  const строка = JSON.stringify(event) + '\n';
-  // Гарантия каталога журнала.
-  fs.mkdirSync(path.dirname(ledgerPath), { recursive: true });
-  fs.appendFileSync(ledgerPath, строка, 'utf8');
-  return { ok: true, errors: [], warnings: проверка.warnings, event_id: env.event_id };
 }
 
 // Сверка хеша сида с манифестом и проверка цепочки журнала.

@@ -7,7 +7,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { ROOT, DEFAULT_SEED, DEFAULT_MANIFEST, DEFAULT_LEDGER, validateEvent, appendObserved, checkHash, loadLedger, sha256File, sha256Bytes } from './ledger_tool.mjs';
+import { spawn } from 'node:child_process';
+import { ROOT, DEFAULT_SEED, DEFAULT_MANIFEST, DEFAULT_LEDGER, validateEvent, appendObserved, checkHash, loadLedger, sha256File, sha256Bytes, acquireLedgerLock, releaseLedgerLock, ledgerLockDir, LEDGER_LOCK_INFO } from './ledger_tool.mjs';
 import { loadSeed, loadSeed as загрузитьСид } from './seed_tool.mjs';
 
 // Базовый коммит вехи М1 (только формат 40 hex проверяется в М2.1).
@@ -383,4 +384,156 @@ test('снимок реальных файлов: канон, манифест �
   const повтор = снимокРеальныхФайлов();
   assert.deepEqual(повтор.хеши, снимок.хеши);
   assert.equal(повтор.журнал, '');
+});
+
+// ── 16. Блокировка удерживается: второй писатель получает LEDGER_BUSY ───────
+test('16: удержание блокировки даёт LEDGER_BUSY без изменения журнала', () => {
+  const журнал = временныйЖурнал();
+  // Ручной захват блокировки имитирует параллельного писателя внутри критической секции.
+  const захват = acquireLedgerLock(журнал);
+  assert.equal(захват.ok, true);
+  try {
+    const событие = допустимоеСобытие('evt-toctou-busy-001', 'OBS-TOCTOU-BUSY-001', null);
+    const итог = appendObserved(событие, { ledgerPath: журнал });
+    assert.equal(итог.ok, false);
+    assert.ok(итог.errors.some(e => e.includes('LEDGER_BUSY') || e.includes('LOCK_HELD')), итог.errors.join(' | '));
+    assert.deepEqual(размерЖурнала(журнал), { байты: 0, строки: 0 });
+  } finally {
+    releaseLedgerLock(захват.lockDir);
+  }
+  // После освобождения тот же журнал принимает запись.
+  const повтор = допустимоеСобытие('evt-toctou-busy-001', 'OBS-TOCTOU-BUSY-001', null);
+  assert.equal(appendObserved(повтор, { ledgerPath: журнал }).ok, true);
+  assert.equal(размерЖурнала(журнал).строки, 1);
+  assert.equal(loadLedger(журнал).ok, true);
+});
+
+// ── 17. Два события с одним prior: побеждает одно ───────────────────────────
+test('17: два события с одним prior_event_id — второе отклоняется, строка одна', () => {
+  const журнал = временныйЖурнал();
+  assert.equal(appendObserved(допустимоеСобытие('evt-toctou-base-001', 'OBS-TOCTOU-BASE-001', null), { ledgerPath: журнал }).ok, true);
+  const первый = допустимоеСобытие('evt-toctou-race-a-001', 'OBS-TOCTOU-RACE-A-001', 'evt-toctou-base-001');
+  const второй = допустимоеСобытие('evt-toctou-race-b-001', 'OBS-TOCTOU-RACE-B-001', 'evt-toctou-base-001');
+  const итог1 = appendObserved(первый, { ledgerPath: журнал });
+  assert.equal(итог1.ok, true);
+  const итог2 = appendObserved(второй, { ledgerPath: журнал });
+  assert.equal(итог2.ok, false);
+  assert.ok(итог2.errors.some(e => e.includes('CHAIN') || e.includes('prior') || e.includes('STALE') || e.includes('CONFLICT') || e.includes('LEDGER_BUSY') || e.includes('FORK')), итог2.errors.join(' | '));
+  // Журнал структурно допустим, для данного кончика ровно одна новая строка.
+  const состояние = loadLedger(журнал);
+  assert.equal(состояние.ok, true);
+  assert.equal(состояние.lineCount, 2);
+  assert.equal(состояние.tip, 'evt-toctou-race-a-001');
+  assert.equal(размерЖурнала(журнал).строки, 2);
+});
+
+// ── 18. Устаревшая блокировка требует ручного разбора ───────────────────────
+test('18: устаревшая блокировка даёт STALE_LOCK_REQUIRES_REVIEW без авто-удаления', () => {
+  const журнал = временныйЖурнал();
+  const каталогБлокировки = ledgerLockDir(журнал);
+  fs.mkdirSync(path.dirname(журнал), { recursive: true });
+  fs.mkdirSync(каталогБлокировки);
+  // Сведения с древним временем захвата имитируют рухнувший процесс.
+  fs.writeFileSync(path.join(каталогБлокировки, LEDGER_LOCK_INFO), JSON.stringify({ pid: 999999, acquiredAt: Date.now() - 3600_000, ledger: журнал }));
+  const событие = допустимоеСобытие('evt-toctou-stale-001', 'OBS-TOCTOU-STALE-001', null);
+  const итог = appendObserved(событие, { ledgerPath: журнал });
+  assert.equal(итог.ok, false);
+  assert.ok(итог.errors.some(e => e.includes('STALE_LOCK_REQUIRES_REVIEW')), итог.errors.join(' | '));
+  // Блокировка не удалена автоматически, журнал не изменён.
+  assert.equal(fs.existsSync(каталогБлокировки), true);
+  assert.deepEqual(размерЖурнала(журнал), { байты: 0, строки: 0 });
+  // Ручное восстановление: человек удаляет каталог, после чего запись проходит.
+  releaseLedgerLock(каталогБлокировки);
+  assert.equal(fs.existsSync(каталогБлокировки), false);
+  assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, true);
+});
+
+// ── 19. Тройная сверка хеша: байты сида, а не только поле манифеста ─────────
+test('19: подмена байтов сида отклоняется даже при совпадении поля манифеста', () => {
+  const каталог = fs.mkdtempSync(path.join(os.tmpdir(), 'журнал-м21-сид-'));
+  const временныйСид = path.join(каталог, 'seed.json');
+  const временныйМанифест = path.join(каталог, 'manifest.json');
+  const журнал = path.join(каталог, 'event_ledger.jsonl');
+  fs.copyFileSync(DEFAULT_SEED, временныйСид);
+  fs.copyFileSync(DEFAULT_MANIFEST, временныйМанифест);
+  // Портим байты сида одним пробелом: поле манифеста остаётся старым.
+  fs.appendFileSync(временныйСид, ' ', 'utf8');
+  const событие = допустимоеСобытие('evt-toctou-hash-001', 'OBS-TOCTOU-HASH-001', null);
+  // Заявленный хеш совпадает с полем манифеста, но не с байтами.
+  assert.equal(событие.envelope.base_canonical_sha256, JSON.parse(fs.readFileSync(временныйМанифест, 'utf8')).canonical_content_sha256);
+  const проверка = validateEvent(событие, { ledgerPath: журнал, manifestPath: временныйМанифест, seedPath: временныйСид });
+  assert.equal(проверка.ok, false);
+  assert.ok(проверка.errors.some(e => e.includes('STALE_CANONICAL_HASH')), проверка.errors.join(' | '));
+  assert.equal(appendObserved(событие, { ledgerPath: журнал, manifestPath: временныйМанифест, seedPath: временныйСид }).ok, false);
+  assert.deepEqual(размерЖурнала(журнал), { байты: 0, строки: 0 });
+  // Реальный сид и манифест не тронуты.
+  assert.equal(sha256File(DEFAULT_SEED), каноническийХеш());
+});
+
+// Вспомогательное: один параллельный запуск append-observed через дочерний процесс.
+function запуститьПисателя(путьИнструмента, путьСобытия, путьЖурнала) {
+  return new Promise((решить) => {
+    const потомок = spawn(process.execPath, [путьИнструмента, 'append-observed', путьСобытия, '--ledger', путьЖурнала], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let вывод = '';
+    потомок.stdout.on('data', д => { вывод += String(д); });
+    потомок.stderr.on('data', д => { вывод += String(д); });
+    потомок.on('close', код => решить({ код, вывод }));
+    потомок.on('error', ошибка => решить({ код: 99, вывод: String(ошибка && ошибка.message || ошибка) }));
+  });
+}
+
+// ── 20. Детерминированная конкуренция через процессы: побеждает один ────────
+test('20: конкуренция двух процессов с одним prior — побеждает один, форка нет', async () => {
+  const каталог = fs.mkdtempSync(path.join(os.tmpdir(), 'журнал-м21-гонка-'));
+  const журнал = path.join(каталог, 'event_ledger.jsonl');
+  const путьИнструмента = path.join(ROOT, 'tools', 'memory', 'ledger_tool.mjs');
+  assert.equal(appendObserved(допустимоеСобытие('evt-race-base-001', 'OBS-RACE-BASE-001', null), { ledgerPath: журнал }).ok, true);
+  const событиеА = допустимоеСобытие('evt-race-a-001', 'OBS-RACE-A-001', 'evt-race-base-001');
+  const событиеБ = допустимоеСобытие('evt-race-b-001', 'OBS-RACE-B-001', 'evt-race-base-001');
+  const путьА = записатьСобытие(каталог, 'a.json', событиеА);
+  const путьБ = записатьСобытие(каталог, 'b.json', событиеБ);
+  const итоги = await Promise.all([
+    запуститьПисателя(путьИнструмента, путьА, журнал),
+    запуститьПисателя(путьИнструмента, путьБ, журнал),
+  ]);
+  const успехи = итоги.filter(r => r.код === 0);
+  const отказы = итоги.filter(r => r.код !== 0);
+  assert.equal(успехи.length, 1, 'ровно один победитель: ' + JSON.stringify(итоги));
+  assert.equal(отказы.length, 1);
+  assert.ok(отказы[0].вывод.includes('REJECTED') || отказы[0].вывод.includes('BUSY') || отказы[0].вывод.includes('CHAIN') || отказы[0].вывод.includes('STALE') || отказы[0].вывод.includes('CONFLICT') || отказы[0].вывод.includes('ОШИБКА'), отказы[0].вывод);
+  const состояние = loadLedger(журнал);
+  assert.equal(состояние.ok, true, состояние.errors.join(' | '));
+  assert.equal(состояние.lineCount, 2);
+});
+
+// ── 21. Стресс гонки: выборка параллельных попыток без форков ───────────────
+test('21: стресс гонки 30 проб по 5 писателей — 0 форков из 30', async () => {
+  const путьИнструмента = path.join(ROOT, 'tools', 'memory', 'ledger_tool.mjs');
+  const ПРОБ = 30;
+  const ПИСАТЕЛЕЙ = 5;
+  let форков = 0;
+  let победителейВсего = 0;
+  for (let проба = 0; проба < ПРОБ; проба++) {
+    const каталог = fs.mkdtempSync(path.join(os.tmpdir(), `журнал-м21-стресс-${проба}-`));
+    const журнал = path.join(каталог, 'event_ledger.jsonl');
+    const база = `evt-stress-${проба}-base`;
+    assert.equal(appendObserved(допустимоеСобытие(база, `OBS-STRESS-${проба}-BASE`, null), { ledgerPath: журнал }).ok, true);
+    const запуски = [];
+    for (let в = 0; в < ПИСАТЕЛЕЙ; в++) {
+      const событие = допустимоеСобытие(`evt-stress-${проба}-w${в}`, `OBS-STRESS-${проба}-W${в}`, база);
+      const путьСобытия = записатьСобытие(каталог, `w${в}.json`, событие);
+      запуски.push(запуститьПисателя(путьИнструмента, путьСобытия, журнал));
+    }
+    const итоги = await Promise.all(запуски);
+    const успехи = итоги.filter(r => r.код === 0).length;
+    победителейВсего += успехи;
+    const состояние = loadLedger(журнал);
+    if (!состояние.ok) форков++;
+    assert.equal(состояние.ok, true, `проба ${проба}: ${состояние.errors.join(' | ')}`);
+    // Ровно один победитель на пробу: база плюс одна строка.
+    assert.equal(состояние.lineCount, 2, `проба ${проба}: строк ${состояние.lineCount}, успехов ${успехи}`);
+    assert.equal(успехи, 1, `проба ${проба}: успехов ${успехи} из ${ПИСАТЕЛЕЙ}`);
+  }
+  console.log(`  стресс: проб ${ПРОБ}, писателей на пробу ${ПИСАТЕЛЕЙ}, всего попыток ${ПРОБ * ПИСАТЕЛЕЙ}, победителей ${победителейВсего}, форков ${форков}`);
+  assert.equal(форков, 0);
 });

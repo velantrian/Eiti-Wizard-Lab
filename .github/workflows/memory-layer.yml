@@ -14,7 +14,8 @@ on:
       - '.github/workflows/memory-layer.yml'
 
 jobs:
-  память:
+  memory:
+    name: Проверка слоя памяти
     runs-on: ubuntu-latest
     steps:
       - name: Получить код

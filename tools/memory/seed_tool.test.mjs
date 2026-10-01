@@ -4,9 +4,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { ROOT, loadSeed, validate, search, renderStartView, wordCount, exportLab, stats, RELS, TYPES, STATUSES } from './seed_tool.mjs';
+import { ROOT, DEFAULT_SEED, DEFAULT_MANIFEST, loadSeed, loadManifest, validate, search, renderStartView, wordCount, exportLab, stats, RELS, TYPES, STATUSES, sha256File, verifyIntegrity, checkIntegrity, selectBootstrapSections, buildBootstrap, bootstrapRecordIds, renderBootstrapJson, renderBootstrapMarkdown, bootstrapMarkdownIds, BOOTSTRAP_SCHEMA, BOOTSTRAP_ROLE, BOOTSTRAP_SECTION_ORDER } from './seed_tool.mjs';
 
 const require = createRequire(import.meta.url);
 const seed = loadSeed();
@@ -135,4 +136,238 @@ test('export-lab bundle imports into the existing wiz_ref layer with 0 errors, i
 test('stats are consistent', () => {
   const s = stats(seed);
   assert.equal(Object.values(s.by_type).reduce((a, b) => a + b, 0), seed.records.length);
+});
+
+// ── М2: провайдер-нейтральный контекст (Т1–Т16) ─────────────────────────────
+// Все тесты локальные и детерминированные: без сети, моделей, эмбеддингов.
+// Канон обязан остаться нетронутым: 79 записей, SHA e0ee19c49a587691a4068354ca521d5f5b8d9f1d84d2957ec129120f3cefedc0.
+const manifest = loadManifest();
+const canonSha = sha256File(DEFAULT_SEED);
+const byId = new Map(seed.records.map((r) => [r.id, r]));
+// Вспомогательная сборка пакета из канонических файлов (через ворота целостности).
+function canonPack() {
+  const gate = checkIntegrity(DEFAULT_SEED, DEFAULT_MANIFEST);
+  assert.equal(gate.ok, true, 'ворота целостности обязаны пропускать канон: ' + gate.errors.join('; '));
+  return { gate, json: renderBootstrapJson(gate.seed, gate.manifest, gate.fileHash), md: renderBootstrapMarkdown(gate.seed, gate.manifest, gate.fileHash) };
+}
+
+// Т1: канон валиден.
+test('М2 Т1: seed валидируется без ошибок', () => {
+  const v = validate(seed);
+  assert.deepEqual(v.errors, []);
+  assert.equal(v.ok, true);
+});
+// Т2: счётчик 79 совпадает с манифестом.
+test('М2 Т2: 79 записей == manifest.canonical_record_count', () => {
+  assert.equal(seed.records.length, 79);
+  assert.equal(manifest.canonical_record_count, 79);
+  assert.equal(seed.records.length, manifest.canonical_record_count);
+});
+// Т3: SHA файла совпадает с манифестом и эталоном М1.
+test('М2 Т3: SHA-256 seed == manifest.canonical_content_sha256', () => {
+  assert.equal(canonSha, manifest.canonical_content_sha256);
+  assert.equal(canonSha, 'e0ee19c49a587691a4068354ca521d5f5b8d9f1d84d2957ec129120f3cefedc0');
+});
+// Т4: изменённый seed не проходит ворота.
+test('М2 Т4: изменённый seed → integrity fail', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'm2-seed-'));
+  try {
+    // Случай А: точечное изменение утверждения (валидация и счётчик целы, SHA плывёт).
+    const raw = fs.readFileSync(DEFAULT_SEED, 'utf8');
+    const badRaw = raw.replace('cognitive-systems researcher', 'cognitive-systems researcher!');
+    assert.notEqual(badRaw, raw);
+    const badPath = path.join(dir, 'seed-bad.json');
+    fs.writeFileSync(badPath, badRaw);
+    const r1 = checkIntegrity(badPath, DEFAULT_MANIFEST);
+    assert.equal(r1.ok, false);
+    assert.match(r1.errors.join('\n'), /3\/3|SHA/);
+    // Случай Б: удалённая запись (плывут счётчик и SHA).
+    const obj = JSON.parse(raw);
+    obj.records = obj.records.slice(1);
+    const cutPath = path.join(dir, 'seed-cut.json');
+    fs.writeFileSync(cutPath, JSON.stringify(obj));
+    const r2 = checkIntegrity(cutPath, DEFAULT_MANIFEST);
+    assert.equal(r2.ok, false);
+    assert.match(r2.errors.join('\n'), /2\/3|счётчик/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+// Т5: изменённый манифест не проходит ворота.
+test('М2 Т5: изменённый хэш/счётчик манифеста → integrity fail', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'm2-man-'));
+  try {
+    const raw = JSON.parse(fs.readFileSync(DEFAULT_MANIFEST, 'utf8'));
+    const badHash = { ...raw, canonical_content_sha256: '0'.repeat(64) };
+    const p1 = path.join(dir, 'manifest-bad-hash.json');
+    fs.writeFileSync(p1, JSON.stringify(badHash));
+    const r1 = checkIntegrity(DEFAULT_SEED, p1);
+    assert.equal(r1.ok, false);
+    assert.match(r1.errors.join('\n'), /3\/3|SHA/);
+    const badCount = { ...raw, canonical_record_count: 78 };
+    const p2 = path.join(dir, 'manifest-bad-count.json');
+    fs.writeFileSync(p2, JSON.stringify(badCount));
+    const r2 = checkIntegrity(DEFAULT_SEED, p2);
+    assert.equal(r2.ok, false);
+    assert.match(r2.errors.join('\n'), /2\/3|счётчик/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+// Т6: JSON детерминирован, схема/роль/носитель верны, без wall-clock.
+test('М2 Т6: два JSON-экспорта побайтово identical', () => {
+  const { json: a } = canonPack();
+  const { json: b } = canonPack();
+  assert.equal(a, b);
+  const pack = JSON.parse(a);
+  assert.equal(pack.schema, BOOTSTRAP_SCHEMA);
+  assert.equal(pack.schema, 'eiti-context-bootstrap/1');
+  assert.equal(pack.role, BOOTSTRAP_ROLE);
+  assert.equal(pack.role, 'PROVIDER_NEUTRAL_ORIENTATION');
+  assert.equal(pack.carrier_version, 'M1');
+  assert.equal(pack.canonical_content_sha256, canonSha);
+  assert.equal(pack.canonical_record_count, 79);
+  assert.equal(pack.as_of, seed.as_of);
+  assert.doesNotMatch(a, /generated_at/);
+  assert.deepEqual(Object.keys(pack.sections), [...BOOTSTRAP_SECTION_ORDER]);
+});
+// Т7: МД детерминирован и начинается с границы ориентации.
+test('М2 Т7: два MD-экспорта побайтово identical', () => {
+  const { md: a } = canonPack();
+  const { md: b } = canonPack();
+  assert.equal(a, b);
+  assert.match(a, /^# EITI CONTEXT BOOTSTRAP/);
+  for (const фраза of ['BOOTSTRAP!=CANON', 'UNKNOWN!=FALSE', 'MODEL_PROPOSAL!=USER_DECISION', 'CURRENT_STATE!=HISTORY',
+    'MODEL READING != MODEL OWNING MEMORY', 'details_pointer', 'приватные локаторы']) assert.ok(a.includes(фраза), фраза);
+  assert.doesNotMatch(a, /generated_at/);
+});
+// Т8: JSON и МД содержат те же ИД в том же порядке.
+test('М2 Т8: JSON и MD — одинаковый упорядоченный набор ИД', () => {
+  const { json, md } = canonPack();
+  const a = bootstrapRecordIds(JSON.parse(json));
+  const b = bootstrapMarkdownIds(md);
+  assert.deepEqual(b, a);
+  assert.equal(a.length, 70);
+  assert.equal(new Set(a).size, a.length);
+});
+// Т9: текущие identity/goal/priority присутствуют.
+test('М2 Т9: CURRENT identity/goal/priority на месте', () => {
+  const { json, md } = canonPack();
+  const pack = JSON.parse(json);
+  assert.deepEqual(pack.sections.who.map((r) => r.id), ['UID-01', 'UID-02', 'UID-03']);
+  assert.deepEqual(pack.sections.north_star.map((r) => r.id), ['UG-01', 'UG-02', 'UG-03', 'UM-01', 'UM-02']);
+  assert.deepEqual(pack.sections.current_priority.map((r) => r.id), ['CP-01', 'CP-02']);
+  for (const r of [...pack.sections.who, ...pack.sections.north_star, ...pack.sections.current_priority]) assert.equal(r.status, 'CURRENT');
+  for (const id of ['UID-01', 'UG-02', 'UM-02', 'CP-01', 'CP-02']) assert.ok(md.includes(id), id);
+});
+// Т10: OPEN/UNKNOWN preserved, без схлопывания в FALSE.
+test('М2 Т10: OPEN сохраняют OPEN/UNKNOWN', () => {
+  const { json } = canonPack();
+  const pack = JSON.parse(json);
+  const open = pack.sections.open;
+  assert.equal(open.length, 9);
+  const oq07 = open.find((r) => r.id === 'OQ-07');
+  assert.equal(oq07.status, 'UNKNOWN');
+  for (const r of open) assert.ok(['OPEN', 'UNKNOWN'].includes(r.status), r.id);
+  assert.ok(!open.some((r) => r.status === 'FALSE' || r.status === 'CURRENT'));
+  // UNKNOWN активные линии и ограничения тоже явные.
+  const rest = [...pack.sections.active_threads, ...pack.sections.known_limitations];
+  assert.equal(rest.find((r) => r.id === 'AT-03').status, 'UNKNOWN');
+  assert.equal(rest.find((r) => r.id === 'KL-HAP-SRC').status, 'UNKNOWN');
+});
+// Т11: SUPERSEDED не выдаются за текущее; HISTORICAL не продвигаются.
+test('М2 Т11: SUPERSEDED/HISTORICAL исключены из текущих секций', () => {
+  const { json } = canonPack();
+  const pack = JSON.parse(json);
+  const ids = bootstrapRecordIds(pack);
+  for (const h of ['HIST-01', 'UID-04', 'UG-04', 'UG-05', 'UG-06', 'UG-07', 'HIST-02', 'UM-03', 'AT-02']) assert.ok(!ids.includes(h), h);
+  for (const key of BOOTSTRAP_SECTION_ORDER) for (const r of pack.sections[key]) assert.ok(r.status !== 'SUPERSEDED' && r.status !== 'HISTORICAL', r.id);
+});
+// Т12: DEFERRED остаются отложенными.
+test('М2 Т12: DEFERRED явные и не переписаны', () => {
+  const { json, md } = canonPack();
+  const pack = JSON.parse(json);
+  const df = pack.sections.next.filter((r) => r.type === 'DEFERRED_ITEM');
+  assert.deepEqual(df.map((r) => r.id), ['DF-01', 'DF-02', 'DF-03', 'DF-04', 'DF-05', 'DF-06']);
+  for (const r of df) assert.equal(r.status, 'DEFERRED');
+  // Отложенные живут только в next, а не в current/open/known.
+  for (const key of ['who', 'north_star', 'current_priority', 'active_threads', 'known', 'open']) {
+    for (const r of pack.sections[key]) assert.ok(!r.id.startsWith('DF-'), r.id);
+  }
+  assert.ok(md.includes('Явно отложено (DEFERRED'));
+});
+// Т13: provenance переживает проекцию дословно.
+test('М2 Т13: provenance сохранён дословно', () => {
+  const { json } = canonPack();
+  const pack = JSON.parse(json);
+  for (const key of BOOTSTRAP_SECTION_ORDER) {
+    for (const r of pack.sections[key]) {
+      assert.equal(r.provenance, byId.get(r.id).provenance, r.id);
+    }
+  }
+  // Точечные якоря против повышения AI_SUMMARY до USER_STATEMENT.
+  const flat = new Map();
+  for (const key of BOOTSTRAP_SECTION_ORDER) for (const r of pack.sections[key]) flat.set(r.id, r);
+  assert.equal(flat.get('UID-01').provenance, 'USER_STATEMENT_2026-09-29');
+  assert.equal(flat.get('KL-HAP-SRC').provenance, 'AI_SUMMARY');
+  assert.equal(flat.get('NA-01').provenance, 'AI_SUMMARY');
+  assert.equal(flat.get('RR-SM-01').provenance, 'SOURCE_DOC');
+});
+// Т14: type/status/source/scope/updated_at/details_pointer/statement не переписаны.
+test('М2 Т14: type/status/source не переписаны, эпистемология не схлопнута', () => {
+  const { json } = canonPack();
+  const pack = JSON.parse(json);
+  for (const key of BOOTSTRAP_SECTION_ORDER) {
+    for (const r of pack.sections[key]) {
+      const o = byId.get(r.id);
+      assert.equal(r.type, o.type, r.id);
+      assert.equal(r.status, o.status, r.id);
+      assert.equal(r.source, o.source, r.id);
+      assert.equal(r.scope, o.scope, r.id);
+      assert.equal(r.updated_at, o.updated_at, r.id);
+      assert.equal(r.details_pointer, o.details_pointer, r.id);
+      assert.equal(r.statement, o.statement, r.id);
+      assert.deepEqual(Object.keys(r).sort(), ['details_pointer', 'id', 'provenance', 'scope', 'source', 'statement', 'status', 'type', 'updated_at']);
+    }
+  }
+  // Точечные якоря против схлопывания.
+  const flat = new Map();
+  for (const key of BOOTSTRAP_SECTION_ORDER) for (const r of pack.sections[key]) flat.set(r.id, r);
+  assert.equal(flat.get('OQ-07').status, 'UNKNOWN');
+  assert.equal(flat.get('RR-SM-01').status, 'ENGINEERING_RESULT');
+  assert.equal(flat.get('RR-FM16').status, 'RESEARCH_RESULT');
+  assert.equal(flat.get('KL-SM-03').status, 'OPEN');
+  assert.equal(flat.get('NA-01').status, 'OPEN');
+});
+// Т15: без приватных локаторов и секретов.
+test('М2 Т15: нет приватных локаторов и секретов', () => {
+  const { json, md } = canonPack();
+  for (const text of [json, md]) {
+    assert.doesNotMatch(text, /notion\.so|notion\.site|app\.notion\.com|docs\.google\.com|drive\.google\.com/i);
+    assert.doesNotMatch(text, /\b[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}\b/i);
+    assert.doesNotMatch(text, /private-memory|source-locators|alias:/i);
+    assert.doesNotMatch(text, /api[_-]?key|apikey|token|passwd|password|cookie|secret|bearer/i);
+    assert.doesNotMatch(text, /https?:\/\//i);
+  }
+});
+// Т16: существующие команды инструмента не сломаны рефакторингом.
+test('М2 Т16: validate/stats/search/render/export-lab работают как раньше', () => {
+  assert.equal(validate(seed).ok, true);
+  const s = stats(seed);
+  assert.equal(s.records, 79);
+  assert.ok(search(seed, 'Кто такой Руслан?').length >= 1);
+  assert.ok(search(seed, 'Что остаётся открытым?').length >= 1);
+  const md = renderStartView(seed);
+  assert.equal(md, fs.readFileSync(path.join(ROOT, 'docs/memory/CURRENT_ORIENTATION.md'), 'utf8'));
+  const lab = exportLab(seed, {});
+  const lines = lab.trim().split('\n');
+  assert.equal(JSON.parse(lines[0]).manifest.format, 'wiz-ref-jsonl/1');
+  assert.equal(lines.length, 1 + seed.records.length + seed.records.reduce((n, r) => n + r.relations.filter((x) => x.rel !== 'SUPERSEDED_BY').length, 0));
+  // Чистая проверка целостности тоже пропускает канон.
+  assert.equal(verifyIntegrity(seed, canonSha, manifest).ok, true);
+  // Селектор детерминирован и отдаёт 70 записей.
+  const a = selectBootstrapSections(seed);
+  const b = selectBootstrapSections(JSON.parse(JSON.stringify(seed)));
+  assert.deepEqual(a, b);
+  assert.equal(Object.values(a).flat().length, 70);
 });

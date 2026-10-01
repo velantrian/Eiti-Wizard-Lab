@@ -6,17 +6,23 @@
 //   node tools/memory/seed_tool.mjs render-start-view [seed.json] [--out docs/memory/CURRENT_ORIENTATION.md]
 //   node tools/memory/seed_tool.mjs search "<query>" [--k 5] [--json] [--seed seed.json]
 //   node tools/memory/seed_tool.mjs export-lab [seed.json] [--out file.private.jsonl] [--locators private-memory/source-locators.private.json]
+//   node tools/memory/seed_tool.mjs export-context --format json|md [--out <path>] [--seed seed.json] [--manifest manifest.json]
 //
+// M2: команда export-context строит провайдер-нейтральный ориентационный пакет
+// eiti-context-bootstrap/1 только из канона + манифеста. Без сети, моделей, эмбеддингов.
 // Retrieval is LOCAL and DETERMINISTIC (RU+EN keyword scoring + a small, documented intent lexicon).
 // No model / LLM / embedding calls. export-lab writes the EXISTING Lab import format `wiz-ref-jsonl/1`
 // (docs/REFERENCE_MEMORY.md §3), to be imported manually via Memory → 📖 Reference memory → Import JSONL.
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(HERE, '..', '..');
 export const DEFAULT_SEED = path.join(ROOT, 'docs', 'memory', 'ruslan-orientation-seed.json');
+// Путь к манифесту носителя непрерывности (М1). Ворота целостности М2 читают его, но не меняют.
+export const DEFAULT_MANIFEST = path.join(ROOT, 'docs', 'memory', 'manifest.json');
 
 export const TYPES = ['USER_IDENTITY', 'USER_GOAL', 'USER_MOTIVATION', 'CURRENT_PRIORITY', 'ACTIVE_THREAD', 'RESEARCH_RESULT',
   'OPEN_QUESTION', 'KNOWN_LIMITATION', 'PROJECT_POINTER', 'SOURCE_POINTER', 'INVARIANT', 'DEFERRED_ITEM', 'NEXT_ACTION'];
@@ -153,12 +159,48 @@ export function search(seed, query, { k = 5, minRatio = 0.4 } = {}) {
   return scored.filter(x => x.score >= minRatio * top).slice(0, k);
 }
 
+// ── М2: общий детерминированный селектор ориентации ─────────────────────────
+// Правило отбора: фильтр по типу + исключение HISTORICAL/SUPERSEDED.
+// Порядок внутри каждой секции — порядок канона (seed records), детерминирован.
+// SUPERSEDED не выдаются за текущее; HISTORICAL не продвигаются;
+// DEFERRED остаются DEFERRED; UNKNOWN остаются UNKNOWN.
+// Селектор используют и render-start-view, и export-context (один источник отбора).
+export function selectBootstrapSections(seed) {
+  const R = Array.isArray(seed && seed.records) ? seed.records : [];
+  // Исключаем историю из текущих секций, остальное сохраняем дословно.
+  const isCurrent = (r) => r.status !== 'HISTORICAL' && r.status !== 'SUPERSEDED';
+  const byTypes = (...types) => R.filter((r) => types.includes(r.type) && isCurrent(r));
+  // NEXT_ACTION идут первыми, затем явные DEFERRED_ITEM (оба в порядке канона).
+  const nextCombined = [...R.filter((r) => r.type === 'NEXT_ACTION' && isCurrent(r)),
+    ...R.filter((r) => r.type === 'DEFERRED_ITEM' && isCurrent(r))];
+  return {
+    who: byTypes('USER_IDENTITY'),
+    north_star: byTypes('USER_GOAL', 'USER_MOTIVATION'),
+    current_priority: byTypes('CURRENT_PRIORITY'),
+    active_threads: byTypes('ACTIVE_THREAD'),
+    known: byTypes('RESEARCH_RESULT'),
+    known_limitations: byTypes('KNOWN_LIMITATION'),
+    open: byTypes('OPEN_QUESTION'),
+    next: nextCombined,
+    projects: byTypes('PROJECT_POINTER'),
+    sources: byTypes('SOURCE_POINTER'),
+    invariants: byTypes('INVARIANT'),
+  };
+}
+
+// Проекция записи канона в пакет: только 9 сохраняемых полей, дословно.
+// Связи/keywords/certainty не включаем: связи нарисованы ИИ (см. relations_note),
+// keywords — локальный поисковый индекс, а не часть схемы.
+export function projectRecord(r) {
+  return { id: r.id, type: r.type, status: r.status, statement: r.statement, source: r.source,
+    provenance: r.provenance, scope: r.scope, updated_at: r.updated_at, details_pointer: r.details_pointer };
+}
+
 // ── render-start-view (deterministic) ──────────────────────────────────────
 function tag(r) { return `\`${r.id} · ${r.status} · ${r.source}\``; }
 function line(r) { return `- ${r.statement} ${tag(r)}`; }
 export function renderStartView(seed) {
-  const R = seed.records;
-  const pick = (f) => R.filter(f);
+  const sec = selectBootstrapSections(seed);
   const S = new Map((seed.sources || []).map(s => [s.alias, s]));
   const out = [];
   out.push('# CURRENT ORIENTATION — Руслан / Velantrim');
@@ -167,41 +209,41 @@ export function renderStartView(seed) {
   out.push('> ORIENTATION, не архитектурный authority. Теги: `id · status · source`. ' + seed.principle);
   out.push('');
   out.push('## WHO');
-  pick(r => r.type === 'USER_IDENTITY' && r.status === 'CURRENT').forEach(r => out.push(line(r)));
+  sec.who.forEach(r => out.push(line(r)));
   out.push('');
   out.push('## NORTH STAR');
-  pick(r => r.type === 'USER_GOAL' && r.status === 'CURRENT').forEach(r => out.push(line(r)));
-  pick(r => r.type === 'USER_MOTIVATION' && r.status === 'CURRENT' && /USER_MOTIVATION, НЕ/.test(r.statement)).forEach(r => out.push(line(r)));
+  sec.north_star.filter(r => r.type === 'USER_GOAL').forEach(r => out.push(line(r)));
+  sec.north_star.filter(r => r.type === 'USER_MOTIVATION' && /USER_MOTIVATION, НЕ/.test(r.statement)).forEach(r => out.push(line(r)));
   out.push('');
   out.push('## CURRENT PRIORITY');
-  pick(r => r.type === 'USER_MOTIVATION' && r.status === 'CURRENT' && !/USER_MOTIVATION, НЕ/.test(r.statement)).forEach(r => out.push(line(r)));
-  pick(r => r.type === 'CURRENT_PRIORITY').forEach(r => out.push(line(r)));
-  pick(r => r.id === 'INV-06').forEach(r => out.push(line(r)));
+  sec.north_star.filter(r => r.type === 'USER_MOTIVATION' && !/USER_MOTIVATION, НЕ/.test(r.statement)).forEach(r => out.push(line(r)));
+  sec.current_priority.forEach(r => out.push(line(r)));
+  sec.invariants.filter(r => r.id === 'INV-06').forEach(r => out.push(line(r)));
   out.push('');
   out.push('## ACTIVE THREAD');
-  pick(r => r.type === 'ACTIVE_THREAD' && r.status === 'CURRENT').forEach(r => out.push(line(r)));
-  pick(r => r.type === 'KNOWN_LIMITATION' && r.id.startsWith('KL-HAP')).forEach(r => out.push(line(r)));
-  const unk = pick(r => r.type === 'ACTIVE_THREAD' && r.status === 'UNKNOWN');
+  sec.active_threads.filter(r => r.status === 'CURRENT').forEach(r => out.push(line(r)));
+  sec.known_limitations.filter(r => r.id.startsWith('KL-HAP')).forEach(r => out.push(line(r)));
+  const unk = sec.active_threads.filter(r => r.status === 'UNKNOWN');
   if (unk.length) { out.push('- Линии из источников, актуальность которых сегодня НЕ подтверждена (STORED != CURRENT):'); unk.forEach(r => out.push('  ' + line(r))); }
   out.push('');
   out.push('## KNOWN');
-  pick(r => r.type === 'RESEARCH_RESULT').forEach(r => out.push(line(r)));
-  pick(r => r.type === 'KNOWN_LIMITATION' && !r.id.startsWith('KL-HAP')).forEach(r => out.push(line(r)));
+  sec.known.forEach(r => out.push(line(r)));
+  sec.known_limitations.filter(r => !r.id.startsWith('KL-HAP')).forEach(r => out.push(line(r)));
   out.push('');
   out.push('## OPEN');
-  pick(r => r.type === 'OPEN_QUESTION').forEach(r => out.push(line(r)));
+  sec.open.forEach(r => out.push(line(r)));
   out.push('');
   out.push('## NEXT');
-  pick(r => r.type === 'NEXT_ACTION').forEach(r => out.push(line(r)));
-  out.push('- Отложено (не начинать без явного GO): ' + pick(r => r.type === 'DEFERRED_ITEM').map(r => `\`${r.id}\``).join(', ') + ' — см. seed.');
+  sec.next.filter(r => r.type === 'NEXT_ACTION').forEach(r => out.push(line(r)));
+  out.push('- Отложено (не начинать без явного GO): ' + sec.next.filter(r => r.type === 'DEFERRED_ITEM').map(r => `\`${r.id}\``).join(', ') + ' — см. seed.');
   out.push('');
   out.push('## DETAILS (detail on demand)');
-  pick(r => r.type === 'SOURCE_POINTER').forEach(r => {
+  sec.sources.forEach(r => {
     const s = S.get(r.source);
     out.push(`- ${r.statement} ${tag(r)}${s ? ` — reachable: ${s.reachable}` : ''}`);
   });
-  out.push('- Проекты: ' + pick(r => r.type === 'PROJECT_POINTER').map(r => r.statement.split(' — ')[0] + ` (\`${r.id}\`)`).join(' · ') + ' — роли в паспорте §10 / seed.');
-  out.push('- Правила чтения (verbatim): ' + pick(r => r.type === 'INVARIANT' && /^INV-0[1-4]$/.test(r.id)).map(r => r.statement).join('; '));
+  out.push('- Проекты: ' + sec.projects.map(r => r.statement.split(' — ')[0] + ` (\`${r.id}\`)`).join(' · ') + ' — роли в паспорте §10 / seed.');
+  out.push('- Правила чтения (verbatim): ' + sec.invariants.filter(r => /^INV-0[1-4]$/.test(r.id)).map(r => r.statement).join('; '));
   out.push('');
   return out.join('\n');
 }
@@ -265,14 +307,183 @@ export function exportLab(seed, locators = {}) {
   return lines.map(l => JSON.stringify(l)).join('\n') + '\n';
 }
 
+// ── М2: провайдер-нейтральный контекст (eiti-context-bootstrap/1) ─────────────
+// Источник — только канон + манифест. Без сети, моделей, эмбеддингов, провайдеров.
+// Детерминизм: тот же seed+manifest+tool дают побайтово одинаковые JSON и МД.
+// Без wall-clock generated_at: as_of берём из seed.as_of.
+export const BOOTSTRAP_SCHEMA = 'eiti-context-bootstrap/1';
+export const BOOTSTRAP_ROLE = 'PROVIDER_NEUTRAL_ORIENTATION';
+export const BOOTSTRAP_CARRIER = 'M1';
+// Фиксированные правила чтения пакета. Порядок фиксирован для детерминизма.
+export const INTERPRETATION_RULES = [
+  'BOOTSTRAP!=CANON: производная ориентация, пересобирается из канона; не источник истины.',
+  'BOOTSTRAP!=FULL HISTORY: HISTORICAL/SUPERSEDED исключены из текущих секций; CURRENT_STATE!=HISTORY.',
+  'BOOTSTRAP!=MEMORY ADMISSION: чтение не записывает память; ADMISSION_IMPLEMENTATION=ABSENT.',
+  'BOOTSTRAP!=USER DECISION: MODEL_PROPOSAL!=USER_DECISION; AI_SUMMARY!=USER_STATEMENT.',
+  'UNKNOWN!=FALSE; NOT RETRIEVED!=ABSENT; HYPOTHESIS!=FACT.',
+  'RESEARCH_RESULT!=VERIFIED_TRUTH; ENGINEERING_RESULT действует только в своём scope.',
+  'SUPERSEDED!=DELETED: superseded/history живут в каноне, здесь исключены из current.',
+  'MODEL READING != MODEL OWNING MEMORY; PROVIDER != MEMORY_OWNER.',
+  'Сохранять id/type/status/source/provenance/scope/updated_at/details_pointer дословно.',
+  'Детали — только по details_pointer; приватные локаторы не разрешать.',
+];
+// Порядок секций фиксирован для детерминизма JSON и МД.
+export const BOOTSTRAP_SECTION_ORDER = ['who', 'north_star', 'current_priority', 'active_threads', 'known',
+  'known_limitations', 'open', 'next', 'projects', 'sources', 'invariants'];
+
+// Загрузка манифеста носителя (только чтение для ворот целостности).
+export function loadManifest(p = DEFAULT_MANIFEST) { return JSON.parse(fs.readFileSync(p, 'utf8')); }
+// SHA-256 файла канона по байтам (без нормализации — строгое сравнение с манифестом).
+export function sha256File(p) { return crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'); }
+
+// Чистая проверка трёх условий (без чтения файлов — для тестов и переиспользования).
+// Возвращает ok=false и явные ошибки при любом нарушении; никакого silent repair.
+export function verifyIntegrity(seed, fileHash, manifest) {
+  const errors = [];
+  const v = validate(seed);
+  if (!v.ok) errors.push(`проверка 1/3 (валидация seed): INVALID — ${v.errors.length} ошибок (${v.errors.slice(0, 3).join('; ')}${v.errors.length > 3 ? '…' : ''})`);
+  const actual = Array.isArray(seed && seed.records) ? seed.records.length : null;
+  const expected = manifest && manifest.canonical_record_count;
+  if (actual !== expected) errors.push(`проверка 2/3 (счётчик записей): seed содержит ${actual}, манифест требует ${expected}`);
+  const gotHash = fileHash;
+  const wantHash = manifest && manifest.canonical_content_sha256;
+  if (gotHash !== wantHash) errors.push(`проверка 3/3 (SHA-256 содержимого): файл ${gotHash}, манифест ${wantHash}`);
+  return { ok: errors.length === 0, errors };
+}
+
+// Ворота целостности с чтением файлов. FAIL CLOSED: при любой ошибке ok=false.
+export function checkIntegrity(seedPath = DEFAULT_SEED, manifestPath = DEFAULT_MANIFEST) {
+  let manifest = null;
+  let seed = null;
+  let fileHash = null;
+  try {
+    manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  } catch (e) {
+    return { ok: false, errors: [`манифест не прочитан (${manifestPath}): ${e.message}`], seed, manifest, fileHash };
+  }
+  try {
+    fileHash = sha256File(seedPath);
+  } catch (e) {
+    return { ok: false, errors: [`файл seed не прочитан (${seedPath}): ${e.message}`], seed, manifest, fileHash };
+  }
+  try {
+    seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+  } catch (e) {
+    return { ok: false, errors: [`seed не разобран как JSON (${seedPath}): ${e.message}`], seed, manifest, fileHash };
+  }
+  const verdict = verifyIntegrity(seed, fileHash, manifest);
+  return { ok: verdict.ok, errors: verdict.errors, seed, manifest, fileHash };
+}
+
+// Сборка объекта пакета (порядок ключей и секций фиксирован).
+export function buildBootstrap(seed, manifest, fileHash) {
+  const selected = selectBootstrapSections(seed);
+  const sections = {};
+  for (const key of BOOTSTRAP_SECTION_ORDER) sections[key] = (selected[key] || []).map(projectRecord);
+  return {
+    schema: BOOTSTRAP_SCHEMA,
+    role: BOOTSTRAP_ROLE,
+    carrier_version: (manifest && manifest.carrier_version) || BOOTSTRAP_CARRIER,
+    canonical_content_sha256: (manifest && manifest.canonical_content_sha256) || fileHash,
+    canonical_record_count: (manifest && manifest.canonical_record_count) ?? seed.records.length,
+    seed_version: seed.seed_version,
+    as_of: seed.as_of,
+    interpretation_rules: [...INTERPRETATION_RULES],
+    sections,
+  };
+}
+// Упорядоченный список ИД записей пакета (порядок секций + порядок канона внутри).
+export function bootstrapRecordIds(bootstrap) {
+  const ids = [];
+  for (const key of BOOTSTRAP_SECTION_ORDER) for (const r of (bootstrap.sections[key] || [])) ids.push(r.id);
+  return ids;
+}
+// JSON-вывод: стабильный stringify с отступом 2 и концевым переводом строки.
+export function renderBootstrapJson(seed, manifest, fileHash) {
+  return JSON.stringify(buildBootstrap(seed, manifest, fileHash), null, 2) + '\n';
+}
+// Строка одной записи в МД: первая строка несёт ИД для извлечения тем же порядком, что в JSON.
+function bootstrapMdRecord(r) {
+  const first = `- ${r.id} [${r.type} · ${r.status}] ${r.statement}`;
+  const second = `  - источник: ${r.source}; происхождение: ${r.provenance}; охват: ${r.scope}; обновлено: ${r.updated_at}; детали: ${r.details_pointer}`;
+  return first + '\n' + second;
+}
+// МД-вывод: те же ИД и тот же порядок, что в JSON; без выдуманных утверждений.
+export function renderBootstrapMarkdown(seed, manifest, fileHash) {
+  const pack = buildBootstrap(seed, manifest, fileHash);
+  const out = [];
+  out.push('# EITI CONTEXT BOOTSTRAP — провайдер-нейтральная ориентация');
+  out.push('> Граница ориентации: это производный пакет для чтения любым ИИ, а не абсолютная истина.');
+  out.push('> BOOTSTRAP!=CANON: пересобирается из канона; канон — только docs/memory/ruslan-orientation-seed.json.');
+  out.push('> BOOTSTRAP!=FULL HISTORY: HISTORICAL/SUPERSEDED исключены из текущих секций; CURRENT_STATE!=HISTORY.');
+  out.push('> BOOTSTRAP!=MEMORY ADMISSION: чтение не записывает память; BOOTSTRAP!=USER DECISION.');
+  out.push('> Сохраняйте status/provenance/source/type дословно. UNKNOWN!=FALSE. MODEL_PROPOSAL!=USER_DECISION.');
+  out.push('> MODEL READING != MODEL OWNING MEMORY. Детали — только по details_pointer; приватные локаторы не разрешать.');
+  out.push('>');
+  out.push(`> Метаданные: schema=${pack.schema}; role=${pack.role}; carrier=${pack.carrier_version}; canon_sha=${pack.canonical_content_sha256}; canon_count=${pack.canonical_record_count}; seed_version=${pack.seed_version}; as_of=${pack.as_of}.`);
+  out.push('');
+  const titles = { who: 'WHO', north_star: 'NORTH_STAR', current_priority: 'CURRENT_PRIORITY',
+    active_threads: 'ACTIVE_THREADS', known: 'KNOWN', known_limitations: 'KNOWN_LIMITATIONS',
+    open: 'OPEN', next: 'NEXT', projects: 'PROJECTS', sources: 'SOURCES', invariants: 'INVARIANTS' };
+  for (const key of BOOTSTRAP_SECTION_ORDER) {
+    out.push(`## ${titles[key]}`);
+    const rows = pack.sections[key] || [];
+    if (key === 'active_threads') {
+      const current = rows.filter((r) => r.status === 'CURRENT');
+      const rest = rows.filter((r) => r.status !== 'CURRENT');
+      current.forEach((r) => out.push(bootstrapMdRecord(r)));
+      if (rest.length) {
+        out.push('- Линии, актуальность которых сегодня НЕ подтверждена (STORED != CURRENT, статус сохранён):');
+        rest.forEach((r) => out.push(bootstrapMdRecord(r)));
+      }
+    } else if (key === 'next') {
+      const steps = rows.filter((r) => r.type === 'NEXT_ACTION');
+      const deferred = rows.filter((r) => r.type !== 'NEXT_ACTION');
+      steps.forEach((r) => out.push(bootstrapMdRecord(r)));
+      if (deferred.length) {
+        out.push('- Явно отложено (DEFERRED, не начинать без явного GO; статус сохранён):');
+        deferred.forEach((r) => out.push(bootstrapMdRecord(r)));
+      }
+    } else {
+      rows.forEach((r) => out.push(bootstrapMdRecord(r)));
+    }
+    out.push('');
+  }
+  return out.join('\n');
+}
+
+// Извлечение упорядоченных ИД из МД-пакета (первая строка каждой записи).
+export function bootstrapMarkdownIds(md) {
+  const ids = [];
+  for (const m of String(md).matchAll(/^- ([A-Z0-9-]+) \[/gm)) ids.push(m[1]);
+  return ids;
+}
+
 // ── CLI ────────────────────────────────────────────────────────────────────
 function arg(argv, name, def) { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : def; }
 function positional(argv) { const out = []; for (let i = 0; i < argv.length; i++) { if (argv[i].startsWith('--')) { if (!['--json'].includes(argv[i])) i++; continue; } out.push(argv[i]); } return out; }
 export function main(argv) {
   const [cmd, ...rest] = argv;
   const pos = positional(rest);
-  const seedPath = arg(rest, '--seed', null) || (cmd !== 'search' && pos[0]) || DEFAULT_SEED;
-  if (!cmd || cmd === 'help' || cmd === '--help') { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 8).join('\n')); return 0; }
+  const seedPath = arg(rest, '--seed', null) || (cmd !== 'search' && cmd !== 'export-context' && pos[0]) || DEFAULT_SEED;
+  // Справка: строки использования из шапки файла (включая export-context).
+  if (!cmd || cmd === 'help' || cmd === '--help') { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 9).join('\n')); return 0; }
+  // М2: ворота целостности до любого экспорта (FAIL CLOSED, без silent repair).
+  if (cmd === 'export-context') {
+    const format = arg(rest, '--format', null);
+    if (format !== 'json' && format !== 'md') { console.error('usage: export-context --format json|md [--out <path>] [--seed seed.json] [--manifest manifest.json]'); return 2; }
+    const ctxSeedPath = arg(rest, '--seed', null) || pos[0] || DEFAULT_SEED;
+    const manifestPath = arg(rest, '--manifest', null) || DEFAULT_MANIFEST;
+    const gate = checkIntegrity(ctxSeedPath, manifestPath);
+    if (!gate.ok) { gate.errors.forEach((e) => console.error('INTEGRITY FAIL: ' + e)); return 1; }
+    const text = format === 'json'
+      ? renderBootstrapJson(gate.seed, gate.manifest, gate.fileHash)
+      : renderBootstrapMarkdown(gate.seed, gate.manifest, gate.fileHash);
+    const out = arg(rest, '--out', null);
+    if (out) { fs.writeFileSync(out, text); console.log(`wrote ${out} (${bootstrapRecordIds(buildBootstrap(gate.seed, gate.manifest, gate.fileHash)).length} records, format ${format})`); }
+    else process.stdout.write(text);
+    return 0;
+  }
   const seed = loadSeed(seedPath);
   if (cmd === 'validate') {
     const v = validate(seed);

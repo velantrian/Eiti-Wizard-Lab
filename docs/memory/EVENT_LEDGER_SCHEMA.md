@@ -37,7 +37,7 @@
 
 ## 3. Конверт (envelope)
 
-| Поле | Обязательность | Допустимые значения в М2.1.1 |
+| Поле | Обязательность | Допустимые значения в M2.2a / schema 2.2.0a |
 |---|---|---|
 | `event_id` | да | `^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`, уникален в журнале |
 | `timestamp` | да | ISO8601 `YYYY-MM-DDTHH:MM:SS(.sss)?(Z\|±HH:MM)`. Только метаданные |
@@ -52,7 +52,7 @@
 | `base_commit_sha` | да | 40 hex (полный SHA коммита). В М2.1.1 проверяется только формат |
 | `prior_event_id` | null для первого | Только физический append-порядок: null/отсутствует у первой строки, далее — непосредственно предыдущий `event_id` |
 | `applies_to_event_id` | для lifecycle event — да | Semantic parent, обязан существовать раньше в журнале. У `OBSERVE` отсутствует/null; никогда не заменяется `prior_event_id` |
-| `conflict_peer_event_id` | только `CONFLICT_MARK` | Обязателен только для явной метки конфликта и указывает на другое предыдущее событие |
+| `conflict_peer_event_id` | только `CONFLICT_MARK` | Обязателен только для явной метки конфликта; указывает на другое предыдущее событие с тем же semantic OBSERVE root, вычисляемым по `applies_to_event_id`; только cross-reference |
 | `proposal_content_kind` | только `PROPOSE` | Единственное значение `FULL_RECORD`; это артефакт предлагаемой записи, не Canon CREATE/UPDATE/PATCH |
 | `admission_reason` | нет | Опциональная строка-причина. Для OBSERVED может отсутствовать |
 | `writer_mode` | да | только `READ_WRITE_PR` (значение M1 `default_write_mode`) |
@@ -203,9 +203,9 @@
 
 `* PROPOSE` допустим только если в lineage уже есть ancestor `CANDIDATE`. То же правило применяется к каждому PROPOSE независимо от текущего parent. `OBSERVED→PROPOSED` и `CANDIDATE→CANDIDATE` запрещены. Из non-superseded ancestor допустимо начать другую ветвь; у superseded event детей быть не может.
 
-Tip — event без semantic child. Current tip — tip, не имеющий state `SUPERSEDED`. Предыдущий proposal с child — история, не open proposal.
+Tip — event без consuming semantic child (`CANDIDATE`, `PROPOSE`, `HOLD` или `SUPERSEDE`). `CONFLICT_MARK` — non-consuming annotation: `applies_to_event_id` ссылается на одну сторону, а `conflict_peer_event_id` — только cross-reference на другую; ни одна ссылка не закрывает proposal tip. Current tip — tip, не имеющий state `SUPERSEDED`. HOLD/SUPERSEDE и другие consuming transitions обновляют branch status обычным образом.
 
-`project-proposals` — read-only projection с категориями `ACTIVE_CANDIDATE`, `ACTIVE_PROPOSED`, `HOLD`, `EXPLICIT_CONFLICT`, `MULTIPLE_OPEN_PROPOSALS_WARNING`, `SUPERSEDED`. Warning появляется при более чем одном current `PROPOSED` tip от одного `OBSERVE` root. Warning не равен conflict, не разрешает его и не имеет admission authority; конфликт существует только после явного `CONFLICT_MARK`.
+`project-proposals` — read-only projection с категориями `ACTIVE_CANDIDATE`, `ACTIVE_PROPOSED`, `HOLD`, `EXPLICIT_CONFLICT`, `MULTIPLE_OPEN_PROPOSALS_WARNING`, `SUPERSEDED`. Warning появляется при более чем одном current `PROPOSED` tip от одного `OBSERVE` root; он остаётся рядом с `EXPLICIT_CONFLICT`, пока обе ветви открыты. `CONFLICT_MARK` не выбирает победителя и не имеет admission authority; конфликт существует только после явного `CONFLICT_MARK`.
 
 ## 6. Команды инструмента
 

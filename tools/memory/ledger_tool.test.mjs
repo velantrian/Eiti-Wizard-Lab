@@ -1121,7 +1121,16 @@ function подготовитьСостояние(журнал, состояни
   };
   for (const [index, nextState] of маршруты[состояние].entries()) {
     const id = `evt-${префикс}-path-${index}`;
-    const child = событиеЦикла(id, видДляСостояния(nextState), nextState, prior, parentId);
+    let overrides = {};
+    if (nextState === 'CONFLICT') {
+      const peerId = `evt-${префикс}-conflict-peer`;
+      const peer = событиеЦикла(peerId, 'CANDIDATE', 'CANDIDATE', prior, корень);
+      итог = appendEvent(peer, { ledgerPath: журнал });
+      assert.equal(итог.ok, true, `setup conflict peer: ${итог.errors.join(' | ')}`);
+      prior = peerId;
+      overrides = { conflict_peer_event_id: peerId };
+    }
+    const child = событиеЦикла(id, видДляСостояния(nextState), nextState, prior, parentId, overrides);
     итог = appendEvent(child, { ledgerPath: журнал });
     assert.equal(итог.ok, true, `setup ${состояние}/${nextState}: ${итог.errors.join(' | ')}`);
     parentId = id;
@@ -1145,7 +1154,15 @@ test('M2.2a: каждый разрешённый lifecycle-переход при
       const журнал = временныйЖурнал();
       const source = подготовитьСостояние(журнал, from, `allow-${from}-${to}`);
       const id = `evt-allow-${from}-${to}`;
-      const событие = событиеЦикла(id, видДляСостояния(to), to, source.prior, source.parentId);
+      let conflictPeerId;
+      if (to === 'CONFLICT') {
+        conflictPeerId = `evt-allow-${from}-${to}-peer`;
+        const peer = событиеЦикла(conflictPeerId, 'CANDIDATE', 'CANDIDATE', source.prior, `evt-allow-${from}-${to}-root`);
+        const peerResult = appendEvent(peer, { ledgerPath: журнал });
+        assert.equal(peerResult.ok, true, `setup peer ${from} -> ${to}: ${peerResult.errors.join(' | ')}`);
+      }
+      const overrides = conflictPeerId ? { conflict_peer_event_id: conflictPeerId } : {};
+      const событие = событиеЦикла(id, видДляСостояния(to), to, conflictPeerId || source.prior, source.parentId, overrides);
       const результат = appendEvent(событие, { ledgerPath: журнал });
       assert.equal(результат.ok, true, `${from} -> ${to}: ${результат.errors.join(' | ')}`);
       assert.equal(loadLedger(журнал).ok, true);
@@ -1231,6 +1248,111 @@ test('M2.2a: semantic parent differs from physical prior and divergent open prop
   assert.equal(board.categories.EXPLICIT_CONFLICT.length, 0, 'divergence is not an explicit conflict');
 });
 
+test('M2.2a: CONFLICT_MARK requires a distinct peer with the same semantic OBSERVE root', () => {
+  const журнал = временныйЖурнал();
+  let prior = null;
+  const append = (id, kind, state, parent = null, peer = undefined) => {
+    const overrides = peer === undefined ? {} : { conflict_peer_event_id: peer };
+    const event = событиеЦикла(id, kind, state, prior, parent, overrides);
+    const result = appendEvent(event, { ledgerPath: журнал });
+    assert.equal(result.ok, true, `${id}: ${result.errors.join(' | ')}`);
+    prior = id;
+    return id;
+  };
+
+  const root = append('evt-conflict-root', 'OBSERVE', 'OBSERVED');
+  const candidateA = append('evt-conflict-candidate-a', 'CANDIDATE', 'CANDIDATE', root);
+  const proposalA = append('evt-conflict-proposal-a', 'PROPOSE', 'PROPOSED', candidateA);
+  const candidateB = append('evt-conflict-candidate-b', 'CANDIDATE', 'CANDIDATE', root);
+  const proposalB = append('evt-conflict-proposal-b', 'PROPOSE', 'PROPOSED', candidateB);
+  const marker = append('evt-conflict-valid', 'CONFLICT_MARK', 'CONFLICT', proposalA, proposalB);
+  const validState = loadLedger(журнал);
+  assert.equal(validState.ok, true, validState.errors.join(' | '));
+  const validMarker = validState.events.find(event => event.event_id === marker).parsed.envelope;
+  assert.equal(validMarker.applies_to_event_id, proposalA);
+  assert.equal(validMarker.conflict_peer_event_id, proposalB);
+  assert.equal(validMarker.prior_event_id, proposalB, 'physical prior does not replace either semantic endpoint');
+
+  const rootOther = append('evt-conflict-other-root', 'OBSERVE', 'OBSERVED');
+  const candidateOther = append('evt-conflict-other-candidate', 'CANDIDATE', 'CANDIDATE', rootOther);
+  const proposalOther = append('evt-conflict-other-proposal', 'PROPOSE', 'PROPOSED', candidateOther);
+  const fromOtherRoot = событиеЦикла('evt-conflict-cross-root', 'CONFLICT_MARK', 'CONFLICT', prior, proposalA, {
+    conflict_peer_event_id: proposalOther,
+  });
+  const otherRootResult = validateEvent(fromOtherRoot, { ledgerPath: журнал });
+  assert.equal(otherRootResult.ok, false, 'a peer from another semantic lineage must fail closed');
+  assert.ok(otherRootResult.errors.some(error => error.includes('semantic OBSERVE root')), otherRootResult.errors.join(' | '));
+
+  const sameEndpoint = событиеЦикла('evt-conflict-same-endpoint', 'CONFLICT_MARK', 'CONFLICT', prior, proposalA, {
+    conflict_peer_event_id: proposalA,
+  });
+  const sameEndpointResult = validateEvent(sameEndpoint, { ledgerPath: журнал });
+  assert.equal(sameEndpointResult.ok, false, 'semantic parent and peer must differ');
+  assert.ok(sameEndpointResult.errors.some(error => error.includes('должны быть разными')), sameEndpointResult.errors.join(' | '));
+
+  const selfReference = событиеЦикла('evt-conflict-self-reference', 'CONFLICT_MARK', 'CONFLICT', prior, proposalA, {
+    conflict_peer_event_id: 'evt-conflict-self-reference',
+  });
+  assert.equal(validateEvent(selfReference, { ledgerPath: журнал }).ok, false, 'marker cannot name itself as peer');
+
+  const missingPeer = событиеЦикла('evt-conflict-missing-peer', 'CONFLICT_MARK', 'CONFLICT', prior, proposalA, {
+    conflict_peer_event_id: 'evt-conflict-never-seen',
+  });
+  const missingPeerResult = validateEvent(missingPeer, { ledgerPath: журнал });
+  assert.equal(missingPeerResult.ok, false, 'unknown peer must fail closed');
+  assert.ok(missingPeerResult.errors.some(error => error.includes('conflict_peer_event_id')), missingPeerResult.errors.join(' | '));
+});
+
+test('M2.2a: CONFLICT_MARK is non-consuming and HOLD/SUPERSEDE recalculate open-proposal warnings', () => {
+  const makeBranches = journal => {
+    let prior = null;
+    const append = (id, kind, state, parent = null, peer = undefined) => {
+      const overrides = peer === undefined ? {} : { conflict_peer_event_id: peer };
+      const event = событиеЦикла(id, kind, state, prior, parent, overrides);
+      const result = appendEvent(event, { ledgerPath: journal });
+      assert.equal(result.ok, true, `${id}: ${result.errors.join(' | ')}`);
+      prior = id;
+      return id;
+    };
+    const root = append('evt-board-conflict-root', 'OBSERVE', 'OBSERVED');
+    const candidateA = append('evt-board-conflict-candidate-a', 'CANDIDATE', 'CANDIDATE', root);
+    const proposalA = append('evt-board-conflict-proposal-a', 'PROPOSE', 'PROPOSED', candidateA);
+    const candidateB = append('evt-board-conflict-candidate-b', 'CANDIDATE', 'CANDIDATE', root);
+    const proposalB = append('evt-board-conflict-proposal-b', 'PROPOSE', 'PROPOSED', candidateB);
+    return { append, proposalA, proposalB };
+  };
+
+  const holdJournal = временныйЖурнал();
+  const holdBranches = makeBranches(holdJournal);
+  holdBranches.append('evt-board-explicit-conflict', 'CONFLICT_MARK', 'CONFLICT', holdBranches.proposalA, holdBranches.proposalB);
+  const conflictBoard = projectProposals(holdJournal);
+  assert.equal(conflictBoard.ok, true, conflictBoard.errors.join(' | '));
+  assert.equal(conflictBoard.authority, false);
+  assert.deepEqual(conflictBoard.categories.EXPLICIT_CONFLICT.map(item => item.event_id), ['evt-board-explicit-conflict']);
+  assert.deepEqual(conflictBoard.categories.ACTIVE_PROPOSED.map(item => item.event_id), [holdBranches.proposalA, holdBranches.proposalB]);
+  assert.deepEqual(conflictBoard.categories.MULTIPLE_OPEN_PROPOSALS_WARNING[0], {
+    code: 'MULTIPLE_OPEN_PROPOSALS_WARNING', root_event_id: 'evt-board-conflict-root',
+    proposed_event_ids: [holdBranches.proposalA, holdBranches.proposalB], count: 2, authority: false, means_conflict: false,
+  });
+  holdBranches.append('evt-board-hold-one-branch', 'HOLD', 'HOLD', holdBranches.proposalA);
+  const afterHold = projectProposals(holdJournal);
+  assert.equal(afterHold.ok, true, afterHold.errors.join(' | '));
+  assert.deepEqual(afterHold.categories.ACTIVE_PROPOSED.map(item => item.event_id), [holdBranches.proposalB]);
+  assert.deepEqual(afterHold.categories.HOLD.map(item => item.event_id), ['evt-board-hold-one-branch']);
+  assert.equal(afterHold.categories.MULTIPLE_OPEN_PROPOSALS_WARNING.length, 0, 'one open proposal is not ambiguous');
+  assert.equal(afterHold.authority, false, 'HOLD does not select a winner');
+
+  const supersedeJournal = временныйЖурнал();
+  const supersedeBranches = makeBranches(supersedeJournal);
+  supersedeBranches.append('evt-board-supersede-one-branch', 'SUPERSEDE', 'SUPERSEDED', supersedeBranches.proposalA);
+  const afterSupersede = projectProposals(supersedeJournal);
+  assert.equal(afterSupersede.ok, true, afterSupersede.errors.join(' | '));
+  assert.deepEqual(afterSupersede.categories.ACTIVE_PROPOSED.map(item => item.event_id), [supersedeBranches.proposalB]);
+  assert.deepEqual(afterSupersede.categories.SUPERSEDED.map(item => item.event_id), ['evt-board-supersede-one-branch']);
+  assert.equal(afterSupersede.categories.MULTIPLE_OPEN_PROPOSALS_WARNING.length, 0, 'warning disappears when one proposal remains open');
+  assert.equal(afterSupersede.authority, false, 'SUPERSEDE does not establish winner selection');
+});
+
 test('M2.2a: project-proposals exposes all categories as a read-only, non-authoritative projection', () => {
   const журнал = временныйЖурнал();
   let prior = null;
@@ -1254,7 +1376,8 @@ test('M2.2a: project-proposals exposes all categories as a read-only, non-author
   const holdRoot = root('evt-board-hold-root');
   append('evt-board-hold', 'HOLD', 'HOLD', holdRoot);
   const conflictRoot = root('evt-board-conflict-root');
-  append('evt-board-conflict', 'CONFLICT_MARK', 'CONFLICT', conflictRoot, { conflict_peer_event_id: activeRoot });
+  const conflictPeer = candidate('evt-board-conflict-peer', conflictRoot);
+  append('evt-board-conflict', 'CONFLICT_MARK', 'CONFLICT', conflictRoot, { conflict_peer_event_id: conflictPeer });
   const supersedeRoot = root('evt-board-supersede-root');
   const supersedeCandidate = candidate('evt-board-supersede-candidate', supersedeRoot);
   append('evt-board-superseded', 'SUPERSEDE', 'SUPERSEDED', supersedeCandidate);
@@ -1268,7 +1391,7 @@ test('M2.2a: project-proposals exposes all categories as a read-only, non-author
     'ACTIVE_CANDIDATE', 'ACTIVE_PROPOSED', 'HOLD', 'EXPLICIT_CONFLICT',
     'MULTIPLE_OPEN_PROPOSALS_WARNING', 'SUPERSEDED',
   ]);
-  assert.deepEqual(board.categories.ACTIVE_CANDIDATE.map(x => x.event_id), ['evt-board-active-candidate']);
+  assert.deepEqual(board.categories.ACTIVE_CANDIDATE.map(x => x.event_id), ['evt-board-active-candidate', conflictPeer]);
   assert.deepEqual(board.categories.ACTIVE_PROPOSED.map(x => x.event_id), [proposalA, proposalB]);
   assert.deepEqual(board.categories.HOLD.map(x => x.event_id), ['evt-board-hold']);
   assert.deepEqual(board.categories.EXPLICIT_CONFLICT.map(x => x.event_id), ['evt-board-conflict']);

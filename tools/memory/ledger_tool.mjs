@@ -265,6 +265,20 @@ function validateLifecycleGraph(entries, { allowLegacy = true } = {}) {
       }
     }
 
+    if (kind === 'CONFLICT_MARK' && parent) {
+      const peerId = env.conflict_peer_event_id;
+      const peer = typeof peerId === 'string' ? byId.get(peerId) : null;
+      if (String(parentId) === String(peerId)) {
+        errors.push(`событие ${id}: CONFLICT_MARK semantic parent и conflict peer должны быть разными событиями`);
+      } else if (peer) {
+        const parentRoot = semanticRoot(parent, byId);
+        const peerRoot = semanticRoot(peer, byId);
+        if (!parentRoot || !peerRoot || parentRoot !== peerRoot) {
+          errors.push(`событие ${id}: CONFLICT_MARK parent и conflict peer должны иметь один semantic OBSERVE root по applies_to_event_id`);
+        }
+      }
+    }
+
     if (kind === 'PROPOSE' && parent) {
       let cursor = parent;
       let hasCandidateAncestor = false;
@@ -685,6 +699,7 @@ export function projectProposals(ledgerPath = DEFAULT_LEDGER) {
   const byId = new Map(journal.events.map(entry => [entry.event_id, entry]));
   const children = new Map();
   for (const entry of journal.events) {
+    if (entry.parsed.envelope.event_kind === 'CONFLICT_MARK') continue;
     const parentId = entry.parsed.envelope.applies_to_event_id;
     if (parentId != null) children.set(String(parentId), (children.get(String(parentId)) || 0) + 1);
   }

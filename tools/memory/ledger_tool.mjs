@@ -95,7 +95,7 @@ function возрастБлокировкиПоМодификации(lockDir) {
   try {
     const стат = fs.statSync(lockDir);
     return Date.now() - стат.mtimeMs;
-  } catch { return null; }
+  } catch (ошибкаСтата) { void ошибкаСтата; return null; }
 }
 
 // Захват блокировки: одна попытка, без ожидания и без авто-повторов.
@@ -104,7 +104,7 @@ function возрастБлокировкиПоМодификации(lockDir) {
 export function acquireLedgerLock(ledgerPath, opts = {}) {
   const staleMs = opts.staleMs ?? LEDGER_LOCK_STALE_MS;
   const lockDir = ledgerLockDir(ledgerPath);
-  try { fs.mkdirSync(path.dirname(String(ledgerPath)), { recursive: true }); } catch {}
+  try { fs.mkdirSync(path.dirname(String(ledgerPath)), { recursive: true }); } catch (ошибкаКаталога) { void ошибкаКаталога; }
   try {
     fs.mkdirSync(lockDir);
   } catch (e) {
@@ -119,7 +119,7 @@ export function acquireLedgerLock(ledgerPath, opts = {}) {
       const сырьё = fs.readFileSync(path.join(lockDir, LEDGER_LOCK_INFO), 'utf8');
       сведения = JSON.parse(сырьё);
       сведенияПрочитаны = true;
-    } catch { сведенияПрочитаны = false; }
+    } catch (ошибкаСведений) { void ошибкаСведений; сведенияПрочитаны = false; }
     if (сведенияПрочитаны && сведения && typeof сведения.acquiredAt === 'number') {
       const возраст = Date.now() - сведения.acquiredAt;
       const идПроцесса = сведения.pid ?? '?';
@@ -140,7 +140,7 @@ export function acquireLedgerLock(ledgerPath, opts = {}) {
   try {
     fs.writeFileSync(path.join(lockDir, LEDGER_LOCK_INFO), JSON.stringify(сведения));
   } catch (e) {
-    try { releaseLedgerLock(lockDir); } catch {}
+    try { releaseLedgerLock(lockDir); } catch (ошибкаОсвобождения) { void ошибкаОсвобождения; }
     return { ok: false, errors: [`LEDGER_BUSY/LOCK_HELD: невозможно записать сведения блокировки ${lockDir}: ${String(e && e.message || e)}`], warnings: [], busy: true, lockDir };
   }
   return { ok: true, errors: [], warnings: [], lockDir, info: сведения };
@@ -148,7 +148,7 @@ export function acquireLedgerLock(ledgerPath, opts = {}) {
 
 // Освобождение блокировки (лучшая попытка, ошибки игнорируются).
 export function releaseLedgerLock(lockDir) {
-  try { fs.rmSync(String(lockDir), { recursive: true, force: true }); } catch {}
+  try { fs.rmSync(String(lockDir), { recursive: true, force: true }); } catch (ошибкаУдаления) { void ошибкаУдаления; }
   return true;
 }
 
@@ -172,6 +172,9 @@ export function loadLedger(ledgerPath = DEFAULT_LEDGER) {
   if (!fs.existsSync(ledgerPath)) return { ok: true, errors, events, tip: null, lineCount: 0, byteLength: 0 };
   raw = fs.readFileSync(ledgerPath, 'utf8');
   if (raw === '') return { ok: true, errors, events, tip: null, lineCount: 0, byteLength: 0 };
+  if (!raw.endsWith('\n')) {
+    errors.push('LEDGER_FORMAT_ERROR/TERMINAL_NEWLINE_MISSING: непустой журнал обязан завершаться переводом строки "\\n". Append-only запрещает молчаливую нормализацию и перезапись существующих байтов. Требуется ручной разбор.');
+  }
   const lines = raw.split('\n');
   // Последняя пустая строка после завершающего перевода строки не считается событием.
   let effective = lines;
@@ -181,7 +184,7 @@ export function loadLedger(ledgerPath = DEFAULT_LEDGER) {
     const номер = idx + 1;
     if (line === '') { errors.push(`строка ${номер}: пустая строка внутри журнала (CONFLICT)`); return; }
     let parsed = null;
-    try { parsed = JSON.parse(line); } catch { errors.push(`строка ${номер}: malformed JSON (CONFLICT)`); return; }
+    try { parsed = JSON.parse(line); } catch (ошибкаРазбора) { void ошибкаРазбора; errors.push(`строка ${номер}: malformed JSON (CONFLICT)`); return; }
     if (!parsed || typeof parsed !== 'object' || !parsed.envelope || !parsed.record) {
       errors.push(`строка ${номер}: отсутствует envelope или record (CONFLICT)`); return;
     }
@@ -285,7 +288,7 @@ export function validateEvent(event, opts = {}) {
   // Доверять только полю манифеста без чтения байтов запрещено (защита от TOCTOU и подмены).
   const ожидаемыйКанон = manifest.canonical_content_sha256;
   let хешБайтовСида = null;
-  try { хешБайтовСида = sha256File(seedPath); } catch { errors.push('сид: невозможно вычислить хеш байтов сида'); }
+  try { хешБайтовСида = sha256File(seedPath); } catch (ошибкаХешаСида) { void ошибкаХешаСида; errors.push('сид: невозможно вычислить хеш байтов сида'); }
   if (typeof ожидаемыйКанон !== 'string' || !RE_HEX64.test(ожидаемыйКанон)) {
     errors.push('манифест: неверное поле canonical_content_sha256');
   } else {
@@ -301,7 +304,7 @@ export function validateEvent(event, opts = {}) {
   }
   if (env.base_manifest_file_sha256 !== undefined && env.base_manifest_file_sha256 !== null) {
     let текущийХешМанифеста = null;
-    try { текущийХешМанифеста = sha256File(manifestPath); } catch { errors.push('манифест: невозможно вычислить base_manifest_file_sha256'); }
+    try { текущийХешМанифеста = sha256File(manifestPath); } catch (ошибкаХешаМанифеста) { void ошибкаХешаМанифеста; errors.push('манифест: невозможно вычислить base_manifest_file_sha256'); }
     if (текущийХешМанифеста && String(env.base_manifest_file_sha256) !== текущийХешМанифеста) {
       errors.push(`STALE_MANIFEST_FILE_HASH: base_manifest_file_sha256 не равен хешу файла манифеста`);
     }
@@ -420,18 +423,28 @@ export function appendObserved(event, opts = {}) {
     if (env.authorized_by !== undefined && env.authorized_by !== null) {
       return { ok: false, errors: ['append-observed требует authorized_by null/отсутствует'], warnings: проверка.warnings };
     }
-    // Шаг 7: дописывание ровно одной строки с fsync (append-only, без перезаписи).
+    // Шаг 7: дописывание ровно одной строки с обязательным fsync (append-only, без перезаписи).
+    // Частичная запись или сбой fsync означают отказ с закрытием, а не успех.
+    // Скрытый откат усечением запрещён: при сбое долговечности требуется перепроверка журнала.
     const строка = JSON.stringify(event) + '\n';
+    const ожидалосьБайт = Buffer.byteLength(строка, 'utf8');
     fs.mkdirSync(path.dirname(ledgerPath), { recursive: true });
     let дескриптор = null;
     try {
       дескриптор = fs.openSync(ledgerPath, 'a');
-      fs.writeSync(дескриптор, строка, null, 'utf8');
-      try { fs.fsyncSync(дескриптор); } catch {}
+      const записаноБайт = fs.writeSync(дескриптор, строка, null, 'utf8');
+      if (записаноБайт !== ожидалосьБайт) {
+        return { ok: false, errors: [`LEDGER_DURABILITY_ERROR: частичная запись ${записаноБайт} из ${ожидалосьБайт} байт. Отказ с закрытием, скрытый откат запрещён. Требуется перепроверка журнала перед следующим дописыванием.`], warnings: проверка.warnings, durability: true };
+      }
+      try {
+        fs.fsyncSync(дескриптор);
+      } catch (ошибкаФсинк) {
+        return { ok: false, errors: [`LEDGER_DURABILITY_ERROR: сбой fsync после записи ${записаноБайт} байт: ${String(ошибкаФсинк && ошибкаФсинк.message || ошибкаФсинк)}. Байты могли быть физически записаны, но долговечность не подтверждена. Отказ с закрытием, скрытый откат запрещён. Требуется перепроверка журнала перед следующим дописыванием.`], warnings: проверка.warnings, durability: true };
+      }
     } catch (e) {
       return { ok: false, errors: [`журнал: невозможно дописать строку: ${String(e && e.message || e)}`], warnings: проверка.warnings };
     } finally {
-      if (дескриптор !== null) { try { fs.closeSync(дескриптор); } catch {} }
+      if (дескриптор !== null) { try { fs.closeSync(дескриптор); } catch (ошибкаЗакрытия) { void ошибкаЗакрытия; } }
     }
     return { ok: true, errors: [], warnings: проверка.warnings, event_id: env.event_id };
   } finally {

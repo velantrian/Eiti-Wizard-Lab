@@ -537,3 +537,107 @@ test('21: стресс гонки 30 проб по 5 писателей — 0 ф
   console.log(`  стресс: проб ${ПРОБ}, писателей на пробу ${ПИСАТЕЛЕЙ}, всего попыток ${ПРОБ * ПИСАТЕЛЕЙ}, победителей ${победителейВсего}, форков ${форков}`);
   assert.equal(форков, 0);
 });
+
+// ── 22. Сбой fsync и частичная запись означают отказ, а не успех ────────────
+test('22: принудительный сбой fsync и частичная запись дают отказ без пути успеха', () => {
+  // Случай а: сбой fsync после успешной записи.
+  {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытие('evt-durability-fsync-001', 'OBS-DURABILITY-FSYNC-001', null);
+    const настоящийФсинк = fs.fsyncSync;
+    fs.fsyncSync = () => { throw new Error('принудительный сбой fsync для регрессии'); };
+    try {
+      const итог = appendObserved(событие, { ledgerPath: журнал });
+      assert.equal(итог.ok, false, 'сбой fsync обязан давать отказ');
+      assert.ok(итог.errors.some(e => e.includes('LEDGER_DURABILITY_ERROR')), итог.errors.join(' | '));
+      assert.equal(итог.event_id, undefined, 'путь успеха запрещён: event_id отсутствует при отказе');
+      assert.notEqual(итог.ok, true);
+      // Байты могли быть физически записаны до сбоя fsync: скрытый откат запрещён,
+      // поэтому файл может содержать строку, но успех не сообщается.
+      const сырьё = fs.existsSync(журнал) ? fs.readFileSync(журнал, 'utf8') : '';
+      assert.ok(сырьё.includes('evt-durability-fsync-001'), 'байты записаны, но долговечность не подтверждена');
+    } finally {
+      fs.fsyncSync = настоящийФсинк;
+    }
+  }
+  // Случай б: частичная запись (возврат writeSync меньше ожидаемого).
+  {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытие('evt-durability-partial-001', 'OBS-DURABILITY-PARTIAL-001', null);
+    const настоящаяЗапись = fs.writeSync;
+    fs.writeSync = () => 1;
+    try {
+      const итог = appendObserved(событие, { ledgerPath: журнал });
+      assert.equal(итог.ok, false, 'частичная запись обязана давать отказ');
+      assert.ok(итог.errors.some(e => e.includes('LEDGER_DURABILITY_ERROR')), итог.errors.join(' | '));
+      assert.equal(итог.event_id, undefined);
+    } finally {
+      fs.writeSync = настоящаяЗапись;
+    }
+    assert.deepEqual(размерЖурнала(журнал), { байты: 0, строки: 0 });
+  }
+});
+
+// ── 23. Отсутствие завершающего перевода строки блокирует дописывание ──────
+test('23: журнал без финального перевода строки отклоняет дописывание без изменения байтов', () => {
+  // Случай а: допустимое событие без финального \n.
+  const каталог = fs.mkdtempSync(path.join(os.tmpdir(), 'журнал-м21-конец-'));
+  const журнал = path.join(каталог, 'event_ledger.jsonl');
+  const первое = допустимоеСобытие('evt-newline-base-001', 'OBS-NEWLINE-BASE-001', null);
+  fs.writeFileSync(журнал, JSON.stringify(первое), 'utf8');
+  const снимокБайт = fs.readFileSync(журнал);
+  const состояние = loadLedger(журнал);
+  assert.equal(состояние.ok, false);
+  assert.ok(состояние.errors.some(e => e.includes('TERMINAL_NEWLINE_MISSING')), состояние.errors.join(' | '));
+  assert.ok(состояние.errors.some(e => e.includes('LEDGER_FORMAT_ERROR')), состояние.errors.join(' | '));
+  const проверкаЦелого = checkHash({ ledgerPath: журнал });
+  assert.equal(проверкаЦелого.ok, false);
+  assert.ok(проверкаЦелого.errors.some(e => e.includes('TERMINAL_NEWLINE_MISSING') || e.includes('LEDGER_FORMAT_ERROR')), проверкаЦелого.errors.join(' | '));
+  const второе = допустимоеСобытие('evt-newline-next-001', 'OBS-NEWLINE-NEXT-001', 'evt-newline-base-001');
+  const проверка = validateEvent(второе, { ledgerPath: журнал });
+  assert.equal(проверка.ok, false);
+  const итог = appendObserved(второе, { ledgerPath: журнал });
+  assert.equal(итог.ok, false);
+  assert.ok(итог.errors.some(e => e.includes('TERMINAL_NEWLINE_MISSING') || e.includes('LEDGER_FORMAT_ERROR') || e.includes('CONFLICT')), итог.errors.join(' | '));
+  assert.deepEqual(fs.readFileSync(журнал), снимокБайт, 'байты журнала обязаны остаться неизменными');
+  // Случай б: обычный журнал с финальным \n принимает дописывание.
+  {
+    const журнал2 = временныйЖурнал();
+    assert.equal(appendObserved(допустимоеСобытие('evt-newline-ok-001', 'OBS-NEWLINE-OK-001', null), { ledgerPath: журнал2 }).ok, true);
+    assert.ok(fs.readFileSync(журнал2, 'utf8').endsWith('\n'));
+    assert.equal(appendObserved(допустимоеСобытие('evt-newline-ok-002', 'OBS-NEWLINE-OK-002', 'evt-newline-ok-001'), { ledgerPath: журнал2 }).ok, true);
+    assert.equal(loadLedger(журнал2).ok, true);
+  }
+});
+
+// ── 24. Поле манифеста изменено, байты сида прежние — отказ ─────────────────
+test('24: несоответствие поля манифеста байтам сида отклоняется', () => {
+  const каталог = fs.mkdtempSync(path.join(os.tmpdir(), 'журнал-м21-манифест-'));
+  const временныйСид = path.join(каталог, 'seed.json');
+  const временныйМанифест = path.join(каталог, 'manifest.json');
+  const журнал = path.join(каталог, 'event_ledger.jsonl');
+  fs.copyFileSync(DEFAULT_SEED, временныйСид);
+  fs.copyFileSync(DEFAULT_MANIFEST, временныйМанифест);
+  // Меняем только поле манифеста, байты сида не тронуты.
+  const манифест = JSON.parse(fs.readFileSync(временныйМанифест, 'utf8'));
+  манифест.canonical_content_sha256 = 'f'.repeat(64);
+  fs.writeFileSync(временныйМанифест, JSON.stringify(манифест, null, 2));
+  const хешБайтов = sha256File(временныйСид);
+  assert.notEqual(хешБайтов, манифест.canonical_content_sha256);
+  // Подслучай а: заявленный хеш совпадает с байтами, но не с полем.
+  const событиеА = допустимоеСобытие('evt-manifest-mismatch-a-001', 'OBS-MANIFEST-A-001', null);
+  assert.equal(событиеА.envelope.base_canonical_sha256, хешБайтов);
+  const проверкаА = validateEvent(событиеА, { ledgerPath: журнал, manifestPath: временныйМанифест, seedPath: временныйСид });
+  assert.equal(проверкаА.ok, false);
+  assert.ok(проверкаА.errors.some(e => e.includes('STALE_CANONICAL_HASH')), проверкаА.errors.join(' | '));
+  assert.equal(appendObserved(событиеА, { ledgerPath: журнал, manifestPath: временныйМанифест, seedPath: временныйСид }).ok, false);
+  // Подслучай б: заявленный хеш совпадает с полем, но не с байтами.
+  const событиеБ = допустимоеСобытие('evt-manifest-mismatch-b-001', 'OBS-MANIFEST-B-001', null, { base_canonical_sha256: 'f'.repeat(64) });
+  const проверкаБ = validateEvent(событиеБ, { ledgerPath: журнал, manifestPath: временныйМанифест, seedPath: временныйСид });
+  assert.equal(проверкаБ.ok, false);
+  assert.ok(проверкаБ.errors.some(e => e.includes('STALE_CANONICAL_HASH')), проверкаБ.errors.join(' | '));
+  assert.equal(appendObserved(событиеБ, { ledgerPath: журнал, manifestPath: временныйМанифест, seedPath: временныйСид }).ok, false);
+  assert.deepEqual(размерЖурнала(журнал), { байты: 0, строки: 0 });
+  // Реальные файлы не тронуты.
+  assert.equal(sha256File(DEFAULT_SEED), каноническийХеш());
+});

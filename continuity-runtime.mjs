@@ -18,9 +18,10 @@
 // (последнее хорошее значение показывается в диагностике, но не инжектится).
 //
 // Композиция идемпотентна (ровно-однократность): перед решением помощник снимает
-// все завершённые спаны блока, затем добавляет не более одного. Повторная
-// композиция не даёт BASE+BLOCK+BLOCK; OFF и Clean Resume на уже собранных
-// инструкциях снимают блок. Диагностические копии редактируются (redact):
+// только точный ранее добавленный blockText вместе с точным разделителем.
+// Чужие/незавершённые маркеры не считаются блоком М3; база не нормализуется.
+// Повторная композиция не даёт BASE+BLOCK+BLOCK; OFF и Clean Resume на уже
+// собранных инструкциях снимают блок. Диагностические копии редактируются:
 // полный блок заменяется плейсхолдером, метаданные сохраняются.
 
 export const CONTINUITY_SCHEMA = 'eiti-context-bootstrap/1';
@@ -261,12 +262,18 @@ function mapContinuitySpans(text, replacement) {
   return out;
 }
 
-// Снимает все завершённые спаны блока и нормализует стык: схлопывает 3+ перевода
-// строки в два и убирает хвостовые пробелы (точно восстанавливает базу нашей
-// собственной сборки BASE+'\n\n'+BLOCK). Начало строки не трогаем.
-export function stripContinuityBlocks(text) {
+// Снимает только точный суффикс, который добавил composer: '\n\n' + blockText.
+// Это сохраняет исходную базу побайтно и не принимает чужой START за наш блок.
+// Пустая база — единственный случай, когда composer добавляет blockText без
+// разделителя; все остальные байты остаются нетронутыми.
+export function stripContinuityBlocks(text, blockText) {
   if (typeof text !== 'string') return text;
-  return mapContinuitySpans(text, '').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '');
+  if (typeof blockText !== 'string' || blockText.length === 0) return text;
+  const appended = '\n\n' + blockText;
+  let out = text;
+  while (out.endsWith(appended)) out = out.slice(0, -appended.length);
+  if (out === text && text === blockText) return '';
+  return out;
 }
 
 // Заменяет каждый завершённый спан плейсхолдером для диагностических копий.
@@ -332,8 +339,8 @@ export function composeInstructions(baseInstructions, opts) {
     char_count: Number.isFinite(coreMeta.char_count) ? coreMeta.char_count : 0,
     skipped_reason: null,
   };
-  // Ровно-однократность: работаем только с очищенной базой.
-  const clean = stripContinuityBlocks(baseInstructions);
+  // Ровно-однократность: снимаем только точный ранее добавленный блок.
+  const clean = stripContinuityBlocks(baseInstructions, blockText);
   if (typeof clean !== 'string') {
     continuity.skipped_reason = 'integrity_fail';
     return { instructions: baseInstructions, continuity };

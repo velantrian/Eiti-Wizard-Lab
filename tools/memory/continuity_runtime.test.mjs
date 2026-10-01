@@ -345,7 +345,7 @@ test('М3 Т17: набор тестов М2 зелёный', () => {
   // иначе Node пропустит запуск с предупреждением о рекурсии.
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT;
-  const res = spawnSync(process.execPath, ['--test', path.join(ROOT, 'tools', 'memory', 'seed_tool.test.mjs')], {
+  const res = spawnSync(process.execPath, ['--test', '--test-reporter=tap', path.join(ROOT, 'tools', 'memory', 'seed_tool.test.mjs')], {
     cwd: ROOT, encoding: 'utf8', timeout: 120000, env,
   });
   const out = (res.stdout || '') + (res.stderr || '');
@@ -437,6 +437,69 @@ test('М3 Т23: Clean Resume после composed → ноль блоков', asy
   assert.equal(r.instructions, base, 'чистая resume-граница');
   assert.equal(r.continuity.injected, false);
   assert.equal(r.continuity.skipped_reason, 'clean_resume');
+});
+
+// ── Lossless composition corrections: L1–L7 ────────────────────────────────
+test('L1: OFF без блока сохраняет три перевода строки побайтно', () => {
+  const base = 'A\n\n\nB';
+  const r = Runtime.composeInstructions(base, { enabled: false, status: 'DISABLED', blockText: null });
+  assert.equal(r.instructions, base);
+});
+
+test('L2: OFF без блока сохраняет таб и завершающий перевод строки побайтно', () => {
+  const base = 'A\t\n';
+  const r = Runtime.composeInstructions(base, { enabled: false, status: 'DISABLED', blockText: null });
+  assert.equal(r.instructions, base);
+});
+
+test('L3: чужой незакрытый START переживает ON и повторную композицию', async () => {
+  const { blockText, coreMeta } = await readyState();
+  const base = 'KEEP-1\n' + Runtime.CONTINUITY_BLOCK_START + '\nKEEP-2';
+  const opts = { enabled: true, status: 'READY', blockText, coreMeta, cleanResumeActive: false };
+  const once = Runtime.composeInstructions(base, opts).instructions;
+  assert.equal(once, base + '\n\n' + blockText);
+  const twice = Runtime.composeInstructions(once, opts).instructions;
+  assert.equal(twice, once);
+  assert.equal(twice.slice(0, base.length), base, 'KEEP-1 и KEEP-2 сохранены побайтно');
+  assert.equal(twice.split(blockText).length - 1, 1, 'ровно один точный M3-owned блок');
+});
+
+test('L4: чужой незакрытый START переживает ON → OFF с точным восстановлением базы', async () => {
+  const { blockText, coreMeta } = await readyState();
+  const base = 'KEEP-1\n' + Runtime.CONTINUITY_BLOCK_START + '\nKEEP-2';
+  const on = Runtime.composeInstructions(base, { enabled: true, status: 'READY', blockText, coreMeta }).instructions;
+  const off = Runtime.composeInstructions(on, { enabled: false, status: 'READY', blockText, coreMeta });
+  assert.equal(off.instructions, base);
+  assert.equal(off.instructions.endsWith('KEEP-2'), true);
+});
+
+test('L5: чужой незакрытый START переживает ON → Clean Resume с точным восстановлением базы', async () => {
+  const { blockText, coreMeta } = await readyState();
+  const base = 'KEEP-1\n' + Runtime.CONTINUITY_BLOCK_START + '\nKEEP-2';
+  const on = Runtime.composeInstructions(base, { enabled: true, status: 'READY', blockText, coreMeta }).instructions;
+  const cleanResume = Runtime.composeInstructions(on, { enabled: true, status: 'READY', blockText, coreMeta, cleanResumeActive: true });
+  assert.equal(cleanResume.instructions, base);
+  assert.equal(cleanResume.continuity.skipped_reason, 'clean_resume');
+});
+
+test('L6: три последовательных ON оставляют ровно один M3-owned блок', async () => {
+  const { blockText, coreMeta } = await readyState();
+  const base = 'ordinary base';
+  const opts = { enabled: true, status: 'READY', blockText, coreMeta, cleanResumeActive: false };
+  const once = Runtime.composeInstructions(base, opts).instructions;
+  const twice = Runtime.composeInstructions(once, opts).instructions;
+  const thrice = Runtime.composeInstructions(twice, opts).instructions;
+  assert.equal(thrice, once);
+  assert.equal(thrice.split(blockText).length - 1, 1);
+});
+
+test('L7: ON → OFF восстанавливает базу с завершающими пробелами и переводами строк', async () => {
+  const { blockText, coreMeta } = await readyState();
+  const base = 'ordinary base\t  \n\n\n';
+  const on = Runtime.composeInstructions(base, { enabled: true, status: 'READY', blockText, coreMeta }).instructions;
+  const off = Runtime.composeInstructions(on, { enabled: false, status: 'READY', blockText, coreMeta });
+  assert.equal(on, base + '\n\n' + blockText);
+  assert.equal(off.instructions, base);
 });
 
 // ── М3-Т24: диагностика редактируется, метаданные целы ─────────────────────

@@ -3252,9 +3252,20 @@ async function wizBuildCleanResumeContext(userText) {
 }
 
 function wizRecordOutboundPayload(meta) {
-  window.__wizLastOutboundPayload = meta;
+  // Диагностическая копия редактируется: полный блок непрерывности заменяется
+  // плейсхолдером (сырой контекст не логируется), метаданные сохраняются.
+  // Реальный сетевой пейлоад провайдера не меняется — правится только копия.
+  let safe = meta;
   try {
-    if (window.__wizPayloadLog) window.__wizPayloadLog.push(meta);
+    safe = wizRedactContinuityDeep(meta);
+  } catch (e) {
+    try { console.warn('[continuity] redact:', (e && e.message) || e); } catch (_e) {}
+    safe = { mode: (meta && meta.mode) || null, ts: (meta && meta.ts) || Date.now(),
+      continuity: (meta && meta.continuity) || null, redaction_error: true };
+  }
+  window.__wizLastOutboundPayload = safe;
+  try {
+    if (window.__wizPayloadLog) window.__wizPayloadLog.push(safe);
   } catch (e) {}
 }
 
@@ -3274,6 +3285,11 @@ const WIZ_CONTINUITY_MANIFEST_URL = 'docs/memory/manifest.json';
 window._wizContinuity = { enabled: false, status: 'DISABLED', blockText: null, coreMeta: null, errors: [] };
 window._wizContinuityLastMeta = null;
 let _wizContinuityModule = null;
+// Поколение асинхронных запросов (защита от гонки владельца OFF/ON).
+// Протокол = createContinuityRequestTracker в модуле: refresh берёт поколение
+// до первого await, выключение его обесценивает, перед каждой записью состояния
+// проверяется свежесть. Счётчик локальный — нужен до загрузки модуля.
+let _wizContinuitySeq = 0;
 
 function wizContinuityIsEnabled() {
   try { return localStorage.getItem(WIZ_CONTINUITY_KEY) === '1'; } catch (e) { return false; }
@@ -3357,18 +3373,22 @@ function wizContinuityCompose(baseInstructions, opts) {
 }
 
 async function wizContinuityRefresh() {
+  const _seq = ++_wizContinuitySeq;
   const st = window._wizContinuity || {};
   const wasReady = st.status === 'READY';
-  window._wizContinuity = { enabled: true, status: 'LOADING', blockText: null, coreMeta: null, errors: [] };
+  window._wizContinuity = { enabled: true, status: 'LOADING', blockText: null, coreMeta: null, errors: [], req: _seq };
   wizContinuityRenderStatus();
   try {
     if (!_wizContinuityModule) {
       _wizContinuityModule = await import('./continuity-runtime.mjs');
     }
+    // Протухший запрос (OFF или более новый ON) — молча выйти, ничего не писать.
+    if (_seq !== _wizContinuitySeq) return;
     const res = await _wizContinuityModule.loadContinuityRuntime({
       bootstrapUrl: WIZ_CONTINUITY_BOOTSTRAP_URL,
       manifestUrl: WIZ_CONTINUITY_MANIFEST_URL
     });
+    if (_seq !== _wizContinuitySeq) return;
     if (res.status === 'READY') {
       window._wizContinuity = {
         enabled: true, status: 'READY', blockText: res.blockText,
@@ -3376,17 +3396,18 @@ async function wizContinuityRefresh() {
           canonical_sha: res.meta.canonical_sha, record_count: res.meta.record_count,
           char_count: res.meta.char_count, approx_tokens: res.meta.approx_tokens
         },
-        errors: []
+        errors: [], req: _seq
       };
     } else if (wasReady) {
       // Был READY, ревалидация не прошла: помечаем STALE, старое ядро не инжектим.
-      window._wizContinuity = { enabled: true, status: 'STALE', blockText: null, coreMeta: null, errors: res.errors || [] };
+      window._wizContinuity = { enabled: true, status: 'STALE', blockText: null, coreMeta: null, errors: res.errors || [], req: _seq };
     } else {
-      window._wizContinuity = { enabled: true, status: res.status, blockText: null, coreMeta: null, errors: res.errors || [] };
+      window._wizContinuity = { enabled: true, status: res.status, blockText: null, coreMeta: null, errors: res.errors || [], req: _seq };
     }
   } catch (e) {
+    if (_seq !== _wizContinuitySeq) return;
     // Модуль не загрузился (сеть/file://): закрыто, без частичного контекста.
-    window._wizContinuity = { enabled: true, status: wasReady ? 'STALE' : 'LOAD_ERROR', blockText: null, coreMeta: null, errors: [String((e && e.message) || e)] };
+    window._wizContinuity = { enabled: true, status: wasReady ? 'STALE' : 'LOAD_ERROR', blockText: null, coreMeta: null, errors: [String((e && e.message) || e)], req: _seq };
   }
   wizContinuityRenderStatus();
 }
@@ -3394,11 +3415,54 @@ async function wizContinuityRefresh() {
 function wizContinuitySetEnabled(on) {
   try { localStorage.setItem(WIZ_CONTINUITY_KEY, on ? '1' : '0'); } catch (e) {}
   if (!on) {
-    window._wizContinuity = { enabled: false, status: 'DISABLED', blockText: null, coreMeta: null, errors: [] };
+    // Обесценить все pending-запросы: их поздний ответ не должен воскрешать ON.
+    _wizContinuitySeq += 1;
+    window._wizContinuity = { enabled: false, status: 'DISABLED', blockText: null, coreMeta: null, errors: [], req: _wizContinuitySeq };
     wizContinuityRenderStatus();
     return;
   }
   wizContinuityRefresh();
+}
+
+// ── Редактура диагностики ────────────────────────────────────────────────
+// Каноническая семантика спанов — redactContinuityBlocks в модуле. Здесь та же
+// семантика продублирована запасным вариантом: модуль может быть ещё не загружен
+// (Continuity OFF), а диагностику пишем всегда. Литералы маркеров живут только
+// в этом регионе М3 (см. тест: все вхождения — внутри региона).
+var WIZ_CONTINUITY_REDACTED = '[CONTINUITY ORIENTATION — REDACTED]';
+
+function wizRedactContinuityText(s) {
+  if (typeof s !== 'string' || s.indexOf('[CONTINUITY ORIENTATION') === -1) return s;
+  try {
+    if (_wizContinuityModule && typeof _wizContinuityModule.redactContinuityBlocks === 'function') {
+      return _wizContinuityModule.redactContinuityBlocks(s);
+    }
+  } catch (e) {}
+  // Запасной вариант без модуля: только завершённые спаны START..END.
+  var START = '[CONTINUITY ORIENTATION — READ ONLY]';
+  var END = '[/CONTINUITY ORIENTATION]';
+  var out = s;
+  for (;;) {
+    var a = out.indexOf(START);
+    if (a === -1) break;
+    var b = out.indexOf(END, a + START.length);
+    if (b === -1) break;
+    out = out.slice(0, a) + WIZ_CONTINUITY_REDACTED + out.slice(b + END.length);
+  }
+  return out;
+}
+
+function wizRedactContinuityDeep(v) {
+  if (typeof v === 'string') return wizRedactContinuityText(v);
+  if (Array.isArray(v)) return v.map(wizRedactContinuityDeep);
+  if (v && typeof v === 'object') {
+    var o = {};
+    for (var k in v) {
+      if (Object.prototype.hasOwnProperty.call(v, k)) o[k] = wizRedactContinuityDeep(v[k]);
+    }
+    return o;
+  }
+  return v;
 }
 
 // Инициализация тумблера (по умолчанию OFF — явное включение владельцем).

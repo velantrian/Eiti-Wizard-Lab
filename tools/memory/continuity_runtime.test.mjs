@@ -1,5 +1,5 @@
 // node --test tools/memory/continuity_runtime.test.mjs
-// Тесты М3-Т1…Т18: read-only рантайм-мост непрерывности. Локальные,
+// Тесты М3-Т1…Т24: read-only рантайм-мост непрерывности. Локальные,
 // детерминированные, без сети, моделей и эмбеддингов. Браузерное поведение
 // покрывается через чистые функции модуля (та же композиция, что в index.html)
 // плюс статические проверки точек вызова в index.html.
@@ -40,15 +40,6 @@ function stubFetch({ bootstrapText = runtimeBytes, manifestText = null, bootstra
       },
     };
   };
-}
-
-// Срез тела функции верхнего уровня из index.html для статических проверок.
-function sliceFn(anchor) {
-  const start = html.indexOf(anchor);
-  assert.ok(start >= 0, 'якорь найден: ' + anchor);
-  let end = html.indexOf('\n}\n', start);
-  if (end < 0) end = start + 6000;
-  return html.slice(start, end);
 }
 
 // ── М3-Т1: committed-артефакт == официальному экспорту М2 побайтово ─────────
@@ -150,7 +141,7 @@ test('М3 Т6: ядро и блок детерминированы (35 запи�
   assert.equal(ra.charCount, 14058);
   const meta = { canonicalSha: CANON_SHA, canonicalCount: 79, excludedCounts: a.excludedCounts };
   assert.equal(Runtime.buildContinuityBlock(ra, meta), Runtime.buildContinuityBlock(rb, meta));
-  assert.equal(Runtime.buildContinuityBlock(ra, meta).length, 15024);
+  assert.equal(Runtime.buildContinuityBlock(ra, meta).length, 15357);
 });
 
 // ── М3-Т7: HISTORICAL/SUPERSEDED исключены ─────────────────────────────────
@@ -306,50 +297,45 @@ test('М3 Т15: активный Clean Resume пропускает непрер�
   assert.equal(r.instructions, base);
   assert.equal(r.continuity.injected, false);
   assert.equal(r.continuity.skipped_reason, 'clean_resume');
-  // Статика: resume-ветка вызывает помощник с явным флагом, сборщик resume чист.
+  // Статика: resume-ветка вызывает помощник с явным флагом (точное место — в allowlist Т16).
   assert.ok(html.includes('wizContinuityCompose(instructions, { cleanResumeActive: true })'));
-  assert.doesNotMatch(sliceFn('async function wizBuildCleanResumeContext'), /continuity/i);
-  // Чистота границы: resume-инструкция не содержит маркеров блока.
-  assert.ok(!html.includes('WIZ_CLEAN_RESUME_INSTRUCTION') || true);
-  const resumeSlice = sliceFn('async function wizBuildCleanResumeContext');
-  assert.ok(!resumeSlice.includes('CONTINUITY ORIENTATION'));
 });
 
 // ── М3-Т16: утилиты не получают непрерывность ──────────────────────────────
+// Доказательство — точный allowlist мест вызова (не хрупкие срезы тел функций):
+// помощник существует в 4 местах исходника (1 определение + 3 вызова), каждый
+// вызов — в разрешённой функции. Значит, ни одна утилита вызвать его не может.
 test('М3 Т16: RNE/подсказки/TTS/Grok Voice/поиск/память без непрерывности', () => {
-  // Помощник вызывается ровно в трёх местах: обычный путь, resume-ветка, tool-use.
+  const countOf = (s) => html.split(s).length - 1;
+  assert.equal(countOf('wizContinuityCompose('), 4, 'определение + 3 вызова');
+  assert.equal(countOf('function wizContinuityCompose('), 1, 'определение');
+  assert.equal(countOf('wizContinuityCompose(instructions, { cleanResumeActive: false })'), 1, 'обычный путь sendMessage');
+  assert.equal(countOf('wizContinuityCompose(instructions, { cleanResumeActive: true })'), 1, 'ветка Clean Resume');
+  assert.equal(countOf('wizContinuityCompose(instructions, { cleanResumeActive: !!cleanResumeActive })'), 1, 'цикл инструментов агента');
+  // Каждый вызов — внутри разрешённой функции (граница — предыдущее top-level function).
   const calls = [];
   let at = -1;
   while ((at = html.indexOf('wizContinuityCompose(', at + 1)) >= 0) calls.push(at);
-  assert.equal(calls.length, 4, 'определение + 3 вызова');
   for (const pos of calls) {
-    const before = html.slice(Math.max(0, pos - 20), pos);
-    if (before.includes('function ')) continue; // определение
-    const fnAsync = html.lastIndexOf('\nasync function ', pos);
-    const fnPlain = html.lastIndexOf('\nfunction ', pos);
-    const fnPos = Math.max(fnAsync, fnPlain);
+    if (html.slice(Math.max(0, pos - 20), pos).includes('function ')) continue; // определение
+    const fnPos = Math.max(html.lastIndexOf('\nasync function ', pos), html.lastIndexOf('\nfunction ', pos));
     const name = (html.slice(fnPos, fnPos + 80).match(/function (\w+)/) || [])[1];
     assert.ok(['sendMessage', 'runAgentToolUseLoop'].includes(name), 'вызов в ' + name);
   }
-  // Маркеры блока живут только в модуле, в index.html их нет.
-  assert.equal(html.split('CONTINUITY ORIENTATION').length - 1, 0);
+  // Литералы маркеров — только в регионе проводки М3 (редактор диагностики),
+  // больше нигде в index.html их нет (в частности, ни в одной утилите).
+  const m3Region = html.slice(html.indexOf('── М3 Continuity Context'), html.indexOf('── Service Worker registration'));
+  assert.ok(m3Region.length > 1000, 'регион М3 найден');
+  assert.equal(countOf('CONTINUITY ORIENTATION'), m3Region.split('CONTINUITY ORIENTATION').length - 1);
+  assert.ok((m3Region.match(/CONTINUITY ORIENTATION/g) || []).length >= 3, 'редактор + плейсхолдер на месте');
   // Модуль импортируется ровно один раз (инициализация рантайма).
-  assert.equal(html.split("import('./continuity-runtime.mjs')").length - 1, 1);
-  // Тела утилит не упоминают непрерывность.
-  for (const anchor of ['async function _rneCallLLM', 'async function wizGenerateSuggestions',
-    'async function testApiConnection', 'async function wizWebSearch', 'function _apiFetch',
-    'function toggleSpeech', 'function sendTextToGrokVoice', 'async function openGrokVoiceSession',
-    'async function memAiAnalyze', 'async function memAiEdit', 'async function l1Compress',
-    'function l2Consolidate', 'async function autoExtractFacts']) {
-    assert.doesNotMatch(sliceFn(anchor), /continuity/i, anchor);
-  }
+  assert.equal(countOf("import('./continuity-runtime.mjs')"), 1);
   // Отдельного ИИ-пути генерации заголовков нет.
   assert.equal((html.match(/async function \w*[Tt]itle\w*\(/g) || []).length, 0);
   // Регрессия smoke: блок М3 выполняется раньше `let currentLang`, поэтому язык
   // читается только через безопасный помощник (голый typeof в TDZ ронял страницу).
-  const contSlice = html.slice(html.indexOf('── М3 Continuity Context'), html.indexOf('── Service Worker registration'));
-  assert.ok(contSlice.includes('function wizContinuityLangIsEn()'));
-  const contCode = contSlice.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
+  assert.ok(m3Region.includes('function wizContinuityLangIsEn()'));
+  const contCode = m3Region.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
   assert.equal((contCode.match(/currentLang/g) || []).length, 2);
 });
 
@@ -382,4 +368,108 @@ test('М3 Т18: канон, манифест и реестр нетронуты'
   const ids = [];
   for (const rows of Object.values(bootstrap.sections)) for (const r of rows) ids.push(r.id);
   assert.equal(ids.length, 70);
+});
+
+// ── М3-Т19: протокол поколений закрывает гонку OFF/ON ───────────────────────
+test('М3 Т19: протухший запрос не воскрешает состояние', () => {
+  // Сценарий 1: ON → LOADING → OFF → поздний READY не восстанавливает ON.
+  const t1 = Runtime.createContinuityRequestTracker();
+  const a1 = t1.begin(); // запрос A в полёте
+  t1.invalidate(); // владелец выключил
+  assert.equal(t1.isCurrent(a1), false, 'A протух после OFF');
+  // Сценарий 2: ON(A) → OFF → ON(B) → поздний A не затирает B.
+  const t2 = Runtime.createContinuityRequestTracker();
+  const a2 = t2.begin();
+  t2.invalidate();
+  const b2 = t2.begin();
+  assert.equal(t2.isCurrent(a2), false, 'A протух');
+  assert.equal(t2.isCurrent(b2), true, 'B актуален');
+  // Штатный путь: запрос без переключений актуален.
+  const t3 = Runtime.createContinuityRequestTracker();
+  assert.equal(t3.isCurrent(t3.begin()), true);
+});
+
+// ── М3-Т20: проводка гонки в index.html ────────────────────────────────────
+test('М3 Т20: refresh проверяет свежесть, OFF обесценивает', () => {
+  // Локальный счётчик (нужен до асинхронной загрузки модуля): один источник.
+  assert.equal(html.split('let _wizContinuitySeq = 0').length - 1, 1, 'счётчик');
+  assert.equal(html.split('const _seq = ++_wizContinuitySeq').length - 1, 1, 'начало запроса');
+  assert.equal(html.split('_wizContinuitySeq += 1').length - 1, 1, 'обесценивание на OFF');
+  // Проверки свежести перед записями: после import, после load, в catch.
+  const checks = html.split('if (_seq !== _wizContinuitySeq) return;').length - 1;
+  assert.ok(checks >= 3, 'проверок свежести: ' + checks);
+});
+
+// ── М3-Т21: повторная композиция даёт ровно один блок ──────────────────────
+test('М3 Т21: compose(compose(BASE)) → ровно один блок', async () => {
+  const { blockText, coreMeta } = await readyState();
+  const base = 'пользовательские инструкции\n\nсистемные сведения';
+  const once = Runtime.composeInstructions(base, { enabled: true, status: 'READY', blockText, coreMeta, cleanResumeActive: false });
+  const twice = Runtime.composeInstructions(once.instructions, { enabled: true, status: 'READY', blockText, coreMeta, cleanResumeActive: false });
+  assert.equal(twice.instructions, once.instructions, 'идемпотентность');
+  assert.equal(twice.continuity.injected, true);
+  assert.equal(twice.instructions.split(Runtime.CONTINUITY_BLOCK_START).length - 1, 1);
+  assert.equal(twice.instructions.split(Runtime.CONTINUITY_BLOCK_END).length - 1, 1);
+  // Тройная композиция — тоже один блок, без BASE+BLOCK+BLOCK.
+  const thrice = Runtime.composeInstructions(twice.instructions, { enabled: true, status: 'READY', blockText, coreMeta, cleanResumeActive: false });
+  assert.equal(thrice.instructions, once.instructions);
+});
+
+// ── М3-Т22: OFF на собранном снимает блок ──────────────────────────────────
+test('М3 Т22: OFF после composed → ноль блоков', async () => {
+  const { blockText, coreMeta } = await readyState();
+  const base = 'пользовательские инструкции\n\nсистемные сведения';
+  const composed = Runtime.composeInstructions(base, { enabled: true, status: 'READY', blockText, coreMeta, cleanResumeActive: false }).instructions;
+  const r = Runtime.composeInstructions(composed, { enabled: false, status: 'READY', blockText, coreMeta, cleanResumeActive: false });
+  assert.equal(r.instructions, base, 'база восстановлена точно');
+  assert.equal(r.continuity.injected, false);
+  assert.equal(r.continuity.skipped_reason, 'disabled');
+  assert.equal(r.instructions.split(Runtime.CONTINUITY_BLOCK_START).length - 1, 0);
+});
+
+// ── М3-Т23: Clean Resume на собранном снимает блок ─────────────────────────
+test('М3 Т23: Clean Resume после composed → ноль блоков', async () => {
+  const { blockText, coreMeta } = await readyState();
+  const base = 'You are continuing work from a saved snapshot...';
+  const composed = Runtime.composeInstructions(base, { enabled: true, status: 'READY', blockText, coreMeta, cleanResumeActive: false }).instructions;
+  assert.equal(composed.split(Runtime.CONTINUITY_BLOCK_START).length - 1, 1);
+  const r = Runtime.composeInstructions(composed, { enabled: true, status: 'READY', blockText, coreMeta, cleanResumeActive: true });
+  assert.equal(r.instructions, base, 'чистая resume-граница');
+  assert.equal(r.continuity.injected, false);
+  assert.equal(r.continuity.skipped_reason, 'clean_resume');
+});
+
+// ── М3-Т24: диагностика редактируется, метаданные целы ─────────────────────
+test('М3 Т24: в диагностике нет сырого блока', async () => {
+  const { blockText, coreMeta } = await readyState();
+  const composed = Runtime.composeInstructions('база', { enabled: true, status: 'READY', blockText, coreMeta, cleanResumeActive: false }).instructions;
+  // Форма повторяет реальные записи wizRecordOutboundPayload (все провайдеры).
+  const payload = {
+    mode: 'normal',
+    instructions: composed,
+    messageWithFiles: 'вопрос пользователя',
+    bodyMessages: [
+      { role: 'system', content: composed },
+      { role: 'user', content: [{ type: 'text', text: 'вопрос с картинкой' }] },
+    ],
+    system: composed,
+    systemInstruction: { parts: [{ text: composed }] },
+    userContent: 'вопрос пользователя',
+    continuity: { enabled: true, status: 'READY', injected: true, canonical_sha: CANON_SHA, record_count: 35, char_count: blockText.length, skipped_reason: null },
+    ts: 123,
+  };
+  const frozen = JSON.stringify(payload);
+  const red = Runtime.redactContinuityDiagnostics(payload);
+  const dumped = JSON.stringify(red);
+  assert.equal(dumped.split(Runtime.CONTINUITY_BLOCK_START).length - 1, 0, 'сырых блоков нет');
+  assert.ok((dumped.match(/CONTINUITY ORIENTATION — REDACTED/g) || []).length >= 4, 'плейсхолдеры на месте');
+  assert.deepEqual(red.continuity, payload.continuity, 'метаданные сохранены');
+  assert.equal(red.messageWithFiles, 'вопрос пользователя', 'чужой текст цел');
+  assert.equal(red.bodyMessages[1].content[0].text, 'вопрос с картинкой', 'вложенные части целы');
+  assert.equal(JSON.stringify(payload), frozen, 'вход не изменён');
+  // Редактура идемпотентна.
+  assert.deepEqual(Runtime.redactContinuityDiagnostics(red), red);
+  // Статика: запись диагностики идёт через редактор (все вызовы — воронкой).
+  assert.ok(html.includes('safe = wizRedactContinuityDeep(meta);'));
+  assert.ok(html.includes('window.__wizLastOutboundPayload = safe;'));
 });

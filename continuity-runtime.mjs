@@ -16,6 +16,12 @@
 // частичный контекст не инжектится, тихого отката на устаревшее/битое нет.
 // STALE выставляет приложение при неуспешной фоновой ревалидации после READY
 // (последнее хорошее значение показывается в диагностике, но не инжектится).
+//
+// Композиция идемпотентна (ровно-однократность): перед решением помощник снимает
+// все завершённые спаны блока, затем добавляет не более одного. Повторная
+// композиция не даёт BASE+BLOCK+BLOCK; OFF и Clean Resume на уже собранных
+// инструкциях снимают блок. Диагностические копии редактируются (redact):
+// полный блок заменяется плейсхолдером, метаданные сохраняются.
 
 export const CONTINUITY_SCHEMA = 'eiti-context-bootstrap/1';
 export const CONTINUITY_ROLE = 'PROVIDER_NEUTRAL_ORIENTATION';
@@ -60,6 +66,8 @@ export const RUNTIME_RECORD_FIELDS = ['id', 'type', 'status', 'statement', 'sour
 // Маркеры единственного блока непрерывности в исходящих инструкциях.
 export const CONTINUITY_BLOCK_START = '[CONTINUITY ORIENTATION — READ ONLY]';
 export const CONTINUITY_BLOCK_END = '[/CONTINUITY ORIENTATION]';
+// Плейсхолдер для диагностических копий: полный блок не логируется.
+export const CONTINUITY_REDACTED_PLACEHOLDER = '[CONTINUITY ORIENTATION — REDACTED]';
 
 // Эвристика оценки токенов: ~4 символа на токен (смешанный RU/EN текст).
 // Используется только для отчётности, не для усечения (усечения нет).
@@ -221,6 +229,9 @@ export function buildContinuityBlock(rendered, meta) {
       + rendered.approxTokens + ' токенов.',
     'BOOTSTRAP != CANON. MODEL != MEMORY_OWNER. PROVIDER != MEMORY_OWNER. MODEL_OUTPUT != CANON.',
     'MODEL_PROPOSAL != USER_DECISION. UNKNOWN != FALSE. CURRENT_STATE != HISTORY. RESEARCH_RESULT != VERIFIED_TRUTH.',
+    'CONTINUITY_READ_ONLY: у тебя нет полномочий писать Canon/seed/manifest/ledger/admission — ни ответом, ни инструментами.',
+    'CONTINUITY_READ_ONLY != GLOBAL_EITI_READ_ONLY: заметки, задачи, файлы и память Eiti — обычные рабочие области.',
+    'Не зеркаль записи ориентации в EITI Memory/заметки/задачи/файлы лишь потому, что они здесь упомянуты.',
     'Используй этот контекст для ответа. НЕ трактуй свой ответ как обновление памяти: ответ не становится памятью и не меняет канон.',
     'EITI Memory, wiz_ref, история чата и SNAP — отдельные сущности; ни одна из них НЕ является каноном непрерывности.',
     '',
@@ -232,10 +243,76 @@ export function buildContinuityBlock(rendered, meta) {
   return head + '\n' + rendered.text + tail;
 }
 
+// ── Спаны блока: снятие и редактура ─────────────────────────────────────────
+// Каноническая семантика спанов (ею же пользуется запасной редактор в index.html):
+// обрабатываются только ЗАВЕРШЁННЫЕ спаны START..первый END после него.
+// Незавершённый хвостовой START не трогаем (не наши данные — не выдумываем конец).
+// Идемпотентно: повторный прогон ничего не меняет.
+function mapContinuitySpans(text, replacement) {
+  if (typeof text !== 'string' || text.indexOf(CONTINUITY_BLOCK_START) === -1) return text;
+  let out = text;
+  for (;;) {
+    const s = out.indexOf(CONTINUITY_BLOCK_START);
+    if (s === -1) break;
+    const e = out.indexOf(CONTINUITY_BLOCK_END, s + CONTINUITY_BLOCK_START.length);
+    if (e === -1) break;
+    out = out.slice(0, s) + replacement + out.slice(e + CONTINUITY_BLOCK_END.length);
+  }
+  return out;
+}
+
+// Снимает все завершённые спаны блока и нормализует стык: схлопывает 3+ перевода
+// строки в два и убирает хвостовые пробелы (точно восстанавливает базу нашей
+// собственной сборки BASE+'\n\n'+BLOCK). Начало строки не трогаем.
+export function stripContinuityBlocks(text) {
+  if (typeof text !== 'string') return text;
+  return mapContinuitySpans(text, '').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '');
+}
+
+// Заменяет каждый завершённый спан плейсхолдером для диагностических копий.
+// Полный контекст в логи не попадает; позиции остального текста не сдвигаются
+// нормализацией (её здесь нет — только замена спанов).
+export function redactContinuityBlocks(text, placeholder) {
+  if (typeof text !== 'string') return text;
+  const ph = typeof placeholder === 'string' ? placeholder : CONTINUITY_REDACTED_PLACEHOLDER;
+  return mapContinuitySpans(text, ph);
+}
+
+// Глубокая редактура диагностического объекта: рекурсивно правит все строки
+// (instructions, bodyMessages, system, systemInstruction и любые вложенные),
+// возвращает НОВЫЙ объект, вход не меняет. Метаданные continuity не трогаем.
+export function redactContinuityDiagnostics(value) {
+  if (typeof value === 'string') return redactContinuityBlocks(value);
+  if (Array.isArray(value)) return value.map(redactContinuityDiagnostics);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const k of Object.keys(value)) out[k] = redactContinuityDiagnostics(value[k]);
+    return out;
+  }
+  return value;
+}
+
+// ── Трекер поколений асинхронных запросов ──────────────────────────────────
+// Протокол защиты от гонки владельца OFF/ON: каждый refresh берёт поколение
+// через begin(), выключение обесценивает pending через invalidate(), перед
+// каждой записью состояния проверяется isCurrent(). Протухший запрос обязан
+// молча выйти и ничего не писать. Тот же протокол встроен в index.html
+// (там счётчик локальный — нужен до асинхронной загрузки модуля).
+export function createContinuityRequestTracker() {
+  let seq = 0;
+  return {
+    begin() { seq += 1; return seq; },
+    invalidate() { seq += 1; },
+    isCurrent(id) { return id === seq; },
+  };
+}
+
 // ── Композиция инструкций ─────────────────────────────────────────────────
-// Единственная точка инжекта М3. Чистая функция: к базовым инструкциям
-// добавляется ровно один блок ядра — и только при включённой настройке,
-// статусе READY и неактивном Clean Resume. Иначе база возвращается без изменений.
+// Единственная точка инжекта М3. Чистая идемпотентная функция: сначала снимает
+// все завершённые спаны блока с базы, затем добавляет не более одного — и только
+// при включённой настройке, статусе READY и неактивном Clean Resume.
+// compose(compose(BASE)) даёт ровно один блок; OFF и Clean Resume на уже
+// собранных инструкциях блок снимают. Никогда BASE+BLOCK+BLOCK.
 // skipped_reason: null | 'clean_resume' | 'disabled' | 'integrity_fail'.
 // В 'integrity_fail' свернуты все неготовые состояния (LOADING/STALE/
 // INTEGRITY_FAIL/LOAD_ERROR/отсутствие блока): точное состояние видно в status.
@@ -255,21 +332,27 @@ export function composeInstructions(baseInstructions, opts) {
     char_count: Number.isFinite(coreMeta.char_count) ? coreMeta.char_count : 0,
     skipped_reason: null,
   };
-  // Чистота исходящей границы Clean Resume — абсолютный приоритет.
-  if (cleanResumeActive) {
-    continuity.skipped_reason = 'clean_resume';
-    return { instructions: baseInstructions, continuity };
-  }
-  if (!enabled) {
-    continuity.skipped_reason = 'disabled';
-    return { instructions: baseInstructions, continuity };
-  }
-  if (status !== CONTINUITY_STATUS.READY || !blockText) {
+  // Ровно-однократность: работаем только с очищенной базой.
+  const clean = stripContinuityBlocks(baseInstructions);
+  if (typeof clean !== 'string') {
     continuity.skipped_reason = 'integrity_fail';
     return { instructions: baseInstructions, continuity };
   }
+  // Чистота исходящей границы Clean Resume — абсолютный приоритет.
+  if (cleanResumeActive) {
+    continuity.skipped_reason = 'clean_resume';
+    return { instructions: clean, continuity };
+  }
+  if (!enabled) {
+    continuity.skipped_reason = 'disabled';
+    return { instructions: clean, continuity };
+  }
+  if (status !== CONTINUITY_STATUS.READY || !blockText) {
+    continuity.skipped_reason = 'integrity_fail';
+    return { instructions: clean, continuity };
+  }
   continuity.injected = true;
-  return { instructions: baseInstructions + '\n\n' + blockText, continuity };
+  return { instructions: clean ? clean + '\n\n' + blockText : blockText, continuity };
 }
 
 // ── Загрузчик ─────────────────────────────────────────────────────────────

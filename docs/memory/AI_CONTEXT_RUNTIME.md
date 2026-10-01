@@ -85,8 +85,8 @@ cache-first после первого чтения; runtime-файлы в пре
 
 - записей ядра: **35** (исключено 35);
 - ядро: **14058 символов**, ~**3515 токенов**;
-- полный инжектируемый блок (ядро + read-only шапка/подвал): **15024 символа**,
-  ~**3756 токенов** (эвристика ~4 символа на токен, только для отчётности).
+- полный инжектируемый блок (ядро + read-only шапка/подвал): **15357 символов**,
+  ~**3839 токенов** (эвристика ~4 символа на токен, только для отчётности).
 
 Жёсткий лимит не вводился: измеренный размер уже разумен для каждого запроса,
 усечения нет, половина записей не нужна. Если будущий канон раздует ядро за
@@ -119,6 +119,26 @@ MODEL ROUTING != MEMORY AUTHORITY: смена провайдера/модели 
 Модель вправе ИСПОЛЬЗОВАТЬ контекст для ответа, но НЕ вправе трактовать ответ
 как обновление памяти.
 
+Композиция идемпотентна (ровно-однократность): помощник сначала снимает все
+завершённые спаны блока с базы, затем добавляет не более одного.
+`compose(compose(BASE))` даёт ровно один блок; OFF и Clean Resume на уже
+собранных инструкциях блок снимают. Никогда `BASE+BLOCK+BLOCK`.
+
+## Граница read-only (точная семантика)
+
+`CONTINUITY_READ_ONLY` означает только отсутствие у модели полномочий писать
+память непрерывности: Canon/seed/manifest/ledger/admission — ни ответом,
+ни инструментами. Эта же формулировка дословно закреплена в шапке блока.
+
+`CONTINUITY_READ_ONLY != GLOBAL_EITI_READ_ONLY`: Eiti целиком read-only
+не становится. Заметки, задачи, файлы и память Eiti — обычные рабочие области:
+модель по-прежнему может вести их штатными командами и инструментами.
+
+Записи непрерывности нельзя автоматически зеркалить в EITI Memory, заметки,
+задачи или файлы лишь потому, что они упомянуты в ориентации: появление
+записи в read-only контексте — не основание для её копирования в рабочие
+области (шапка блока фиксирует этот запрет явно).
+
 Существующая память Eiti не redesigned: локальная личная память, EITI Memory,
 `wiz_ref`, история чатов и SNAP сохранены. EITI local personal memory != Canon;
 `wiz_ref` != Canon; chat history != Canon; runtime continuity context != Canon.
@@ -148,6 +168,13 @@ TTS (`_apiFetch`/`toggleSpeech`), Grok Voice (`sendTextToGrokVoice`), веб-п�
 целостности / Ошибка загрузки / Устарело / Выключено (+ счётчик записей/токенов
 в READY). Сырой канон в UI не показывается.
 
+Гонка владельца закрыта поколением запросов: refresh берёт поколение до первого
+`await`, выключение его обесценивает, перед каждой записью состояния проверяется
+свежесть. Поздний ответ протухшего запроса (OFF после ON; запрос A после ON→OFF→ON
+с запросом B) молча игнорируется и состояние не меняет. Протокол —
+`createContinuityRequestTracker` в модуле (там же счётчик продублирован локально
+в `index.html`, так как нужен до асинхронной загрузки модуля).
+
 ## Наблюдаемость
 
 Исходящая диагностика (`wizRecordOutboundPayload`, `window._wizContinuityLastMeta`,
@@ -155,12 +182,19 @@ TTS (`_apiFetch`/`toggleSpeech`), Grok Voice (`sendTextToGrokVoice`), веб-п�
 
 ```json
 { "continuity": { "enabled": true, "status": "READY", "injected": true,
-  "canonical_sha": "e0ee19c4…", "record_count": 35, "char_count": 15024,
+  "canonical_sha": "e0ee19c4…", "record_count": 35, "char_count": 15357,
   "skipped_reason": null } }
 ```
 
 `skipped_reason`: `null | "clean_resume" | "disabled" | "integrity_fail"`
 (`integrity_fail` покрывает все неготовые состояния; точное — в `status`).
+
+Диагностические копии редактируются: `wizRecordOutboundPayload` рекурсивно
+заменяет каждый завершённый спан блока плейсхолдером
+`[CONTINUITY ORIENTATION — REDACTED]` во всех полях и вложенных структурах
+(`instructions`, `bodyMessages`, `system`, `systemInstruction`). Сырой ~15k блок
+в диагностику не попадает; метаданные `continuity` сохраняются целиком.
+Реальный сетевой пейлоад провайдера не меняется — правится только копия.
 
 ## Файлы
 
@@ -170,7 +204,7 @@ TTS (`_apiFetch`/`toggleSpeech`), Grok Voice (`sendTextToGrokVoice`), веб-п�
 | `index.html` | UI-настройка, инициализация, 3 вызова помощника, диагностика |
 | `docs/memory/context-bootstrap.runtime.json` | Производный артефакт (DERIVED, из `exportContext`) |
 | `docs/memory/AI_CONTEXT_RUNTIME.md` | Этот документ |
-| `tools/memory/continuity_runtime.test.mjs` | Тесты М3-Т1…Т18 |
+| `tools/memory/continuity_runtime.test.mjs` | Тесты М3-Т1…Т24 |
 
 Не менялись: `docs/memory/ruslan-orientation-seed.json`,
 `docs/memory/manifest.json`, `docs/memory/event_ledger.jsonl`, содержимое Canon,

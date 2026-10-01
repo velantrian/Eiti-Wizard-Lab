@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "continuity-carrier-event-ledger/2.1",
+  "title": "Схема события журнала непрерывности М2.1 (только OBSERVED)",
+  "description": "Машиночитаемая схема для docs/memory/event_ledger.jsonl в вехе М2.1. Проверяет только форму провода {envelope, record}. Семантические проверки (хеш канона, цепочка prior_event_id, карантин, разделение актёров, запрет ADMIT) выполняет tools/memory/ledger_tool.mjs.",
+  "type": "object",
+  "required": ["envelope", "record"],
+  "additionalProperties": false,
+  "properties": {
+    "envelope": {
+      "type": "object",
+      "required": ["event_id", "timestamp", "admission_state", "event_kind", "source_actor", "recorded_by", "base_canonical_sha256", "base_commit_sha", "writer_mode"],
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "description": "Уникальный идентификатор события в журнале. Дубликат означает форк и отказ с CONFLICT."
+        },
+        "timestamp": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:?\\d{2})$",
+          "description": "Метка времени ISO8601. Только метаданные, не авторитет порядка."
+        },
+        "admission_state": {
+          "type": "string",
+          "enum": ["OBSERVED", "ADMITTED", "QUARANTINED", "REJECTED"],
+          "description": "Состояние допуска. В М2.1 разрешён только OBSERVED."
+        },
+        "event_kind": {
+          "type": "string",
+          "enum": ["OBSERVE", "ADMIT", "SUPERSEDE", "CONFLICT_MARK"],
+          "description": "Вид события. В М2.1 разрешён только OBSERVE."
+        },
+        "source_actor": {
+          "type": "string",
+          "pattern": "^(HUMAN|AI|SYSTEM):\\S{1,64}$",
+          "description": "Источник наблюдения в форме КЛАСС:идентификатор. Обязан отличаться от recorded_by."
+        },
+        "recorded_by": {
+          "type": "string",
+          "pattern": "^(HUMAN|AI|SYSTEM):\\S{1,64}$",
+          "description": "Писатель события в форме КЛАСС:идентификатор. ИИ может писать только OBSERVED."
+        },
+        "authorized_by": {
+          "type": ["string", "null"],
+          "pattern": "^(HUMAN|AI|SYSTEM):\\S{1,64}$",
+          "description": "Авторизатор. Для OBSERVED обязан быть null или отсутствовать."
+        },
+        "base_canonical_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Заявленный писателем хеш канона. Обязан равняться manifest.canonical_content_sha256, иначе отказ."
+        },
+        "base_manifest_file_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Необязательный хеш файла manifest.json. Если present, обязан совпадать с текущим файлом."
+        },
+        "base_commit_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "Заявленный базовый коммит (полный SHA-1, 40 hex). В М2.1 проверяется только формат."
+        },
+        "prior_event_id": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "description": "Ссылка на непосредственно предыдущее событие. Null для первого события. Авторитет порядка вместе с физическим порядком дописывания."
+        },
+        "applies_to_event_id": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "description": "Опциональная ссылка на связанное событие (для будущих SUPERSEDE/CONFLICT). Для OBSERVE обычно отсутствует."
+        },
+        "admission_reason": {
+          "type": ["string", "null"],
+          "description": "Опциональная причина. Для OBSERVED может отсутствовать."
+        },
+        "writer_mode": {
+          "type": "string",
+          "enum": ["READ_WRITE_PR"],
+          "description": "Режим записи. В М2.1 разрешён только READ_WRITE_PR."
+        }
+      }
+    },
+    "record": {
+      "type": "object",
+      "required": ["id", "type", "statement", "status", "source", "source_kind", "scope", "provenance", "valid_from", "updated_at", "details_pointer", "relations"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": {
+          "type": "string",
+          "enum": ["USER_IDENTITY", "USER_GOAL", "USER_MOTIVATION", "CURRENT_PRIORITY", "ACTIVE_THREAD", "RESEARCH_RESULT", "OPEN_QUESTION", "KNOWN_LIMITATION", "PROJECT_POINTER", "SOURCE_POINTER", "INVARIANT", "DEFERRED_ITEM", "NEXT_ACTION"]
+        },
+        "statement": { "type": "string", "minLength": 1 },
+        "status": {
+          "type": "string",
+          "enum": ["CURRENT", "OPEN", "UNKNOWN", "HYPOTHESIS", "RESEARCH_RESULT", "ENGINEERING_RESULT", "HISTORICAL", "SUPERSEDED", "DEFERRED"]
+        },
+        "source": { "type": "string", "minLength": 1, "description": "Алиас источника. В М2.1 обязан существовать в seed.sources." },
+        "source_kind": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "minLength": 1 },
+        "provenance": {
+          "type": "string",
+          "enum": ["USER_STATEMENT_2026-09-29", "USER_RAW", "SOURCE_DOC", "AI_SUMMARY"]
+        },
+        "valid_from": { "type": "string", "minLength": 1 },
+        "updated_at": { "type": "string", "minLength": 1 },
+        "details_pointer": { "type": "string", "minLength": 1 },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["rel", "target"],
+            "additionalProperties": false,
+            "properties": {
+              "rel": {
+                "type": "string",
+                "enum": ["MOTIVATED_BY", "IMPLEMENTED_BY_PROJECT", "INVESTIGATES", "RELATED_TO", "SUPPORTS", "DOES_NOT_ESTABLISH", "USES_SOURCE", "NEXT_ACTION", "SUPERSEDED_BY"]
+              },
+              "target": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "related_to": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "supersedes": { "type": ["string", "null"] },
+        "superseded_by": { "type": ["string", "null"] },
+        "keywords": { "type": "string" }
+      },
+      "description": "Запись-кандидат. Разрешены только ключи существующего сида. Запрещены authority/evidence/confidence/validity и любые иные ключи."
+    }
+  }
+}

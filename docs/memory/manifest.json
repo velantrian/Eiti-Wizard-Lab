@@ -1,0 +1,36 @@
+{
+  "schema_version": "continuity-carrier-manifest/1",
+  "carrier_version": "M1",
+  "canonical_record_file": "docs/memory/ruslan-orientation-seed.json",
+  "canonical_record_schema": "ruslan-orientation-seed/1",
+  "canonical_record_set_role": "CANONICAL_CONTINUITY_RECORD_SET",
+  "canon_is_not_truth": true,
+  "canonical_record_count": 79,
+  "canonical_content_sha256": "e0ee19c49a587691a4068354ca521d5f5b8d9f1d84d2957ec129120f3cefedc0",
+  "generated_views": [
+    {
+      "path": "docs/memory/CURRENT_ORIENTATION.md",
+      "role": "DERIVED_VIEW",
+      "generator": "node tools/memory/seed_tool.mjs render-start-view --out"
+    }
+  ],
+  "derived_indexes": [
+    {
+      "path": "tools/memory/seed_tool.mjs export-lab → wiz-ref-jsonl/1",
+      "role": "DERIVED_INDEX_BUILD_PATH"
+    },
+    {
+      "path": "Lab wiz_ref_* (browser SQLite/sql.js)",
+      "role": "LOCAL_DERIVED_RUNTIME_INDEX"
+    }
+  ],
+  "current_state_view": "docs/memory/CURRENT_ORIENTATION.md",
+  "source_registry_location": "docs/memory/SOURCE_REGISTRY.md",
+  "event_ledger_location": "docs/memory/event_ledger.jsonl",
+  "default_write_mode": "READ_WRITE_PR",
+  "concurrency_mode": "OPTIMISTIC_MANIFEST_HASH",
+  "admission_policy": "SPECIFIED",
+  "admission_implementation": "ABSENT",
+  "updated_at": "2026-09-30T09:28:16+02:00",
+  "base_commit_sha": "7926b9cd1716d855abb762eadfb441f413750987"
+}

@@ -988,3 +988,52 @@ test('34: Путь Б с ADMIT или не-нуль authorized_by отклоня
     assert.deepEqual(размерЖурнала(журнал), { байты: 0, строки: 0 });
   }
 });
+
+// ── 35. М2.1.1 Б-01: приватный локатор в envelope.admission_reason отклоняется ──
+test('35: приватный локатор в envelope.admission_reason отклоняется, байты журнала неизменны', () => {
+  const случаи = [
+    ['ноушен УРЛ в admission_reason', 'смотреть https://notion.so/abc123def456 внутри'],
+    ['гугл документы УРЛ в admission_reason', 'смотреть https://docs.google.com/document/d/abc123 внутри'],
+    ['гугл драйв УРЛ в admission_reason', 'смотреть https://drive.google.com/file/d/abc123 внутри'],
+  ];
+  for (const [название, причина] of случаи) {
+    const журнал = временныйЖурнал();
+    const до = размерЖурнала(журнал);
+    const событие = допустимоеСобытие('evt-m211-b01-001', 'OBS-M211-B01-001', null, { admission_reason: причина });
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false, название);
+    assert.ok(проверка.errors.some(e => e.includes('QUARANTINE_PRIVATE_LOCATOR')), название + ': ' + проверка.errors.join(' | '));
+    const итог = appendObserved(событие, { ledgerPath: журнал });
+    assert.equal(итог.ok, false, название);
+    assert.ok(итог.errors.some(e => e.includes('QUARANTINE_PRIVATE_LOCATOR')), название + ': ' + итог.errors.join(' | '));
+    const после = размерЖурнала(журнал);
+    assert.deepEqual(после, до, название + ': байты журнала обязаны остаться неизменными');
+    assert.deepEqual(после, { байты: 0, строки: 0 }, название);
+  }
+  // Путь Б: конвертный карантин не зависит от формы источника.
+  {
+    const журнал = временныйЖурнал();
+    const до = размерЖурнала(журнал);
+    const событие = допустимоеСобытиеПутьБ('evt-m211-b01-002', 'OBS-M211-B01-002', null, { admission_reason: 'смотреть https://notion.so/abc123 внутри' });
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, false);
+    assert.ok(проверка.errors.some(e => e.includes('QUARANTINE_PRIVATE_LOCATOR')), проверка.errors.join(' | '));
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, false);
+    assert.deepEqual(размерЖурнала(журнал), до);
+  }
+  // Голый технический ид в admission_reason без приватного УРЛ-контекста проходит (без глобальной блокировки УУИД).
+  {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытие('evt-m211-b01-allow-001', 'OBS-M211-B01-ALLOW-001', null, { admission_reason: 'Ид эксперимента 550e8400-e29b-41d4-a716-446655440000 без ссылки' });
+    const проверка = validateEvent(событие, { ledgerPath: журнал });
+    assert.equal(проверка.ok, true, 'голый УУИД в конверте не равен локатору: ' + проверка.errors.join(' | '));
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, true);
+    assert.equal(размерЖурнала(журнал).строки, 1);
+  }
+  {
+    const журнал = временныйЖурнал();
+    const событие = допустимоеСобытие('evt-m211-b01-allow-002', 'OBS-M211-B01-ALLOW-002', null, { admission_reason: 'Технический ид TECH-2026-001 без ссылки' });
+    assert.equal(validateEvent(событие, { ledgerPath: журнал }).ok, true);
+    assert.equal(appendObserved(событие, { ledgerPath: журнал }).ok, true);
+  }
+});

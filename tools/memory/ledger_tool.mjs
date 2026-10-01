@@ -448,7 +448,8 @@ export function validateEvent(event, opts = {}) {
   }
   if (rec.status === 'SUPERSEDED' && !rec.superseded_by) errors.push('запись: статус SUPERSEDED требует superseded_by');
   // Карантинное сканирование строк (учётные данные и приватные локаторы).
-  // Покрывает observed_source целиком (метка входит в строки записи).
+  // Покрывает полное событие {envelope, record}, включая envelope.admission_reason и observed_source.label.
+  // Одна коллекция строк переиспользуется обоими сканерами.
   const строки = [];
   collectStrings({ envelope: env, record: rec }, строки);
   for (const s of строки) {
@@ -456,11 +457,9 @@ export function validateEvent(event, opts = {}) {
       if (re.test(s)) { errors.push(`QUARANTINE_CREDENTIAL: обнаружен шаблон учётных данных (${re.source})`); break; }
     }
   }
-  // Приватные локаторы проверяются только в записи (конверт содержит только технические идентификаторы).
-  // Политика: голый технический ид без приватного УРЛ-контекста не отклоняется.
-  const строкиЗаписи = [];
-  collectStrings(rec, строкиЗаписи);
-  for (const s of строкиЗаписи) {
+  // Приватные локаторы проверяются по полному событию {envelope, record}, включая envelope.admission_reason.
+  // Политика: голый технический ид без приватного УРЛ-контекста не отклоняется; глобальная блокировка УУИД запрещена.
+  for (const s of строки) {
     for (const re of QUARANTINE_LOCATOR_RES) {
       if (re.test(s)) { errors.push(`QUARANTINE_PRIVATE_LOCATOR: обнаружен приватный локатор (${re.source})`); break; }
     }

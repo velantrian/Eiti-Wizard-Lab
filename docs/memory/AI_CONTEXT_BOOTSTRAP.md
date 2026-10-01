@@ -43,7 +43,8 @@ node tools/memory/seed_tool.mjs export-context --format md --out /tmp/bootstrap.
 ворота целостности и бросает исключение при любом нарушении, не возвращая
 пакет из непроверенного канона (`UNVERIFIED CANON ↛ BOOTSTRAP`).
 Помощники `buildBootstrap` / `renderBootstrapJson` / `renderBootstrapMarkdown` —
-внутренние чистые функции для уже проверенных данных, а не публичный API.
+приватны модулю (без `export`), вызываются только внутри `exportContext`
+на уже проверенных данных и не входят в публичный API.
 
 ## Секции (11)
 

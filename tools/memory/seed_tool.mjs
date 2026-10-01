@@ -376,10 +376,10 @@ export function checkIntegrity(seedPath = DEFAULT_SEED, manifestPath = DEFAULT_M
 }
 
 // Внутренняя чистая сборка объекта пакета (порядок ключей и секций фиксирован).
-// НЕ публичный API генерации: принимает только уже проверенные данные.
+// Приватна модулю (без export): принимает только уже проверенные данные.
 // Публичная точка входа — exportContext(), которая всегда идёт через ворота.
-// Прямой вызов с непроверенным seed/манифестом запрещён (UNVERIFIED CANON ↛ BOOTSTRAP).
-export function buildBootstrap(seed, manifest, fileHash) {
+// Прямой вызов с непроверенным seed/манифестом невозможен извне (UNVERIFIED CANON ↛ BOOTSTRAP).
+function buildBootstrap(seed, manifest, fileHash) {
   const selected = selectBootstrapSections(seed);
   const sections = {};
   for (const key of BOOTSTRAP_SECTION_ORDER) sections[key] = (selected[key] || []).map(projectRecord);
@@ -402,8 +402,8 @@ export function bootstrapRecordIds(bootstrap) {
   return ids;
 }
 // Внутренний чистый JSON-рендер (стабильный stringify с отступом 2 и концевым переводом).
-// НЕ публичный API генерации — только для уже проверенных данных (см. buildBootstrap).
-export function renderBootstrapJson(seed, manifest, fileHash) {
+// Приватен модулю (без export) — только для уже проверенных данных (см. buildBootstrap).
+function renderBootstrapJson(seed, manifest, fileHash) {
   return JSON.stringify(buildBootstrap(seed, manifest, fileHash), null, 2) + '\n';
 }
 // Строка одной записи в МД: первая строка несёт ИД для извлечения тем же порядком, что в JSON.
@@ -413,8 +413,8 @@ function bootstrapMdRecord(r) {
   return first + '\n' + second;
 }
 // Внутренний чистый МД-рендер: те же ИД и тот же порядок, что в JSON; без выдуманных утверждений.
-// НЕ публичный API генерации — только для уже проверенных данных (см. buildBootstrap).
-export function renderBootstrapMarkdown(seed, manifest, fileHash) {
+// Приватен модулю (без export) — только для уже проверенных данных (см. buildBootstrap).
+function renderBootstrapMarkdown(seed, manifest, fileHash) {
   const pack = buildBootstrap(seed, manifest, fileHash);
   const out = [];
   out.push('# EITI CONTEXT BOOTSTRAP — провайдер-нейтральная ориентация');

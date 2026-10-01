@@ -7,7 +7,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { ROOT, DEFAULT_SEED, DEFAULT_MANIFEST, loadSeed, loadManifest, validate, search, renderStartView, wordCount, exportLab, stats, RELS, TYPES, STATUSES, sha256File, verifyIntegrity, checkIntegrity, selectBootstrapSections, buildBootstrap, bootstrapRecordIds, renderBootstrapJson, renderBootstrapMarkdown, bootstrapMarkdownIds, exportContext, BOOTSTRAP_SCHEMA, BOOTSTRAP_ROLE, BOOTSTRAP_SECTION_ORDER } from './seed_tool.mjs';
+import { ROOT, DEFAULT_SEED, DEFAULT_MANIFEST, loadSeed, loadManifest, validate, search, renderStartView, wordCount, exportLab, stats, RELS, TYPES, STATUSES, sha256File, verifyIntegrity, checkIntegrity, selectBootstrapSections, bootstrapRecordIds, bootstrapMarkdownIds, exportContext, BOOTSTRAP_SCHEMA, BOOTSTRAP_ROLE, BOOTSTRAP_SECTION_ORDER } from './seed_tool.mjs';
+import * as ToolNamespace from './seed_tool.mjs';
 
 const require = createRequire(import.meta.url);
 const seed = loadSeed();
@@ -144,11 +145,9 @@ test('stats are consistent', () => {
 const manifest = loadManifest();
 const canonSha = sha256File(DEFAULT_SEED);
 const byId = new Map(seed.records.map((r) => [r.id, r]));
-// Вспомогательная сборка пакета из канонических файлов (через ворота целостности).
+// Вспомогательная сборка пакета из канонических файлов (только через публичную точку с воротами).
 function canonPack() {
-  const gate = checkIntegrity(DEFAULT_SEED, DEFAULT_MANIFEST);
-  assert.equal(gate.ok, true, 'ворота целостности обязаны пропускать канон: ' + gate.errors.join('; '));
-  return { gate, json: renderBootstrapJson(gate.seed, gate.manifest, gate.fileHash), md: renderBootstrapMarkdown(gate.seed, gate.manifest, gate.fileHash) };
+  return { json: exportContext({ format: 'json' }), md: exportContext({ format: 'md' }) };
 }
 
 // Т1: канон валиден.
@@ -373,10 +372,15 @@ test('М2 Т16: validate/stats/search/render/export-lab работают как 
 });
 // Т17: публичная точка входа не отдаёт пакет из непроверенного канона (без обхода ворот).
 test('М2 Т17: exportContext отвергает изменённый seed/манифест (PUBLIC/API INTEGRITY BYPASS)', () => {
-  // Валидный программный вызов работает и совпадает с выводом через ворота.
+  // Сырые генераторы не входят в публичную поверхность модуля — только exportContext.
+  assert.equal(ToolNamespace.buildBootstrap, undefined);
+  assert.equal(ToolNamespace.renderBootstrapJson, undefined);
+  assert.equal(ToolNamespace.renderBootstrapMarkdown, undefined);
+  assert.equal(typeof ToolNamespace.exportContext, 'function');
+  // Валидный программный вызов работает; умолчания равны явным каноническим путям.
   const { json: gatedJson, md: gatedMd } = canonPack();
-  assert.equal(exportContext({ format: 'json' }), gatedJson);
-  assert.equal(exportContext({ format: 'md' }), gatedMd);
+  assert.equal(exportContext({ format: 'json', seedPath: DEFAULT_SEED, manifestPath: DEFAULT_MANIFEST }), gatedJson);
+  assert.equal(exportContext({ format: 'md', seedPath: DEFAULT_SEED, manifestPath: DEFAULT_MANIFEST }), gatedMd);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'm2-pub-'));
   try {
     // Случай А: мутированный seed + валидный манифест → throw, пакета нет.

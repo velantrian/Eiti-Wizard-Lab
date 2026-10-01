@@ -6,12 +6,14 @@
 | `CURRENT_ORIENTATION.md` | Стартовая выжимка. **Генерируется** из seed, руками не править. |
 | `ruslan-orientation-seed.json` | Источник истины паспорта: записи с type/status/source/provenance/relations (`ruslan-orientation-seed/1`). |
 | `SOURCE_REGISTRY.md` | Реестр источников: роль, use-for, do-not-use-for, reachable, найденные конфликты. |
-| `../../tools/memory/seed_tool.mjs` | Node без зависимостей: `validate`, `stats`, `render-start-view`, `search`, `export-lab`. |
+| `../../tools/memory/seed_tool.mjs` | Node без зависимостей: `validate`, `stats`, `render-start-view`, `search`, `export-lab`, `export-context`. |
+| `AI_CONTEXT_BOOTSTRAP.md` | Провайдер-нейтральный контекст М2 (`eiti-context-bootstrap/1`): сборка из канона через ворота целостности. |
 
 ```bash
 node tools/memory/seed_tool.mjs validate
 node tools/memory/seed_tool.mjs render-start-view --out        # → docs/memory/CURRENT_ORIENTATION.md
 node tools/memory/seed_tool.mjs search "Что остаётся открытым?" --k 5
+node tools/memory/seed_tool.mjs export-context --format json   # провайдер-нейтральный пакет М2 (или --format md)
 node tools/memory/seed_tool.mjs export-lab --out private-memory/ruslan-orientation-seed.private.jsonl \
      [--locators private-memory/source-locators.private.json]
 node --test tools/memory/

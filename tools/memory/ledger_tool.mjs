@@ -1,13 +1,16 @@
 #!/usr/bin/env node
-// Инструмент журнала М2.1.1 — только OBSERVED, неизменяемый карантинный слой (без зависимостей).
+// Инструмент журнала М2.2.0a — append-only lifecycle вне Canon (без зависимостей).
 //
 //   node tools/memory/ledger_tool.mjs validate-event <событие.json> [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]
 //   node tools/memory/ledger_tool.mjs append-observed <событие.json> [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]
+//   node tools/memory/ledger_tool.mjs append-event <событие.json> [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]
+//   node tools/memory/ledger_tool.mjs project-proposals [--ledger ПУТЬ]
 //   node tools/memory/ledger_tool.mjs check-hash [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]
 //
-// Правила вехи М2.1.1 (надмножество М2.1, только OBSERVED):
-// - ИИ МОЖЕТ ДОПИСЫВАТЬ OBSERVED; ИИ НЕ МОЖЕТ ДОПУСКАТЬ В КАНОН.
-// - Дописывание только неизменяемое (append-only). Карантин означает отказ ДО дописывания.
+// Правила вехи М2.2.0a поверх М2.1.1:
+// - admission_state всегда OBSERVED, authorized_by всегда null; ADMIT и Canon apply запрещены.
+// - Lifecycle parent задан только applies_to_event_id; prior_event_id — только физический append-порядок.
+// - Append-only; proposal board read-only. Предложение не является пользовательским решением.
 // - Источник записи — строгий ИСКЛЮЧАЮЩИЙ выбор: Путь А (source+source_kind из сида) или Путь Б (observed_source).
 // - Событийно-локальное не равно канону, реестру, допущенному и проверенному.
 // - Критическая секция: appendObserved сериализует писателей блокировкой каталога (mkdir exclusive).
@@ -31,9 +34,23 @@ export const DEFAULT_SEED = path.join(ROOT, 'docs', 'memory', 'ruslan-orientatio
 export const DEFAULT_MANIFEST = path.join(ROOT, 'docs', 'memory', 'manifest.json');
 export const DEFAULT_LEDGER = path.join(ROOT, 'docs', 'memory', 'event_ledger.jsonl');
 
-// Перечисления конверта М2.1.1.
-export const ADMISSION_STATES = ['OBSERVED', 'ADMITTED', 'QUARANTINED', 'REJECTED'];
-export const EVENT_KINDS = ['OBSERVE', 'ADMIT', 'SUPERSEDE', 'CONFLICT_MARK'];
+// Перечисления конверта М2.2.0a. Admission remains OBSERVED-only; lifecycle is separate.
+export const ADMISSION_STATES = ['OBSERVED'];
+export const LIFECYCLE_STATES = ['OBSERVED', 'CANDIDATE', 'PROPOSED', 'HOLD', 'CONFLICT', 'SUPERSEDED'];
+export const EVENT_KINDS = ['OBSERVE', 'CANDIDATE', 'PROPOSE', 'HOLD', 'CONFLICT_MARK', 'SUPERSEDE'];
+export const PROPOSAL_CONTENT_KINDS = ['FULL_RECORD'];
+const EVENT_LIFECYCLE_STATE = Object.freeze({
+  OBSERVE: 'OBSERVED', CANDIDATE: 'CANDIDATE', PROPOSE: 'PROPOSED', HOLD: 'HOLD',
+  CONFLICT_MARK: 'CONFLICT', SUPERSEDE: 'SUPERSEDED',
+});
+const LIFECYCLE_TRANSITIONS = Object.freeze({
+  OBSERVED: new Set(['CANDIDATE', 'HOLD', 'CONFLICT']),
+  CANDIDATE: new Set(['PROPOSED', 'HOLD', 'CONFLICT', 'SUPERSEDED']),
+  PROPOSED: new Set(['HOLD', 'CONFLICT', 'SUPERSEDED', 'PROPOSED']),
+  HOLD: new Set(['CANDIDATE', 'PROPOSED', 'CONFLICT', 'SUPERSEDED']),
+  CONFLICT: new Set(['HOLD', 'SUPERSEDED', 'CANDIDATE']),
+  SUPERSEDED: new Set(),
+});
 export const WRITER_MODES = ['READ_WRITE_PR'];
 export const ACTOR_CLASSES = ['HUMAN', 'AI', 'SYSTEM'];
 
@@ -41,7 +58,7 @@ export const ACTOR_CLASSES = ['HUMAN', 'AI', 'SYSTEM'];
 // В М2.1.1 source/source_kind убраны из безусловных обязательных: их наличие проверяет ИСКЛЮЧАЮЩИЙ выбор.
 export const ENVELOPE_KEYS = ['event_id', 'timestamp', 'admission_state', 'event_kind', 'source_actor', 'recorded_by',
   'authorized_by', 'base_canonical_sha256', 'base_manifest_file_sha256', 'base_commit_sha', 'prior_event_id',
-  'applies_to_event_id', 'admission_reason', 'writer_mode'];
+  'applies_to_event_id', 'admission_reason', 'writer_mode', 'lifecycle_state', 'conflict_peer_event_id', 'proposal_content_kind'];
 export const RECORD_REQUIRED = ['id', 'type', 'statement', 'status', 'scope', 'provenance',
   'valid_from', 'updated_at', 'details_pointer', 'relations'];
 export const RECORD_OPTIONAL = ['related_to', 'supersedes', 'superseded_by', 'keywords'];
@@ -186,6 +203,97 @@ function collectStrings(value, out) {
   if (value && typeof value === 'object') { for (const v of Object.values(value)) collectStrings(v, out); }
 }
 
+// Проекция legacy-событий без lifecycle_state: только старые OBSERVE означают OBSERVED.
+export function lifecycleStateOf(event) {
+  const env = event?.parsed?.envelope || event?.envelope || {};
+  return env.lifecycle_state ?? (env.event_kind === 'OBSERVE' ? 'OBSERVED' : null);
+}
+
+// Семантическая граф-проверка. prior_event_id не участвует здесь: он остаётся
+// исключительно физической последовательностью строк; родитель задаётся applies_to_event_id.
+function validateLifecycleGraph(entries, { allowLegacy = true } = {}) {
+  const errors = [];
+  const byId = new Map();
+  const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+  for (const entry of entries) {
+    const parsed = entry?.parsed || entry;
+    const env = parsed?.envelope;
+    if (!env || typeof env !== 'object' || Array.isArray(env)) continue;
+    const id = env.event_id;
+    if (typeof id !== 'string' || !RE_EVENT_ID.test(id)) continue;
+    const kind = env.event_kind;
+    const hasLifecycle = hasOwn(env, 'lifecycle_state');
+    const state = hasLifecycle ? env.lifecycle_state : (allowLegacy && kind === 'OBSERVE' ? 'OBSERVED' : null);
+    if (env.admission_state !== 'OBSERVED') errors.push(`событие ${id}: ADMISSION_IMPLEMENTATION_ABSENT — admission_state обязан оставаться OBSERVED`);
+    if (env.authorized_by !== undefined && env.authorized_by !== null) errors.push(`событие ${id}: authorized_by обязан оставаться null/отсутствовать`);
+    if (kind === 'ADMIT') errors.push(`событие ${id}: ADMISSION_IMPLEMENTATION_ABSENT — ADMIT запрещён`);
+    else if (!EVENT_KINDS.includes(kind)) errors.push(`событие ${id}: неверный event_kind ${String(kind)}`);
+    if (!hasLifecycle && !(allowLegacy && kind === 'OBSERVE')) errors.push(`событие ${id}: отсутствует обязательный lifecycle_state`);
+    if (state !== null && !LIFECYCLE_STATES.includes(state)) errors.push(`событие ${id}: неверный lifecycle_state ${String(state)}`);
+    const expectedState = EVENT_LIFECYCLE_STATE[kind];
+    if (expectedState && state !== expectedState) errors.push(`событие ${id}: event_kind ${kind} требует lifecycle_state ${expectedState}`);
+
+    const hasPeer = hasOwn(env, 'conflict_peer_event_id');
+    if (kind === 'CONFLICT_MARK') {
+      const peerId = env.conflict_peer_event_id;
+      if (typeof peerId !== 'string' || !RE_EVENT_ID.test(peerId)) errors.push(`событие ${id}: CONFLICT_MARK требует conflict_peer_event_id`);
+      else if (peerId === id || !byId.has(peerId)) errors.push(`событие ${id}: conflict_peer_event_id ${peerId} обязан указывать на предыдущее другое событие`);
+    } else if (hasPeer) errors.push(`событие ${id}: conflict_peer_event_id разрешён только для CONFLICT_MARK`);
+
+    const hasProposalKind = hasOwn(env, 'proposal_content_kind');
+    if (kind === 'PROPOSE') {
+      if (env.proposal_content_kind !== 'FULL_RECORD') errors.push(`событие ${id}: PROPOSE требует proposal_content_kind=FULL_RECORD`);
+    } else if (hasProposalKind) errors.push(`событие ${id}: proposal_content_kind разрешён только для PROPOSE`);
+
+    const parentId = env.applies_to_event_id;
+    let parent = null;
+    if (kind === 'OBSERVE') {
+      if (parentId !== undefined && parentId !== null) errors.push(`событие ${id}: OBSERVE не может иметь semantic parent`);
+    } else if (parentId === undefined || parentId === null || parentId === '') {
+      errors.push(`событие ${id}: ${kind} требует applies_to_event_id semantic parent`);
+    } else {
+      parent = byId.get(String(parentId)) || null;
+      if (!parent) errors.push(`событие ${id}: applies_to_event_id ${String(parentId)} обязан указывать на более раннее событие`);
+      else {
+        const parentState = lifecycleStateOf(parent);
+        const allowedNext = Object.prototype.hasOwnProperty.call(LIFECYCLE_TRANSITIONS, parentState)
+          ? LIFECYCLE_TRANSITIONS[parentState]
+          : null;
+        if (state && parentState && (!allowedNext || !allowedNext.has(state))) {
+          errors.push(`событие ${id}: запрещён переход ${parentState} -> ${state}`);
+        }
+      }
+    }
+
+    if (kind === 'CONFLICT_MARK' && parent) {
+      const peerId = env.conflict_peer_event_id;
+      const peer = typeof peerId === 'string' ? byId.get(peerId) : null;
+      if (String(parentId) === String(peerId)) {
+        errors.push(`событие ${id}: CONFLICT_MARK semantic parent и conflict peer должны быть разными событиями`);
+      } else if (peer) {
+        const parentRoot = semanticRoot(parent, byId);
+        const peerRoot = semanticRoot(peer, byId);
+        if (!parentRoot || !peerRoot || parentRoot !== peerRoot) {
+          errors.push(`событие ${id}: CONFLICT_MARK parent и conflict peer должны иметь один semantic OBSERVE root по applies_to_event_id`);
+        }
+      }
+    }
+
+    if (kind === 'PROPOSE' && parent) {
+      let cursor = parent;
+      let hasCandidateAncestor = false;
+      while (cursor) {
+        if (lifecycleStateOf(cursor) === 'CANDIDATE') { hasCandidateAncestor = true; break; }
+        const cursorParentId = (cursor.parsed || cursor).envelope?.applies_to_event_id;
+        cursor = cursorParentId == null ? null : (byId.get(String(cursorParentId)) || null);
+      }
+      if (!hasCandidateAncestor) errors.push(`событие ${id}: PROPOSE требует CANDIDATE ancestor в semantic lineage`);
+    }
+    byId.set(id, entry);
+  }
+  return errors;
+}
+
 // Проверка цепочки журнала: читает файл построчно, проверяет целостность.
 export function loadLedger(ledgerPath = DEFAULT_LEDGER) {
   const errors = [];
@@ -222,8 +330,9 @@ export function loadLedger(ledgerPath = DEFAULT_LEDGER) {
       errors.push(`строка ${номер}: prior_event_id ${String(prior)} не равен предыдущему ${String(prevId)} (FORK/CONFLICT)`);
     }
     prevId = eid;
-    events.push({ line: номер, event_id: eid, parsed });
+    events.push({ line: номер, event_id: eid, parsed, lifecycle_state: lifecycleStateOf(parsed) });
   });
+  errors.push(...validateLifecycleGraph(events));
   const tip = events.length ? events[events.length - 1].event_id : null;
   return { ok: errors.length === 0, errors, events, tip, lineCount: events.length, byteLength: Buffer.byteLength(raw, 'utf8') };
 }
@@ -284,6 +393,10 @@ export function validateEvent(event, opts = {}) {
   }
   if (env.admission_state !== undefined && env.admission_state !== null && !ADMISSION_STATES.includes(env.admission_state)) errors.push(`конверт: неверный admission_state ${String(env.admission_state)}`);
   if (env.event_kind !== undefined && env.event_kind !== null && !EVENT_KINDS.includes(env.event_kind)) errors.push(`конверт: неверный event_kind ${String(env.event_kind)}`);
+  if (env.lifecycle_state === undefined || env.lifecycle_state === null || env.lifecycle_state === '') errors.push('конверт: отсутствует lifecycle_state');
+  else if (!LIFECYCLE_STATES.includes(env.lifecycle_state)) errors.push(`конверт: неверный lifecycle_state ${String(env.lifecycle_state)}`);
+  if (env.conflict_peer_event_id !== undefined && env.conflict_peer_event_id !== null && !RE_EVENT_ID.test(String(env.conflict_peer_event_id))) errors.push(`конверт: неверный conflict_peer_event_id ${String(env.conflict_peer_event_id)}`);
+  if (env.proposal_content_kind !== undefined && env.proposal_content_kind !== null && !PROPOSAL_CONTENT_KINDS.includes(env.proposal_content_kind)) errors.push(`конверт: неверный proposal_content_kind ${String(env.proposal_content_kind)}`);
   if (env.writer_mode !== undefined && env.writer_mode !== null && !WRITER_MODES.includes(env.writer_mode)) errors.push(`конверт: неверный writer_mode ${String(env.writer_mode)} (в М2.1.1 только READ_WRITE_PR)`);
   for (const f of ['source_actor', 'recorded_by']) {
     // Проверка recorded_by/source_actor — только форма метки; самозаявленная метка не равна проверенной личности.
@@ -298,22 +411,25 @@ export function validateEvent(event, opts = {}) {
     if (v !== undefined && v !== null && !RE_EVENT_ID.test(String(v))) errors.push(`конверт: неверный ${f} ${String(v)}`);
   }
   if (env.admission_reason !== undefined && env.admission_reason !== null && typeof env.admission_reason !== 'string') errors.push('конверт: admission_reason обязан быть строкой или null');
-  // Правило только OBSERVED в М2.1.1 (ADMIT не реализован).
+  // Admission remains OBSERVED-only; lifecycle events do not authorize Canon changes.
   if (env.admission_state !== undefined && env.admission_state !== null && env.admission_state !== 'OBSERVED') {
-    errors.push(`ADMISSION_IMPLEMENTATION_ABSENT: admission_state ${String(env.admission_state)} запрещён в М2.1.1 (только OBSERVED)`);
+    errors.push(`ADMISSION_IMPLEMENTATION_ABSENT: admission_state ${String(env.admission_state)} запрещён в М2.2.0a (только OBSERVED)`);
   }
-  if (env.event_kind !== undefined && env.event_kind !== null && env.event_kind !== 'OBSERVE') {
-    errors.push(`ADMISSION_IMPLEMENTATION_ABSENT: event_kind ${String(env.event_kind)} запрещён в М2.1.1 (только OBSERVE)`);
+  if (env.event_kind === 'ADMIT') {
+    errors.push('ADMISSION_IMPLEMENTATION_ABSENT: ADMIT/USER ADMIT запрещён в М2.2.0a');
   }
-  // Правило ИИ: ИИ может писать только OBSERVED.
+  if (env.event_kind !== undefined && env.event_kind !== null && EVENT_LIFECYCLE_STATE[env.event_kind] && env.lifecycle_state !== EVENT_LIFECYCLE_STATE[env.event_kind]) {
+    errors.push(`LIFECYCLE_EVENT_STATE_MISMATCH: ${String(env.event_kind)} требует lifecycle_state ${EVENT_LIFECYCLE_STATE[env.event_kind]}`);
+  }
+  // ADMIT is forbidden for every actor; lifecycle proposals remain non-authoritative.
   const writer = String(env.recorded_by || '');
   const isAi = writer.startsWith('AI:');
-  if (isAi && (env.admission_state !== 'OBSERVED' || env.event_kind !== 'OBSERVE')) {
+  if (isAi && (env.admission_state !== 'OBSERVED' || env.event_kind === 'ADMIT')) {
     errors.push('AI_MAY_NOT_ADMIT: писатель ИИ не может допускать в канон (только OBSERVED)');
   }
   // Правило authorized_by для OBSERVED.
-  if (env.admission_state === 'OBSERVED' && env.authorized_by !== undefined && env.authorized_by !== null) {
-    errors.push('OBSERVED требует authorized_by null/отсутствует (самоподтверждение запрещено)');
+  if (env.authorized_by !== undefined && env.authorized_by !== null) {
+    errors.push('все события требуют authorized_by null/отсутствует (authority остаётся ABSENT)');
   }
   // Разделение актёров.
   if (env.source_actor !== undefined && env.recorded_by !== undefined && env.source_actor !== null && env.recorded_by !== null) {
@@ -489,14 +605,15 @@ export function validateEvent(event, opts = {}) {
   if (env.applies_to_event_id !== undefined && env.applies_to_event_id !== null && !множествоИд.has(String(env.applies_to_event_id))) {
     errors.push(`журнал CHAIN: applies_to_event_id ${String(env.applies_to_event_id)} отсутствует в журнале`);
   }
+  errors.push(...validateLifecycleGraph([...журнал.events, { parsed: event, event_id: String(env.event_id ?? '') }], { allowLegacy: false }));
   return { ok: errors.length === 0, errors, warnings };
 }
 
-// Дописывание только OBSERVED одной строкой (fail-closed локальная критическая секция).
+// Дописывание lifecycle-события одной строкой (fail-closed локальная критическая секция).
 // Порядок: захват блокировки → перепроверка внутри блокировки → дописывание одной строки → освобождение в finally.
 // Проверка до блокировки НЕДОСТАТОЧНА одна: все зависимые от состояния проверки повторяются внутри.
 // Граница гарантии: сериализация писателей только на ОДНОЙ общей локальной файловой системе.
-export function appendObserved(event, opts = {}) {
+export function appendEvent(event, opts = {}) {
   const ledgerPath = opts.ledgerPath || DEFAULT_LEDGER;
   const manifestPath = opts.manifestPath || DEFAULT_MANIFEST;
   const seedPath = opts.seedPath || DEFAULT_SEED;
@@ -508,13 +625,13 @@ export function appendObserved(event, opts = {}) {
     // Шаги 2–6 внутри блокировки: перечитать журнал, манифест, байты сида и перепроверить всё.
     const проверка = validateEvent(event, { ledgerPath, manifestPath, seedPath });
     if (!проверка.ok) return { ok: false, errors: проверка.errors, warnings: проверка.warnings };
-    // Повторная защита: только OBSERVED/OBSERVE и null authorized_by.
+    // Повторная защита: lifecycle никогда не меняет admission authority.
     const env = event.envelope;
-    if (env.admission_state !== 'OBSERVED' || env.event_kind !== 'OBSERVE') {
-      return { ok: false, errors: ['append-observed пишет только неизменяемый OBSERVED'], warnings: проверка.warnings };
+    if (env.admission_state !== 'OBSERVED' || env.event_kind === 'ADMIT') {
+      return { ok: false, errors: ['append-event допускает только OBSERVED и запрещает ADMIT'], warnings: проверка.warnings };
     }
     if (env.authorized_by !== undefined && env.authorized_by !== null) {
-      return { ok: false, errors: ['append-observed требует authorized_by null/отсутствует'], warnings: проверка.warnings };
+      return { ok: false, errors: ['append-event требует authorized_by null/отсутствует'], warnings: проверка.warnings };
     }
     // Шаг 7: дописывание ровно одной строки с обязательным fsync (append-only, без перезаписи).
     // Частичная запись или сбой fsync означают отказ с закрытием, а не успех.
@@ -546,6 +663,79 @@ export function appendObserved(event, opts = {}) {
   }
 }
 
+// Совместимый узкий интерфейс: append-observed не принимает lifecycle-переходы.
+export function appendObserved(event, opts = {}) {
+  const env = event?.envelope || {};
+  if (env.event_kind !== 'OBSERVE' || env.lifecycle_state !== 'OBSERVED') {
+    return { ok: false, errors: ['append-observed принимает только OBSERVE/lifecycle_state OBSERVED'], warnings: [] };
+  }
+  return appendEvent(event, opts);
+}
+
+const PROPOSAL_BOARD_CATEGORIES = ['ACTIVE_CANDIDATE', 'ACTIVE_PROPOSED', 'HOLD', 'EXPLICIT_CONFLICT',
+  'MULTIPLE_OPEN_PROPOSALS_WARNING', 'SUPERSEDED'];
+
+function semanticRoot(entry, byId) {
+  let cursor = entry;
+  const visited = new Set();
+  while (cursor) {
+    const id = cursor.event_id;
+    if (visited.has(id)) return null;
+    visited.add(id);
+    const parsed = cursor.parsed || cursor;
+    if (parsed.envelope?.event_kind === 'OBSERVE') return id;
+    const parentId = parsed.envelope?.applies_to_event_id;
+    cursor = parentId == null ? null : byId.get(String(parentId)) || null;
+  }
+  return null;
+}
+
+// Read-only projection; the board never edits the journal and carries no admission authority.
+export function projectProposals(ledgerPath = DEFAULT_LEDGER) {
+  const journal = loadLedger(ledgerPath);
+  const categories = Object.fromEntries(PROPOSAL_BOARD_CATEGORIES.map(name => [name, []]));
+  const base = { ok: journal.ok, errors: [...journal.errors], warnings: [], read_only: true, authority: false, categories };
+  if (!journal.ok) return base;
+  const byId = new Map(journal.events.map(entry => [entry.event_id, entry]));
+  const children = new Map();
+  for (const entry of journal.events) {
+    if (entry.parsed.envelope.event_kind === 'CONFLICT_MARK') continue;
+    const parentId = entry.parsed.envelope.applies_to_event_id;
+    if (parentId != null) children.set(String(parentId), (children.get(String(parentId)) || 0) + 1);
+  }
+  const proposedByRoot = new Map();
+  for (const entry of journal.events) {
+    const state = lifecycleStateOf(entry);
+    if (state === 'OBSERVED' || children.has(entry.event_id)) continue;
+    const item = {
+      event_id: entry.event_id,
+      root_event_id: semanticRoot(entry, byId),
+      lifecycle_state: state,
+      event_kind: entry.parsed.envelope.event_kind,
+      record: entry.parsed.record,
+    };
+    if (state === 'CANDIDATE') categories.ACTIVE_CANDIDATE.push(item);
+    else if (state === 'PROPOSED') {
+      categories.ACTIVE_PROPOSED.push(item);
+      if (item.root_event_id) {
+        const group = proposedByRoot.get(item.root_event_id) || [];
+        group.push(entry.event_id);
+        proposedByRoot.set(item.root_event_id, group);
+      }
+    } else if (state === 'HOLD') categories.HOLD.push(item);
+    else if (state === 'CONFLICT') categories.EXPLICIT_CONFLICT.push(item);
+    else if (state === 'SUPERSEDED') categories.SUPERSEDED.push(item);
+  }
+  for (const [rootEventId, proposedEventIds] of proposedByRoot) {
+    if (proposedEventIds.length > 1) categories.MULTIPLE_OPEN_PROPOSALS_WARNING.push({
+      code: 'MULTIPLE_OPEN_PROPOSALS_WARNING', root_event_id: rootEventId,
+      proposed_event_ids: proposedEventIds, count: proposedEventIds.length,
+      authority: false, means_conflict: false,
+    });
+  }
+  return base;
+}
+
 // Сверка хеша сида с манифестом и проверка цепочки журнала.
 export function checkHash(opts = {}) {
   const errors = [];
@@ -564,7 +754,7 @@ export function checkHash(opts = {}) {
     errors.push(`STALE_CANONICAL_HASH: файл сида ${хешСида} не равен manifest.canonical_content_sha256 ${String(полеКанона)}`);
   }
   if (manifest.admission_implementation !== 'ABSENT') {
-    errors.push(`манифест: admission_implementation обязан быть ABSENT в М2.1.1, получено ${String(manifest.admission_implementation)}`);
+    errors.push(`манифест: admission_implementation обязан быть ABSENT в М2.2.0a, получено ${String(manifest.admission_implementation)}`);
   }
   const журнал = loadLedger(ledgerPath);
   if (!журнал.ok) {
@@ -602,12 +792,19 @@ export function main(argv) {
     console.log('Использование:');
     console.log('  node tools/memory/ledger_tool.mjs validate-event <событие.json> [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]');
     console.log('  node tools/memory/ledger_tool.mjs append-observed <событие.json> [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]');
+    console.log('  node tools/memory/ledger_tool.mjs append-event <событие.json> [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]');
+    console.log('  node tools/memory/ledger_tool.mjs project-proposals [--ledger ПУТЬ]');
     console.log('  node tools/memory/ledger_tool.mjs check-hash [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]');
     return 0;
   }
   const путьЖурнала = аргумент(остаток, '--ledger', DEFAULT_LEDGER);
   const путьМанифеста = аргумент(остаток, '--manifest', DEFAULT_MANIFEST);
   const путьСида = аргумент(остаток, '--seed', DEFAULT_SEED);
+  if (команда === 'project-proposals') {
+    const итог = projectProposals(путьЖурнала);
+    console.log(JSON.stringify(итог, null, 2));
+    return итог.ok ? 0 : 1;
+  }
   if (команда === 'validate-event') {
     const позиционные = остаток.filter(a => !a.startsWith('--') && a !== путьЖурнала && a !== путьМанифеста && a !== путьСида);
     // Более надёжный разбор позиционных: первый аргумент без флага.
@@ -626,7 +823,7 @@ export function main(argv) {
     console.log(итог.ok ? 'VALID' : 'INVALID');
     return итог.ok ? 0 : 1;
   }
-  if (команда === 'append-observed') {
+  if (команда === 'append-observed' || команда === 'append-event') {
     let файл = null;
     for (let i = 0; i < остаток.length; i++) {
       if (остаток[i].startsWith('--')) { i++; continue; }
@@ -635,7 +832,9 @@ export function main(argv) {
     if (!файл) { console.error('нужен путь <событие.json>'); return 2; }
     let событие = null;
     try { событие = прочитатьСобытие(файл); } catch (e) { console.error(`REJECTED: файл события не читается: ${String(e && e.message || e)}`); return 1; }
-    const итог = appendObserved(событие, { ledgerPath: путьЖурнала, manifestPath: путьМанифеста, seedPath: путьСида });
+    const итог = команда === 'append-observed'
+      ? appendObserved(событие, { ledgerPath: путьЖурнала, manifestPath: путьМанифеста, seedPath: путьСида })
+      : appendEvent(событие, { ledgerPath: путьЖурнала, manifestPath: путьМанифеста, seedPath: путьСида });
     итог.warnings.forEach(w => console.log('ПРЕДУПРЕЖДЕНИЕ ' + w));
     итог.errors.forEach(e => console.log('ОШИБКА ' + e));
     console.log(итог.ok ? `APPENDED ${итог.event_id}` : 'REJECTED');

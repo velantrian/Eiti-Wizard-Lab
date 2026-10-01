@@ -1,0 +1,171 @@
+# Схема журнала событий М2.1 — только OBSERVED (неизменяемый карантинный слой)
+
+> Веха **М2.1 (журнал)** поверх базового коммита Continuity Carrier **M1**.
+> Журнал — это **карантинный неизменяемый слой наблюдений**, а не канон.
+> Канон (`ruslan-orientation-seed.json` + `manifest.json`) в М2.1 **не мутирует**.
+> `admission_implementation` остаётся **ABSENT**. Реализации ADMIT **нет**.
+
+## 1. Назначение и равенства
+
+- `ЖУРНАЛ != КАНОН` — строки журнала не являются допущенными записями.
+- `OBSERVED != ADMITTED` — наблюдение не означает допуск в канон.
+- `ЗАПИСЬ != РЕШЕНИЕ` — предложение модели не является решением пользователя.
+- `METKA_ВРЕМЕНИ != ПОРЯДОК` — порядок задаёт цепочка `prior_event_id` и физический порядок дописывания.
+- `МОДЕЛЬ != ВЛАДЕЛЕЦ_ПАМЯТИ` — модель может предлагать, но не допускает.
+
+## 2. Форма провода
+
+Каждая строка `docs/memory/event_ledger.jsonl` — один JSON-объект:
+
+```json
+{
+  "envelope": { "...": "..." },
+  "record": { "...": "..." }
+}
+```
+
+- Файл — **append-only** (только дописывание). Перезапись существующих строк запрещена.
+- Пустой файл означает ноль событий (состояние после активации M1).
+- Машиночитаемая схема: `docs/memory/event_ledger.schema.json` (проверяет только форму).
+- Полная семантика (хеши, цепочка, карантин, актёры, запрет ADMIT) проверяется инструментом `tools/memory/ledger_tool.mjs`.
+
+## 3. Конверт (envelope)
+
+| Поле | Обязательность | Допустимые значения в М2.1 |
+|---|---|---|
+| `event_id` | да | `^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`, уникален в журнале |
+| `timestamp` | да | ISO8601 `YYYY-MM-DDTHH:MM:SS(.sss)?(Z\|±HH:MM)`. Только метаданные |
+| `admission_state` | да | только `OBSERVED` (значения `ADMITTED`, `QUARANTINED`, `REJECTED` зарезервированы, в М2.1 отклоняются) |
+| `event_kind` | да | только `OBSERVE` (значения `ADMIT`, `SUPERSEDE`, `CONFLICT_MARK` зарезервированы, в М2.1 отклоняются) |
+| `source_actor` | да | `КЛАСС:идентификатор`, где КЛАСС `HUMAN`, `AI` или `SYSTEM`. Обязан отличаться от `recorded_by` |
+| `recorded_by` | да | `КЛАСС:идентификатор` (писатель). ИИ пишет только OBSERVED |
+| `authorized_by` | нет/null | для OBSERVED обязан быть `null` или отсутствовать. Любое не-null значение отклоняется |
+| `base_canonical_sha256` | да | 64 hex. Обязан равняться `manifest.canonical_content_sha256`, иначе отказ с закрытием |
+| `base_manifest_file_sha256` | нет | 64 hex. Если указан, обязан равняться SHA-256 текущих байтов `manifest.json` |
+| `base_commit_sha` | да | 40 hex (полный SHA коммита). В М2.1 проверяется только формат |
+| `prior_event_id` | null для первого | Для первого события `null`/отсутствует. Иначе обязан равняться `event_id` непосредственно предыдущей строки |
+| `applies_to_event_id` | нет | Опциональная ссылка на связанное событие. Если указана не-null, обязана существовать в журнале |
+| `admission_reason` | нет | Опциональная строка-причина. Для OBSERVED может отсутствовать |
+| `writer_mode` | да | только `READ_WRITE_PR` (значение M1 `default_write_mode`) |
+
+Запрещённые имена:
+
+- Имя `base_manifest_hash` **запрещено**. Правильное имя — `base_canonical_sha256` (и опционально `base_manifest_file_sha256`). Событие с ключом `base_manifest_hash` отклоняется.
+- Неизвестные ключи конверта отклоняются (защита от опечаток).
+
+## 4. Запись (record)
+
+Запись-кандидат содержит **только ключи существующего сида**:
+
+Обязательные: `id`, `type`, `statement`, `status`, `source`, `source_kind`, `scope`, `provenance`, `valid_from`, `updated_at`, `details_pointer`, `relations`.
+
+Опциональные: `related_to`, `supersedes`, `superseded_by`, `keywords`.
+
+Правила:
+
+- Перечисления `type`, `status`, `provenance`, `rel` обязаны совпадать с перечислениями сида (`ruslan-orientation-seed/1`, см. `tools/memory/seed_tool.mjs`).
+- `source` обязан существовать в `seed.sources`, а `source_kind` обязан совпадать с `kind` этого источника.
+- `relations` — массив `{rel, target}`. Каждый `target`, а также каждый элемент `related_to`, `supersedes`, `superseded_by` (если не null) обязан существовать как `id` записи канона. Самоссылка запрещена.
+- Ключи `authority`, `evidence`, `confidence`, `validity` **запрещены в М2.1**. Их наличие означает карантинный отказ до дописывания.
+- Любые иные неизвестные ключи записи отклоняются.
+
+## 5. Правила записи
+
+### 5.1 Кто может писать
+
+- **ИИ МОЖЕТ ДОПИСЫВАТЬ OBSERVED.** Писатель `AI:...` с `admission_state=OBSERVED` и `event_kind=OBSERVE` разрешён.
+- **ИИ НЕ МОЖЕТ ДОПУСКАТЬ В КАНОН.** Любая попытка `AI:...` с `admission_state != OBSERVED` или `event_kind != OBSERVE` отклоняется.
+- В М2.1 **любой** `admission_state != OBSERVED` или `event_kind != OBSERVE` отклоняется независимо от актёра, потому что `admission_implementation=ABSENT`.
+
+### 5.2 Карантин = отказ до дописывания
+
+Следующие входы отклоняются **до** любого дописывания (журнал не меняется, байт не добавляется):
+
+- `КАРАНТИН_УЧЁТНЫЕ_ДАННЫЕ` — учётные данные в любой строковой поле конверта или записи: `api_key`/`secret`/`password`/`token`/`cookie` с присваиванием, `sk-...`, `gh[pousr]_...`, `xox...`, `AIza...`, `-----BEGIN ... PRIVATE KEY-----`, `Bearer ...`.
+- `КАРАНТИН_ПРИВАТНЫЙ_ЛОКАТОР` — приватные локаторы: `notion.so/`, `notion.site/`, `app.notion.com`, `docs.google.com`, `drive.google.com`, UUID-подобные идентификаторы.
+- `КАРАНТИН_ЗАПРЕЩЁННЫЕ_КЛЮЧИ` — наличие `authority`/`evidence`/`confidence`/`validity` в записи.
+- Любое нарушение схемы, перечислений, хешей, актёров или цепочки также отклоняется до дописывания.
+
+### 5.3 Разделение актёров
+
+- `source_actor` и `recorded_by` обязаны присутствовать и **различаться** (`source_actor != recorded_by`).
+- `authorized_by` для OBSERVED обязан быть `null`/отсутствовать (самоподтверждение запрещено).
+- Если бы `authorized_by` был не-null (будущие вехи), он обязан был бы отличаться от `recorded_by` и `source_actor`. В М2.1 такое событие всё равно отклоняется правилом «только OBSERVED».
+
+### 5.4 Хеши и оптимистичная конкуренция
+
+- `base_canonical_sha256` обязан равняться полю `manifest.canonical_content_sha256` (которое равно SHA-256 байтов файла сида). Несовпадение означает устаревшую базу и отказ с закрытием (`STALE_CANONICAL_HASH`).
+- Опциональный `base_manifest_file_sha256`, если указан, обязан равняться SHA-256 текущих байтов файла `manifest.json`.
+- Команда `check-hash` сверяет текущий файл сида с полем манифеста и проверяет целостность цепочки журнала.
+
+### 5.5 Порядок и цепочка
+
+- Авторитет порядка — **цепочка `prior_event_id` + физический порядок дописывания**.
+- `timestamp` — только метаданные. Убывание меток не является ошибкой.
+- Первое событие: `prior_event_id` равен `null` или отсутствует.
+- Каждое следующее: `prior_event_id` обязан равняться `event_id` непосредственно предыдущей непустой строки.
+- Дубликат `event_id`, разрыв цепочки, ссылка на неизвестное событие, malformed JSON-строка или строка без `{envelope, record}` означают **FAIL CLOSED CONFLICT**: проверка, валидация и дописывание отказываются работать до ручного разбора человеком.
+
+## 6. Команды инструмента
+
+```bash
+node tools/memory/ledger_tool.mjs validate-event <событие.json> [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]
+node tools/memory/ledger_tool.mjs append-observed <событие.json> [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]
+node tools/memory/ledger_tool.mjs check-hash [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]
+```
+
+Пути по умолчанию указывают на `docs/memory/event_ledger.jsonl`, `docs/memory/manifest.json`, `docs/memory/ruslan-orientation-seed.json`.
+
+- `validate-event` — только проверяет, ничего не пишет. Код 0 при `VALID`, код 1 при `INVALID`.
+- `append-observed` — проверяет и дописывает **одну строку** атомарным дописыванием (`append-only`). При любой ошибке ничего не пишет и возвращает код 1.
+- `check-hash` — сверяет хеш сида с манифестом и проверяет цепочку журнала. Код 0 при `OK`, код 1 при `FAIL`.
+
+## 7. Примеры
+
+Минимальное допустимое событие OBSERVED (хеши заменить текущими):
+
+```json
+{
+  "envelope": {
+    "event_id": "evt-m2-1-0001",
+    "timestamp": "2026-10-01T09:30:00+02:00",
+    "admission_state": "OBSERVED",
+    "event_kind": "OBSERVE",
+    "source_actor": "HUMAN:ruslan",
+    "recorded_by": "AI:eiti-wizard-m2.1",
+    "authorized_by": null,
+    "base_canonical_sha256": "e0ee19c49a587691a4068354ca521d5f5b8d9f1d84d2957ec129120f3cefedc0",
+    "base_commit_sha": "b8db5d7e16a23832ee1b2695d26c9c6bbbec33f7",
+    "prior_event_id": null,
+    "writer_mode": "READ_WRITE_PR"
+  },
+  "record": {
+    "id": "OBS-M2-0001",
+    "type": "OPEN_QUESTION",
+    "statement": "Наблюдение-пример: формулировка вопроса без учётных данных и приватных ссылок.",
+    "status": "OPEN",
+    "source": "SRC-USER-2026-09-29",
+    "source_kind": "USER_STATEMENT",
+    "scope": "наблюдение",
+    "provenance": "USER_STATEMENT_2026-09-29",
+    "valid_from": "2026-10-01",
+    "updated_at": "2026-10-01",
+    "details_pointer": "карантинное наблюдение, не канон",
+    "relations": [{ "rel": "RELATED_TO", "target": "OQ-01" }],
+    "related_to": [],
+    "supersedes": null,
+    "superseded_by": null,
+    "keywords": "наблюдение пример журнал"
+  }
+}
+```
+
+Второе событие обязано указать `"prior_event_id": "evt-m2-1-0001"`.
+
+## 8. Что М2.1 не делает
+
+- Не мутирует сид, манифест, `CURRENT_ORIENTATION.md`, паспорт, `wiz_ref`/рантайм.
+- Не реализует ADMIT, SUPERSEDE, разрешение конфликтов.
+- Не меняет `admission_implementation` (остаётся `ABSENT`).
+- Не переписывает существующие строки журнала.
+- Не вводит поля `authority`/`evidence`/`confidence`/`validity`.

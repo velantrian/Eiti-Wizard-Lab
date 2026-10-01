@@ -3320,27 +3320,40 @@ function wizContinuityRenderStatus() {
 
 // Единственная точка инжекта М3. Синхронная: работает с кэшированным ядром.
 // Возвращает { instructions, continuity }. При недоступном модуле — закрыто.
+// Тотальная: никогда не бросает — дополнение не вправе ломать отправку сообщений.
 function wizContinuityCompose(baseInstructions, opts) {
   const cleanResumeActive = !!(opts && opts.cleanResumeActive);
-  const st = window._wizContinuity || {};
-  if (_wizContinuityModule && typeof _wizContinuityModule.composeInstructions === 'function') {
-    return _wizContinuityModule.composeInstructions(baseInstructions, {
-      enabled: st.enabled === true,
-      status: st.status || 'DISABLED',
-      blockText: st.blockText || null,
-      coreMeta: st.coreMeta || null,
-      cleanResumeActive
-    });
-  }
-  const enabled = st.enabled === true;
-  return {
-    instructions: baseInstructions,
-    continuity: {
-      enabled, status: 'LOAD_ERROR', injected: false,
-      canonical_sha: null, record_count: 0, char_count: 0,
-      skipped_reason: cleanResumeActive ? 'clean_resume' : (enabled ? 'integrity_fail' : 'disabled')
+  try {
+    const st = window._wizContinuity || {};
+    if (_wizContinuityModule && typeof _wizContinuityModule.composeInstructions === 'function') {
+      return _wizContinuityModule.composeInstructions(baseInstructions, {
+        enabled: st.enabled === true,
+        status: st.status || 'DISABLED',
+        blockText: st.blockText || null,
+        coreMeta: st.coreMeta || null,
+        cleanResumeActive
+      });
     }
-  };
+    const enabled = st.enabled === true;
+    return {
+      instructions: baseInstructions,
+      continuity: {
+        enabled, status: 'LOAD_ERROR', injected: false,
+        canonical_sha: null, record_count: 0, char_count: 0,
+        skipped_reason: cleanResumeActive ? 'clean_resume' : (enabled ? 'integrity_fail' : 'disabled')
+      }
+    };
+  } catch (e) {
+    try { console.warn('[continuity] compose:', (e && e.message) || e); } catch (_e) {}
+    return {
+      instructions: baseInstructions,
+      continuity: {
+        enabled: false, status: 'LOAD_ERROR', injected: false,
+        canonical_sha: null, record_count: 0, char_count: 0,
+        skipped_reason: cleanResumeActive ? 'clean_resume' : 'integrity_fail'
+      }
+    };
+  }
 }
 
 async function wizContinuityRefresh() {

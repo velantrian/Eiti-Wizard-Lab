@@ -38,6 +38,13 @@ node tools/memory/seed_tool.mjs export-context --format md --out /tmp/bootstrap.
 Необязательные флаги `--seed <путь>` и `--manifest <путь>` (по умолчанию —
 канонические файлы). Флаг `--out <путь>` пишет в файл, иначе — в stdout.
 
+Кли и весь программный доступ идут через одну публичную точку
+`exportContext({ format, seedPath, manifestPath })`, которая всегда выполняет
+ворота целостности и бросает исключение при любом нарушении, не возвращая
+пакет из непроверенного канона (`UNVERIFIED CANON ↛ BOOTSTRAP`).
+Помощники `buildBootstrap` / `renderBootstrapJson` / `renderBootstrapMarkdown` —
+внутренние чистые функции для уже проверенных данных, а не публичный API.
+
 ## Секции (11)
 
 | Секция | Отбор |

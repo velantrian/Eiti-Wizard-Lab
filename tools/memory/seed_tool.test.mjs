@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { ROOT, DEFAULT_SEED, DEFAULT_MANIFEST, loadSeed, loadManifest, validate, search, renderStartView, wordCount, exportLab, stats, RELS, TYPES, STATUSES, sha256File, verifyIntegrity, checkIntegrity, selectBootstrapSections, buildBootstrap, bootstrapRecordIds, renderBootstrapJson, renderBootstrapMarkdown, bootstrapMarkdownIds, BOOTSTRAP_SCHEMA, BOOTSTRAP_ROLE, BOOTSTRAP_SECTION_ORDER } from './seed_tool.mjs';
+import { ROOT, DEFAULT_SEED, DEFAULT_MANIFEST, loadSeed, loadManifest, validate, search, renderStartView, wordCount, exportLab, stats, RELS, TYPES, STATUSES, sha256File, verifyIntegrity, checkIntegrity, selectBootstrapSections, buildBootstrap, bootstrapRecordIds, renderBootstrapJson, renderBootstrapMarkdown, bootstrapMarkdownIds, exportContext, BOOTSTRAP_SCHEMA, BOOTSTRAP_ROLE, BOOTSTRAP_SECTION_ORDER } from './seed_tool.mjs';
 
 const require = createRequire(import.meta.url);
 const seed = loadSeed();
@@ -370,4 +370,31 @@ test('М2 Т16: validate/stats/search/render/export-lab работают как 
   const b = selectBootstrapSections(JSON.parse(JSON.stringify(seed)));
   assert.deepEqual(a, b);
   assert.equal(Object.values(a).flat().length, 70);
+});
+// Т17: публичная точка входа не отдаёт пакет из непроверенного канона (без обхода ворот).
+test('М2 Т17: exportContext отвергает изменённый seed/манифест (PUBLIC/API INTEGRITY BYPASS)', () => {
+  // Валидный программный вызов работает и совпадает с выводом через ворота.
+  const { json: gatedJson, md: gatedMd } = canonPack();
+  assert.equal(exportContext({ format: 'json' }), gatedJson);
+  assert.equal(exportContext({ format: 'md' }), gatedMd);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'm2-pub-'));
+  try {
+    // Случай А: мутированный seed + валидный манифест → throw, пакета нет.
+    const raw = fs.readFileSync(DEFAULT_SEED, 'utf8');
+    const badPath = path.join(dir, 'seed-mut.json');
+    fs.writeFileSync(badPath, raw.replace('cognitive-systems researcher', 'cognitive-systems researcher!'));
+    assert.throws(() => exportContext({ format: 'json', seedPath: badPath }), /INTEGRITY FAIL/);
+    assert.throws(() => exportContext({ format: 'md', seedPath: badPath }), /INTEGRITY FAIL/);
+    // Случай Б: валидный seed + мутированный хэш манифеста → throw, пакета нет.
+    const man = JSON.parse(fs.readFileSync(DEFAULT_MANIFEST, 'utf8'));
+    man.canonical_content_sha256 = 'f'.repeat(64);
+    const badMan = path.join(dir, 'manifest-mut.json');
+    fs.writeFileSync(badMan, JSON.stringify(man));
+    assert.throws(() => exportContext({ format: 'json', manifestPath: badMan }), /INTEGRITY FAIL/);
+    assert.throws(() => exportContext({ format: 'md', manifestPath: badMan }), /INTEGRITY FAIL/);
+    // Случай В: неверный формат → throw без пакета.
+    assert.throws(() => exportContext({ format: 'yaml' }), /usage/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

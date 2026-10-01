@@ -375,7 +375,10 @@ export function checkIntegrity(seedPath = DEFAULT_SEED, manifestPath = DEFAULT_M
   return { ok: verdict.ok, errors: verdict.errors, seed, manifest, fileHash };
 }
 
-// Сборка объекта пакета (порядок ключей и секций фиксирован).
+// Внутренняя чистая сборка объекта пакета (порядок ключей и секций фиксирован).
+// НЕ публичный API генерации: принимает только уже проверенные данные.
+// Публичная точка входа — exportContext(), которая всегда идёт через ворота.
+// Прямой вызов с непроверенным seed/манифестом запрещён (UNVERIFIED CANON ↛ BOOTSTRAP).
 export function buildBootstrap(seed, manifest, fileHash) {
   const selected = selectBootstrapSections(seed);
   const sections = {};
@@ -398,7 +401,8 @@ export function bootstrapRecordIds(bootstrap) {
   for (const key of BOOTSTRAP_SECTION_ORDER) for (const r of (bootstrap.sections[key] || [])) ids.push(r.id);
   return ids;
 }
-// JSON-вывод: стабильный stringify с отступом 2 и концевым переводом строки.
+// Внутренний чистый JSON-рендер (стабильный stringify с отступом 2 и концевым переводом).
+// НЕ публичный API генерации — только для уже проверенных данных (см. buildBootstrap).
 export function renderBootstrapJson(seed, manifest, fileHash) {
   return JSON.stringify(buildBootstrap(seed, manifest, fileHash), null, 2) + '\n';
 }
@@ -408,7 +412,8 @@ function bootstrapMdRecord(r) {
   const second = `  - источник: ${r.source}; происхождение: ${r.provenance}; охват: ${r.scope}; обновлено: ${r.updated_at}; детали: ${r.details_pointer}`;
   return first + '\n' + second;
 }
-// МД-вывод: те же ИД и тот же порядок, что в JSON; без выдуманных утверждений.
+// Внутренний чистый МД-рендер: те же ИД и тот же порядок, что в JSON; без выдуманных утверждений.
+// НЕ публичный API генерации — только для уже проверенных данных (см. buildBootstrap).
 export function renderBootstrapMarkdown(seed, manifest, fileHash) {
   const pack = buildBootstrap(seed, manifest, fileHash);
   const out = [];
@@ -459,6 +464,18 @@ export function bootstrapMarkdownIds(md) {
   return ids;
 }
 
+// Официальная публичная точка входа М2: чтение файлов → валидация → счётчик → SHA → сборка/рендер.
+// Всегда идёт через ворота целостности; при любом нарушении бросает Error и НЕ возвращает пакет.
+// Правило: UNVERIFIED CANON ↛ BOOTSTRAP. Кли и весь программный доступ обязаны идти только сюда.
+export function exportContext({ format = 'json', seedPath = DEFAULT_SEED, manifestPath = DEFAULT_MANIFEST } = {}) {
+  if (format !== 'json' && format !== 'md') throw new Error('usage: exportContext({ format: "json"|"md", seedPath, manifestPath })');
+  const gate = checkIntegrity(seedPath, manifestPath);
+  if (!gate.ok) throw new Error('INTEGRITY FAIL: ' + gate.errors.join('; '));
+  return format === 'json'
+    ? renderBootstrapJson(gate.seed, gate.manifest, gate.fileHash)
+    : renderBootstrapMarkdown(gate.seed, gate.manifest, gate.fileHash);
+}
+
 // ── CLI ────────────────────────────────────────────────────────────────────
 function arg(argv, name, def) { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : def; }
 function positional(argv) { const out = []; for (let i = 0; i < argv.length; i++) { if (argv[i].startsWith('--')) { if (!['--json'].includes(argv[i])) i++; continue; } out.push(argv[i]); } return out; }
@@ -468,19 +485,23 @@ export function main(argv) {
   const seedPath = arg(rest, '--seed', null) || (cmd !== 'search' && cmd !== 'export-context' && pos[0]) || DEFAULT_SEED;
   // Справка: строки использования из шапки файла (включая export-context).
   if (!cmd || cmd === 'help' || cmd === '--help') { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 9).join('\n')); return 0; }
-  // М2: ворота целостности до любого экспорта (FAIL CLOSED, без silent repair).
+  // М2: экспорт только через публичную точку exportContext (внутри — ворота целостности).
   if (cmd === 'export-context') {
     const format = arg(rest, '--format', null);
     if (format !== 'json' && format !== 'md') { console.error('usage: export-context --format json|md [--out <path>] [--seed seed.json] [--manifest manifest.json]'); return 2; }
     const ctxSeedPath = arg(rest, '--seed', null) || pos[0] || DEFAULT_SEED;
     const manifestPath = arg(rest, '--manifest', null) || DEFAULT_MANIFEST;
-    const gate = checkIntegrity(ctxSeedPath, manifestPath);
-    if (!gate.ok) { gate.errors.forEach((e) => console.error('INTEGRITY FAIL: ' + e)); return 1; }
-    const text = format === 'json'
-      ? renderBootstrapJson(gate.seed, gate.manifest, gate.fileHash)
-      : renderBootstrapMarkdown(gate.seed, gate.manifest, gate.fileHash);
+    let text;
+    try {
+      text = exportContext({ format, seedPath: ctxSeedPath, manifestPath });
+    } catch (e) {
+      console.error(e.message.startsWith('INTEGRITY FAIL') ? e.message : 'INTEGRITY FAIL: ' + e.message);
+      return 1;
+    }
     const out = arg(rest, '--out', null);
-    if (out) { fs.writeFileSync(out, text); console.log(`wrote ${out} (${bootstrapRecordIds(buildBootstrap(gate.seed, gate.manifest, gate.fileHash)).length} records, format ${format})`); }
+    // Подсчёт записей по уже проверенному выводу (без повторного чтения непроверенных данных).
+    const count = format === 'json' ? bootstrapRecordIds(JSON.parse(text)).length : bootstrapMarkdownIds(text).length;
+    if (out) { fs.writeFileSync(out, text); console.log(`wrote ${out} (${count} records, format ${format})`); }
     else process.stdout.write(text);
     return 0;
   }

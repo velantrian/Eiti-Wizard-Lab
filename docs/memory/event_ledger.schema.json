@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "continuity-carrier-event-ledger/2.1",
-  "title": "Схема события журнала непрерывности М2.1 (только OBSERVED)",
-  "description": "Машиночитаемая схема для docs/memory/event_ledger.jsonl в вехе М2.1. Проверяет только форму провода {envelope, record}. Семантические проверки (хеш канона, цепочка prior_event_id, карантин, разделение актёров, запрет ADMIT) выполняет tools/memory/ledger_tool.mjs.",
+  "$id": "continuity-carrier-event-ledger/2.1.1",
+  "title": "Схема события журнала непрерывности М2.1.1 (только OBSERVED)",
+  "description": "Машиночитаемая схема для docs/memory/event_ledger.jsonl в вехе М2.1.1. Проверяет только форму провода {envelope, record}. Семантические проверки (хеш канона, цепочка prior_event_id, карантин, разделение актёров, запрет ADMIT, исключающий выбор источника) выполняет tools/memory/ledger_tool.mjs.",
   "type": "object",
   "required": ["envelope", "record"],
   "additionalProperties": false,
@@ -25,22 +25,22 @@
         "admission_state": {
           "type": "string",
           "enum": ["OBSERVED", "ADMITTED", "QUARANTINED", "REJECTED"],
-          "description": "Состояние допуска. В М2.1 разрешён только OBSERVED."
+          "description": "Состояние допуска. В М2.1.1 разрешён только OBSERVED."
         },
         "event_kind": {
           "type": "string",
           "enum": ["OBSERVE", "ADMIT", "SUPERSEDE", "CONFLICT_MARK"],
-          "description": "Вид события. В М2.1 разрешён только OBSERVE."
+          "description": "Вид события. В М2.1.1 разрешён только OBSERVE."
         },
         "source_actor": {
           "type": "string",
           "pattern": "^(HUMAN|AI|SYSTEM):\\S{1,64}$",
-          "description": "Источник наблюдения в форме КЛАСС:идентификатор. Обязан отличаться от recorded_by."
+          "description": "Источник наблюдения в форме КЛАСС:идентификатор. Обязан отличаться от recorded_by. Заявленная метка, а не проверенная личность."
         },
         "recorded_by": {
           "type": "string",
           "pattern": "^(HUMAN|AI|SYSTEM):\\S{1,64}$",
-          "description": "Писатель события в форме КЛАСС:идентификатор. ИИ может писать только OBSERVED."
+          "description": "Заявленная логическая метка писателя в форме КЛАСС:идентификатор. Самозаявленная метка не равна проверенной личности, коммитеру гита или криптодоказательству. ИИ может писать только OBSERVED."
         },
         "authorized_by": {
           "type": ["string", "null"],
@@ -60,7 +60,7 @@
         "base_commit_sha": {
           "type": "string",
           "pattern": "^[0-9a-f]{40}$",
-          "description": "Заявленный базовый коммит (полный SHA-1, 40 hex). В М2.1 проверяется только формат."
+          "description": "Заявленный базовый коммит (полный SHA-1, 40 hex). В М2.1.1 проверяется только формат."
         },
         "prior_event_id": {
           "type": ["string", "null"],
@@ -79,14 +79,26 @@
         "writer_mode": {
           "type": "string",
           "enum": ["READ_WRITE_PR"],
-          "description": "Режим записи. В М2.1 разрешён только READ_WRITE_PR."
+          "description": "Режим записи. В М2.1.1 разрешён только READ_WRITE_PR."
         }
       }
     },
     "record": {
       "type": "object",
-      "required": ["id", "type", "statement", "status", "source", "source_kind", "scope", "provenance", "valid_from", "updated_at", "details_pointer", "relations"],
+      "required": ["id", "type", "statement", "status", "scope", "provenance", "valid_from", "updated_at", "details_pointer", "relations"],
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": ["source", "source_kind"],
+          "not": { "required": ["observed_source"] },
+          "description": "Путь А: зарегистрированный источник сида."
+        },
+        {
+          "required": ["observed_source"],
+          "not": { "anyOf": [{ "required": ["source"] }, { "required": ["source_kind"] }] },
+          "description": "Путь Б: событийно-локальный источник без регистрации в сиде."
+        }
+      ],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "type": {
@@ -98,8 +110,37 @@
           "type": "string",
           "enum": ["CURRENT", "OPEN", "UNKNOWN", "HYPOTHESIS", "RESEARCH_RESULT", "ENGINEERING_RESULT", "HISTORICAL", "SUPERSEDED", "DEFERRED"]
         },
-        "source": { "type": "string", "minLength": 1, "description": "Алиас источника. В М2.1 обязан существовать в seed.sources." },
-        "source_kind": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1, "description": "Алиас источника Пути А. Обязан существовать в seed.sources; несовместим с observed_source." },
+        "source_kind": { "type": "string", "minLength": 1, "description": "Вид источника Пути А. Обязан совпадать с kind источника в сиде." },
+        "observed_source": {
+          "type": "object",
+          "required": ["kind", "label", "surface_class", "provenance_status"],
+          "additionalProperties": false,
+          "description": "Событийно-локальный источник Пути Б. Не равен канону, реестру, допущенному и проверенному.",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": ["USER_STATEMENT", "NOTION_PAGE", "DRIVE_DOC", "GITHUB_REPO", "AI_ASSEMBLY", "CHAT_OBSERVATION", "PUBLIC_WEB", "OTHER_DECLARED"],
+              "description": "Вид наблюдаемого источника: виды сида плюс событийно-локальные CHAT_OBSERVATION, PUBLIC_WEB, OTHER_DECLARED."
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Публичная метка длиной 1..200 символов без приватных локаторов. Произвольные технические идентификаторы, включая голые УУИД-подобные значения, разрешены вне приватного локаторного контекста."
+            },
+            "surface_class": {
+              "type": "string",
+              "enum": ["local", "github", "public_web", "chat", "notion", "drive", "other"],
+              "description": "Класс поверхности наблюдения. Все значения разрешены на Пути Б, включая notion и drive при безопасной метке."
+            },
+            "provenance_status": {
+              "type": "string",
+              "enum": ["UNREGISTERED_EVENT_LOCAL"],
+              "description": "Статус происхождения. В М2.1.1 только UNREGISTERED_EVENT_LOCAL."
+            }
+          }
+        },
         "scope": { "type": "string", "minLength": 1 },
         "provenance": {
           "type": "string",
@@ -128,7 +169,7 @@
         "superseded_by": { "type": ["string", "null"] },
         "keywords": { "type": "string" }
       },
-      "description": "Запись-кандидат. Разрешены только ключи существующего сида. Запрещены authority/evidence/confidence/validity и любые иные ключи."
+      "description": "Запись-кандидат. Источник — строгий исключающий выбор: Путь А (source+source_kind из сида) или Путь Б (observed_source). Запрещены authority/evidence/confidence/validity и любые иные ключи."
     }
   }
 }

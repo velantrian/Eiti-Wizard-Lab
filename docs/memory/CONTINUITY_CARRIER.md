@@ -92,3 +92,11 @@ Canon, manifest, ledger, and derived bundles must **never** contain API keys, to
 - No merge requirement; review via PR when ready
 
 See also: `docs/memory/manifest.json`, `docs/memory/README.md`, `docs/REFERENCE_MEMORY.md`.
+
+## Примечание М2.1.1 — приём OBSERVED (только журнал, без допуска)
+
+- Журнал остаётся карантином только OBSERVED; `admission_implementation` по-прежнему `ABSENT`.
+- Источник записи — строгий исключающий выбор: Путь А (`source`+`source_kind` из сида) или Путь Б (`observed_source` без регистрации).
+- Событийно-локальное не равно канону, реестру, допущенному и проверенному.
+- `recorded_by` — заявленная логическая метка писателя, а не проверенная личность, коммитер гита или криптодоказательство.
+- Подробности — в `docs/memory/EVENT_LEDGER_SCHEMA.md` и схеме `continuity-carrier-event-ledger/2.1.1`.

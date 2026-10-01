@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "continuity-carrier-event-ledger/2.1.1",
-  "title": "Схема события журнала непрерывности М2.1.1 (только OBSERVED)",
-  "description": "Машиночитаемая схема для docs/memory/event_ledger.jsonl в вехе М2.1.1. Проверяет только форму провода {envelope, record}. Семантические проверки (хеш канона, цепочка prior_event_id, карантин, разделение актёров, запрет ADMIT, исключающий выбор источника) выполняет tools/memory/ledger_tool.mjs.",
+  "$id": "continuity-carrier-event-ledger/2.2.0a",
+  "title": "Схема события журнала непрерывности М2.2.0a (lifecycle без допуска)",
+  "description": "Машиночитаемая схема для docs/memory/event_ledger.jsonl в вехе М2.2.0a. Admission остаётся OBSERVED-only; lifecycle proposal не является допуском или изменением Canon. Семантические проверки (граф applies_to_event_id, переходы, lineage и карантин) выполняет tools/memory/ledger_tool.mjs.",
   "type": "object",
   "required": ["envelope", "record"],
   "additionalProperties": false,
@@ -24,13 +24,18 @@
         },
         "admission_state": {
           "type": "string",
-          "enum": ["OBSERVED", "ADMITTED", "QUARANTINED", "REJECTED"],
-          "description": "Состояние допуска. В М2.1.1 разрешён только OBSERVED."
+          "enum": ["OBSERVED"],
+          "description": "Состояние допуска всегда OBSERVED. Lifecycle не меняет admission и никогда не допускает запись в Canon."
         },
         "event_kind": {
           "type": "string",
-          "enum": ["OBSERVE", "ADMIT", "SUPERSEDE", "CONFLICT_MARK"],
-          "description": "Вид события. В М2.1.1 разрешён только OBSERVE."
+          "enum": ["OBSERVE", "CANDIDATE", "PROPOSE", "HOLD", "CONFLICT_MARK", "SUPERSEDE"],
+          "description": "Lifecycle event kind; ADMIT отсутствует и запрещён."
+        },
+        "lifecycle_state": {
+          "type": "string",
+          "enum": ["OBSERVED", "CANDIDATE", "PROPOSED", "HOLD", "CONFLICT", "SUPERSEDED"],
+          "description": "Lifecycle отделён от admission_state. Legacy OBSERVE может не содержать поле и проецируется как OBSERVED; новые события требуют явное значение."
         },
         "source_actor": {
           "type": "string",
@@ -40,12 +45,11 @@
         "recorded_by": {
           "type": "string",
           "pattern": "^(HUMAN|AI|SYSTEM):\\S{1,64}$",
-          "description": "Заявленная логическая метка писателя в форме КЛАСС:идентификатор. Самозаявленная метка не равна проверенной личности, коммитеру гита или криптодоказательству. ИИ может писать только OBSERVED."
+          "description": "Заявленная логическая метка писателя в форме КЛАСС:идентификатор. Самозаявленная метка не равна проверенной личности, коммитеру гита или криптодоказательству. Admission остаётся OBSERVED и для AI lifecycle-событий."
         },
         "authorized_by": {
-          "type": ["string", "null"],
-          "pattern": "^(HUMAN|AI|SYSTEM):\\S{1,64}$",
-          "description": "Авторизатор. Для OBSERVED обязан быть null или отсутствовать."
+          "type": "null",
+          "description": "Всегда null/отсутствует; lifecycle proposal не даёт полномочий и admission_implementation остаётся ABSENT."
         },
         "base_canonical_sha256": {
           "type": "string",
@@ -65,12 +69,12 @@
         "prior_event_id": {
           "type": ["string", "null"],
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
-          "description": "Ссылка на непосредственно предыдущее событие. Null для первого события. Авторитет порядка вместе с физическим порядком дописывания."
+          "description": "Ссылка только на физически предшествующую строку. Не является semantic parent. Null для первой строки."
         },
         "applies_to_event_id": {
           "type": ["string", "null"],
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
-          "description": "Опциональная ссылка на связанное событие (для будущих SUPERSEDE/CONFLICT). Для OBSERVE обычно отсутствует."
+          "description": "Semantic parent lifecycle-события. OBSERVE root не имеет parent. Физический порядок при этом задаёт только prior_event_id."
         },
         "admission_reason": {
           "type": ["string", "null"],
@@ -79,9 +83,57 @@
         "writer_mode": {
           "type": "string",
           "enum": ["READ_WRITE_PR"],
-          "description": "Режим записи. В М2.1.1 разрешён только READ_WRITE_PR."
+          "description": "Режим записи по контракту M1."
+        },
+        "conflict_peer_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "description": "Ссылка на другое ранее записанное событие; разрешена только и обязательна для CONFLICT_MARK."
+        },
+        "proposal_content_kind": {
+          "type": "string",
+          "enum": ["FULL_RECORD"],
+          "description": "Разрешено только для PROPOSE. FULL_RECORD — артефакт предлагаемой записи, не Canon CREATE/UPDATE/PATCH."
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "event_kind": { "const": "OBSERVE" } }, "required": ["event_kind"] },
+          "then": { "properties": { "lifecycle_state": { "const": "OBSERVED" } } }
+        },
+        {
+          "if": { "properties": { "event_kind": { "not": { "const": "OBSERVE" } } }, "required": ["event_kind"] },
+          "then": { "required": ["lifecycle_state", "applies_to_event_id"] }
+        },
+        {
+          "if": { "properties": { "event_kind": { "const": "CANDIDATE" } }, "required": ["event_kind"] },
+          "then": { "properties": { "lifecycle_state": { "const": "CANDIDATE" } } }
+        },
+        {
+          "if": { "properties": { "event_kind": { "const": "PROPOSE" } }, "required": ["event_kind"] },
+          "then": {
+            "required": ["lifecycle_state", "applies_to_event_id", "proposal_content_kind"],
+            "properties": { "lifecycle_state": { "const": "PROPOSED" }, "proposal_content_kind": { "const": "FULL_RECORD" } }
+          },
+          "else": { "not": { "required": ["proposal_content_kind"] } }
+        },
+        {
+          "if": { "properties": { "event_kind": { "const": "HOLD" } }, "required": ["event_kind"] },
+          "then": { "properties": { "lifecycle_state": { "const": "HOLD" } } }
+        },
+        {
+          "if": { "properties": { "event_kind": { "const": "CONFLICT_MARK" } }, "required": ["event_kind"] },
+          "then": {
+            "required": ["lifecycle_state", "applies_to_event_id", "conflict_peer_event_id"],
+            "properties": { "lifecycle_state": { "const": "CONFLICT" } }
+          },
+          "else": { "not": { "required": ["conflict_peer_event_id"] } }
+        },
+        {
+          "if": { "properties": { "event_kind": { "const": "SUPERSEDE" } }, "required": ["event_kind"] },
+          "then": { "properties": { "lifecycle_state": { "const": "SUPERSEDED" } } }
+        }
+      ]
     },
     "record": {
       "type": "object",

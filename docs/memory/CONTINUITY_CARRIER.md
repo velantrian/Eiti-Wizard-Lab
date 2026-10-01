@@ -93,10 +93,14 @@ Canon, manifest, ledger, and derived bundles must **never** contain API keys, to
 
 See also: `docs/memory/manifest.json`, `docs/memory/README.md`, `docs/REFERENCE_MEMORY.md`.
 
-## Примечание М2.1.1 — приём OBSERVED (только журнал, без допуска)
+## Примечание М2.2.0a — lifecycle без допуска
 
-- Журнал остаётся карантином только OBSERVED; `admission_implementation` по-прежнему `ABSENT`.
-- Источник записи — строгий исключающий выбор: Путь А (`source`+`source_kind` из сида) или Путь Б (`observed_source` без регистрации).
-- Событийно-локальное не равно канону, реестру, допущенному и проверенному.
-- `recorded_by` — заявленная логическая метка писателя, а не проверенная личность, коммитер гита или криптодоказательство.
-- Подробности — в `docs/memory/EVENT_LEDGER_SCHEMA.md` и схеме `continuity-carrier-event-ledger/2.1.1`.
+- `admission_state` остаётся `OBSERVED` для каждого события, `authorized_by` остаётся null/отсутствует, `admission_implementation=ABSENT`.
+- Допустимая lifecycle-последовательность: `OBSERVED → CANDIDATE → PROPOSED`, а также `HOLD`, явный `CONFLICT_MARK` и терминальный lifecycle `SUPERSEDE` по transition matrix.
+- `proposal_content_kind=FULL_RECORD` означает только артефакт предлагаемой записи; это не Canon CREATE/UPDATE/PATCH и не решение пользователя.
+- Semantic parent задан только `applies_to_event_id`; `prior_event_id` остаётся физическим append-порядком.
+- `project-proposals` — read-only board. Несколько открытых proposal от одного OBSERVE root дают warning, но не conflict и не authority.
+- Нет USER ADMIT, состояния ADMITTED, применения к Canon, изменений seed/manifest/CURRENT_ORIENTATION/SOURCE_REGISTRY/wiz_ref или правок operational `event_ledger.jsonl` в этой вехе.
+- Старые OBSERVE события без `lifecycle_state` сохраняют совместимость и проецируются как `OBSERVED`.
+- Источник записи сохраняет строгий XOR M2.1.1 (Путь А или Путь Б); `recorded_by` остаётся заявленной меткой, не подтверждением личности.
+- Подробности — в `docs/memory/EVENT_LEDGER_SCHEMA.md` и схеме `continuity-carrier-event-ledger/2.2.0a`.

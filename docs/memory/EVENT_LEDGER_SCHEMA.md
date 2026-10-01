@@ -1,10 +1,9 @@
-# Схема журнала событий М2.1.1 — только OBSERVED (неизменяемый карантинный слой)
+# Схема журнала событий М2.2.0a — lifecycle без допуска в Canon
 
-> Веха **М2.1.1 (приём OBSERVED)** поверх базового коммита Continuity Carrier **M1** и журнала **М2.1**.
-> Журнал — это **карантинный неизменяемый слой наблюдений**, а не канон.
-> Канон (`ruslan-orientation-seed.json` + `manifest.json`) в М2.1.1 **не мутирует**.
-> `admission_implementation` остаётся **ABSENT**. Реализации ADMIT **нет**.
-> Новое в М2.1.1: строгий исключающий выбор источника (Путь А или Путь Б) и честная семантика `recorded_by`.
+> Веха **М2.2.0a** добавляет только lifecycle **OBSERVED → CANDIDATE → PROPOSED** (+ HOLD / CONFLICT_MARK / SUPERSEDE) поверх M2.1.1.
+> Журнал остаётся **append-only**, наблюдения и предложения остаются вне Canon.
+> Admission всегда равен **OBSERVED**, `authorized_by` всегда null/отсутствует, а `admission_implementation` остаётся **ABSENT**.
+> M2.1.1 source XOR (Путь А или Путь Б), карантин, хеши, блокировка и честная семантика `recorded_by` сохраняются.
 
 ## 1. Назначение и равенства
 
@@ -32,8 +31,9 @@
 
 - Файл — **append-only** (только дописывание). Перезапись существующих строк запрещена.
 - Пустой файл означает ноль событий (состояние после активации M1).
-- Машиночитаемая схема: `docs/memory/event_ledger.schema.json` (`$id` `continuity-carrier-event-ledger/2.1.1`, проверяет только форму).
-- Полная семантика (хеши, цепочка, карантин, актёры, запрет ADMIT, исключающий выбор источника) проверяется инструментом `tools/memory/ledger_tool.mjs`.
+- Машиночитаемая схема: `docs/memory/event_ledger.schema.json` (`$id` `continuity-carrier-event-ledger/2.2.0a`, проверяет форму и применимость полей).
+- Старые строки `OBSERVE` без `lifecycle_state` проецируются как `OBSERVED`; новые события обязаны указывать поле явно.
+- Полная семантика (хеши, физический append-порядок, граф semantic parent, переходы, карантин, актёры, запрет ADMIT и source XOR) проверяется `tools/memory/ledger_tool.mjs`.
 
 ## 3. Конверт (envelope)
 
@@ -41,16 +41,19 @@
 |---|---|---|
 | `event_id` | да | `^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`, уникален в журнале |
 | `timestamp` | да | ISO8601 `YYYY-MM-DDTHH:MM:SS(.sss)?(Z\|±HH:MM)`. Только метаданные |
-| `admission_state` | да | только `OBSERVED` (значения `ADMITTED`, `QUARANTINED`, `REJECTED` зарезервированы, в М2.1.1 отклоняются) |
-| `event_kind` | да | только `OBSERVE` (значения `ADMIT`, `SUPERSEDE`, `CONFLICT_MARK` зарезервированы, в М2.1.1 отклоняются) |
+| `admission_state` | да | всегда `OBSERVED`; `ADMITTED`, `QUARANTINED`, `REJECTED` запрещены |
+| `event_kind` | да | `OBSERVE`, `CANDIDATE`, `PROPOSE`, `HOLD`, `CONFLICT_MARK`, `SUPERSEDE`; `ADMIT` запрещён |
+| `lifecycle_state` | новые события — да | `OBSERVED`, `CANDIDATE`, `PROPOSED`, `HOLD`, `CONFLICT`, `SUPERSEDED`; у legacy `OBSERVE` может отсутствовать и тогда проецируется как `OBSERVED` |
 | `source_actor` | да | `КЛАСС:идентификатор`, где КЛАСС `HUMAN`, `AI` или `SYSTEM`. Обязан отличаться от `recorded_by`. Заявленная метка, а не проверенная личность |
-| `recorded_by` | да | `КЛАСС:идентификатор` — заявленная логическая метка писателя. Самозаявленная метка не равна проверенной личности, коммитеру гита или криптодоказательству. ИИ пишет только OBSERVED |
-| `authorized_by` | нет/null | для OBSERVED обязан быть `null` или отсутствовать. Любое не-null значение отклоняется |
+| `recorded_by` | да | `КЛАСС:идентификатор` — заявленная логическая метка писателя, не проверенная личность. Admission остаётся OBSERVED для всех lifecycle events |
+| `authorized_by` | нет/null | для всех событий обязан быть `null` или отсутствовать. Любое не-null значение отклоняется |
 | `base_canonical_sha256` | да | 64 hex. Обязан равняться `manifest.canonical_content_sha256`, иначе отказ с закрытием |
 | `base_manifest_file_sha256` | нет | 64 hex. Если указан, обязан равняться SHA-256 текущих байтов `manifest.json` |
 | `base_commit_sha` | да | 40 hex (полный SHA коммита). В М2.1.1 проверяется только формат |
-| `prior_event_id` | null для первого | Для первого события `null`/отсутствует. Иначе обязан равняться `event_id` непосредственно предыдущей строки |
-| `applies_to_event_id` | нет | Опциональная ссылка на связанное событие. Если указана не-null, обязана существовать в журнале |
+| `prior_event_id` | null для первого | Только физический append-порядок: null/отсутствует у первой строки, далее — непосредственно предыдущий `event_id` |
+| `applies_to_event_id` | для lifecycle event — да | Semantic parent, обязан существовать раньше в журнале. У `OBSERVE` отсутствует/null; никогда не заменяется `prior_event_id` |
+| `conflict_peer_event_id` | только `CONFLICT_MARK` | Обязателен только для явной метки конфликта и указывает на другое предыдущее событие |
+| `proposal_content_kind` | только `PROPOSE` | Единственное значение `FULL_RECORD`; это артефакт предлагаемой записи, не Canon CREATE/UPDATE/PATCH |
 | `admission_reason` | нет | Опциональная строка-причина. Для OBSERVED может отсутствовать |
 | `writer_mode` | да | только `READ_WRITE_PR` (значение M1 `default_write_mode`) |
 
@@ -123,9 +126,10 @@
 
 ### 5.1 Кто может писать
 
-- **ИИ МОЖЕТ ДОПИСЫВАТЬ OBSERVED.** Писатель `AI:...` с `admission_state=OBSERVED` и `event_kind=OBSERVE` разрешён.
-- **ИИ НЕ МОЖЕТ ДОПУСКАТЬ В КАНОН.** Любая попытка `AI:...` с `admission_state != OBSERVED` или `event_kind != OBSERVE` отклоняется.
-- В М2.1.1 **любой** `admission_state != OBSERVED` или `event_kind != OBSERVE` отклоняется независимо от актёра, потому что `admission_implementation=ABSENT`.
+- Все новые записи, включая lifecycle events, имеют `admission_state=OBSERVED` и `authorized_by=null`/отсутствует.
+- `CANDIDATE`, `PROPOSE`, `HOLD`, `CONFLICT_MARK`, `SUPERSEDE` — записи lifecycle, а не допуск в Canon.
+- `ADMIT` и `admission_state=ADMITTED` всегда запрещены для любого актёра; `admission_implementation=ABSENT`.
+- `recorded_by` остаётся заявленной логической меткой, не удостоверенной личностью.
 
 ### 5.2 Карантин = отказ до дописывания
 
@@ -145,8 +149,7 @@
 ### 5.3 Разделение актёров
 
 - `source_actor` и `recorded_by` обязаны присутствовать и **различаться** (`source_actor != recorded_by`).
-- `authorized_by` для OBSERVED обязан быть `null`/отсутствовать (самоподтверждение запрещено).
-- Если бы `authorized_by` был не-null (будущие вехи), он обязан был бы отличаться от `recorded_by` и `source_actor`. В М2.1.1 такое событие всё равно отклоняется правилом «только OBSERVED».
+- `authorized_by` для любого lifecycle state обязан быть `null`/отсутствовать; lifecycle не предоставляет полномочий.
 - `recorded_by` и `source_actor` — заявленные логические метки вида `КЛАСС:идентификатор`; проверка только формы, подписей нет.
 
 ### 5.4 Хеши и оптимистичная конкуренция
@@ -156,14 +159,12 @@
 - Опциональный `base_manifest_file_sha256`, если указан, обязан равняться SHA-256 текущих байтов файла `manifest.json`.
 - Команда `check-hash` сверяет текущий файл сида с полем манифеста и проверяет целостность цепочки журнала.
 
-### 5.5 Порядок и цепочка
+### 5.5 Порядок: физическая цепочка отдельно от semantic graph
 
-- Авторитет порядка — **цепочка `prior_event_id` + физический порядок дописывания**.
-- `timestamp` — только метаданные. Убывание меток не является ошибкой.
-- Первое событие: `prior_event_id` равен `null` или отсутствует.
-- Каждое следующее: `prior_event_id` обязан равняться `event_id` непосредственно предыдущей непустой строки.
-- Дубликат `event_id`, разрыв цепочки, ссылка на неизвестное событие, malformed JSON-строка или строка без `{envelope, record}` означают **FAIL CLOSED CONFLICT**: проверка, валидация и дописывание отказываются работать до ручного разбора человеком.
-- Непустой журнал обязан завершаться переводом строки `\n`. Отсутствие финального перевода означает `LEDGER_FORMAT_ERROR/TERMINAL_NEWLINE_MISSING` и отказ дописывания. Молчаливая нормализация запрещена: append-only не переписывает существующие байты.
+- `prior_event_id` описывает только физический append-порядок: первое событие — null/отсутствует, далее — id предыдущей строки.
+- `applies_to_event_id` — единственный semantic parent lifecycle event. Его значение может указывать на более ранний non-superseded ancestor, даже если физически последняя строка другая.
+- `timestamp` — только метаданные. Дубликат event id, разрыв физической цепочки, неверный semantic parent, malformed JSON или строка без `{envelope, record}` означают **FAIL CLOSED**.
+- Непустой журнал обязан завершаться переводом строки `\n`; append-only запрещает молчаливую нормализацию.
 
 ### 5.6 Конкуренция и блокировка (исправление TOCTOU)
 
@@ -174,28 +175,54 @@
 - Долговечность: проверяется возврат `writeSync` (частичная запись означает отказ), сбой `fsync` означает отказ `LEDGER_DURABILITY_ERROR`, а не успех. Проглатывание ошибок записи и `fsync` пустым `catch` запрещено. Скрытый откат усечением запрещён: после сбоя долговечности требуется перепроверка журнала перед следующим дописыванием.
 - Гарантия действует только на ОДНОЙ общей локальной файловой системе. Это НЕ распределённая блокировка между клонами, машинами и ветками. Сериализация между клонами остаётся за Git/PR/слиянием. Распределённый консенсус не заявляется.
 
-### 5.7 Порядок проверки М2.1.1 (отказ с закрытием)
+### 5.7 Порядок проверки (отказ с закрытием)
 
 1. Неизвестные ключи записи (разрешён новый `observed_source`).
 2. Исключающий выбор: нет формы — `SOURCE_XOR_REQUIRED`; обе формы — `SOURCE_XOR_BOTH`.
 3. Путь А: алиас в сиде и совпадение вида (старые правила).
 4. Путь Б: ровно четыре ключа, перечисления, метка 1..200, без обращения к сиду и без мутации.
 5. Карантин по строкам полного события {envelope, record}, включая `observed_source` и `envelope.admission_reason` (учётные данные и приватные локаторы; произвольные технические идентификаторы, включая голые УУИД-подобные значения, разрешены вне приватного локаторного контекста).
-6. Только OBSERVED/OBSERVE; `authorized_by` нуль или отсутствует.
-7. Цепочка, блокировка, хеши и неизменяемость канона без изменений.
+6. `admission_state` всегда OBSERVED, `authorized_by` null/отсутствует; lifecycle поля соответствуют event kind.
+7. Переход и candidate lineage проверяются по `applies_to_event_id`; physical prior проверяется отдельно.
+8. Блокировка, хеши, карантин и неизменяемость канона без изменений.
+
+### 5.8 Lifecycle в М2.2.0a (не authority)
+
+Сопоставление вида события и создаваемого состояния: `OBSERVE→OBSERVED`, `CANDIDATE→CANDIDATE`, `PROPOSE→PROPOSED`, `HOLD→HOLD`, `CONFLICT_MARK→CONFLICT`, `SUPERSEDE→SUPERSEDED`.
+
+Разрешённые переходы от состояния semantic parent:
+
+| Parent state | Разрешённые child states |
+|---|---|
+| `OBSERVED` | `CANDIDATE`, `HOLD`, `CONFLICT` |
+| `CANDIDATE` | `PROPOSED`, `HOLD`, `CONFLICT`, `SUPERSEDED` |
+| `PROPOSED` | `HOLD`, `CONFLICT`, `SUPERSEDED`, `PROPOSED` |
+| `HOLD` | `CANDIDATE`, `PROPOSED`* , `CONFLICT`, `SUPERSEDED` |
+| `CONFLICT` | `HOLD`, `SUPERSEDED`, `CANDIDATE` |
+| `SUPERSEDED` | нет переходов; состояние terminal |
+
+`* PROPOSE` допустим только если в lineage уже есть ancestor `CANDIDATE`. То же правило применяется к каждому PROPOSE независимо от текущего parent. `OBSERVED→PROPOSED` и `CANDIDATE→CANDIDATE` запрещены. Из non-superseded ancestor допустимо начать другую ветвь; у superseded event детей быть не может.
+
+Tip — event без semantic child. Current tip — tip, не имеющий state `SUPERSEDED`. Предыдущий proposal с child — история, не open proposal.
+
+`project-proposals` — read-only projection с категориями `ACTIVE_CANDIDATE`, `ACTIVE_PROPOSED`, `HOLD`, `EXPLICIT_CONFLICT`, `MULTIPLE_OPEN_PROPOSALS_WARNING`, `SUPERSEDED`. Warning появляется при более чем одном current `PROPOSED` tip от одного `OBSERVE` root. Warning не равен conflict, не разрешает его и не имеет admission authority; конфликт существует только после явного `CONFLICT_MARK`.
 
 ## 6. Команды инструмента
 
 ```bash
 node tools/memory/ledger_tool.mjs validate-event <событие.json> [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]
 node tools/memory/ledger_tool.mjs append-observed <событие.json> [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]
+node tools/memory/ledger_tool.mjs append-event <событие.json> [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]
+node tools/memory/ledger_tool.mjs project-proposals [--ledger ПУТЬ]
 node tools/memory/ledger_tool.mjs check-hash [--ledger ПУТЬ] [--manifest ПУТЬ] [--seed ПУТЬ]
 ```
 
 Пути по умолчанию указывают на `docs/memory/event_ledger.jsonl`, `docs/memory/manifest.json`, `docs/memory/ruslan-orientation-seed.json`.
 
 - `validate-event` — только проверяет, ничего не пишет. Код 0 при `VALID`, код 1 при `INVALID`.
-- `append-observed` — захватывает блокировку `<журнал>.lock`, перепроверяет всё внутри критической секции и дописывает **одну строку** (`append-only` + `fsync`). При любой ошибке, занятости (`LEDGER_BUSY`) или устаревшей блокировке (`STALE_LOCK_REQUIRES_REVIEW`) ничего не пишет и возвращает код 1.
+- `append-observed` — совместимый узкий интерфейс только для `OBSERVE/lifecycle_state=OBSERVED`.
+- `append-event` — захватывает блокировку `<журнал>.lock`, перепроверяет lifecycle и M2.1.1 safety rules, затем дописывает одну строку (`append-only` + `fsync`). ADMIT запрещён.
+- `project-proposals` — read-only JSON projection; журнал не изменяется.
 - `check-hash` — сверяет хеш сида с манифестом и проверяет цепочку журнала. Код 0 при `OK`, код 1 при `FAIL`.
 
 ## 7. Примеры
@@ -209,6 +236,7 @@ node tools/memory/ledger_tool.mjs check-hash [--ledger ПУТЬ] [--manifest П�
     "timestamp": "2026-10-01T09:30:00+02:00",
     "admission_state": "OBSERVED",
     "event_kind": "OBSERVE",
+    "lifecycle_state": "OBSERVED",
     "source_actor": "HUMAN:ruslan",
     "recorded_by": "AI:eiti-wizard-m2.1",
     "authorized_by": null,
@@ -263,11 +291,13 @@ node tools/memory/ledger_tool.mjs check-hash [--ledger ПУТЬ] [--manifest П�
 
 Второе событие обязано указать `"prior_event_id": "evt-m2-1-0001"`.
 
-## 8. Что М2.1.1 не делает
+## 8. Что М2.2.0a не делает
 
 - Не мутирует сид, манифест, `CURRENT_ORIENTATION.md`, паспорт, `wiz_ref`/рантайм.
 - Не мутирует `SOURCE_REGISTRY.md` и содержимое `seed.sources`.
-- Не реализует ADMIT, USER ADMIT, SUPERSEDE, разрешение конфликтов.
+- Не реализует ADMIT / USER ADMIT, решение или разрешение конфликтов, Canon CREATE/UPDATE/PATCH.
+- `SUPERSEDE` закрывает только lifecycle branch event; не меняет seed record и не удаляет историю.
+- Не превращает proposal, FULL_RECORD или board category в user decision / admission authority.
 - Не меняет `admission_implementation` (остаётся `ABSENT`).
 - Не переписывает существующие строки журнала.
 - Не вводит поля `authority`/`evidence`/`confidence`/`validity`.

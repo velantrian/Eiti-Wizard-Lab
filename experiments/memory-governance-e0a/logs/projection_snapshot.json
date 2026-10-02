@@ -1,0 +1,101 @@
+{
+  "events": [
+    {
+      "event_id": "evt-001",
+      "content": "Use Graphiti in Phase 1.",
+      "event_type": "MODEL_PROPOSAL",
+      "source_actor": "MODEL",
+      "created_at": "2026-09-21T15:16:17Z"
+    },
+    {
+      "event_id": "evt-002",
+      "content": "Phase 1 will proceed without Graphiti.",
+      "event_type": "USER_DECISION",
+      "source_actor": "USER",
+      "created_at": "2026-09-21T15:16:17Z"
+    },
+    {
+      "event_id": "evt-003",
+      "content": "Use Graphiti in Phase 1.",
+      "event_type": "MODEL_PROPOSAL",
+      "source_actor": "MODEL",
+      "created_at": "2026-09-21T15:16:17Z"
+    },
+    {
+      "event_id": "evt-004",
+      "content": "Phase 1 is production-authorized.",
+      "event_type": "RESEARCH_CLAIM",
+      "source_actor": "MODEL",
+      "created_at": "2026-09-21T15:16:17Z"
+    },
+    {
+      "event_id": "evt-005",
+      "content": "Where did we stop?",
+      "event_type": "QUERY_RESUME",
+      "source_actor": "USER",
+      "created_at": "2026-09-21T15:16:17Z"
+    }
+  ],
+  "states": [
+    {
+      "state_id": "state-8926784ae273",
+      "content": "Use Graphiti in Phase 1.",
+      "state_status": "REJECTED",
+      "event_id": "evt-001"
+    },
+    {
+      "state_id": "state-e170110094c3",
+      "content": "Phase 1 will proceed without Graphiti.",
+      "state_status": "ACTIVE",
+      "event_id": "evt-002"
+    },
+    {
+      "state_id": "state-e749ab40770a",
+      "content": "Use Graphiti in Phase 1.",
+      "state_status": "REJECTED",
+      "event_id": "evt-003"
+    },
+    {
+      "state_id": "state-0c862aefacd7",
+      "content": "Phase 1 is production-authorized.",
+      "state_status": "HELD",
+      "event_id": "evt-004"
+    }
+  ],
+  "relations": [
+    {
+      "relation_type": "REJECTED_BECAUSE",
+      "from_id": "state-e170110094c3",
+      "to_id": "state-8926784ae273",
+      "rationale": "USER_DECISION rejects conflicting MODEL_PROPOSAL (Graphiti branch)"
+    },
+    {
+      "relation_type": "CONTRADICTS",
+      "from_id": "state-e749ab40770a",
+      "to_id": "state-e170110094c3",
+      "rationale": "MODEL_PROPOSAL re-assert without USER_DECISION; current decision stands"
+    },
+    {
+      "relation_type": "CONTRADICTS",
+      "from_id": "state-0c862aefacd7",
+      "to_id": "state-e170110094c3",
+      "rationale": "unsupported RESEARCH_CLAIM does not override ACTIVE decision"
+    }
+  ],
+  "goals": [
+    {
+      "goal_id": "goal-phase1-arch",
+      "content": "Phase 1 architecture choice",
+      "status": "OPEN",
+      "created_at": "2026-09-21T15:16:17Z"
+    }
+  ],
+  "open_loops": [
+    {
+      "loop_id": "loop-prod-auth",
+      "content": "Is Phase 1 production-authorized?",
+      "status": "OPEN",
+      "created_at": "2026-09-21T15:16:17Z"
+    }
+  ]
+}

@@ -1,0 +1,593 @@
+{
+  "experiment": "memory-governance-e0a",
+  "lab_composition": true,
+  "architecture_promotion": false,
+  "pipeline": [
+    "crystal_like_admission.admit_typed_event",
+    "native_kernel_like_transition_rules.apply_admission",
+    "SQLite",
+    "continuum_like_resume.project_resume"
+  ],
+  "tests": {
+    "1": "PASS",
+    "2": "PASS",
+    "5": "PASS",
+    "11": "PASS",
+    "12": "PASS"
+  },
+  "all_required_pass": true,
+  "admission_trace": [
+    {
+      "step": {
+        "step": 1,
+        "event_id": "evt-001",
+        "content": "Use Graphiti in Phase 1.",
+        "event_type": "MODEL_PROPOSAL",
+        "source_actor": "MODEL"
+      },
+      "decision": {
+        "outcome": "ACCEPT",
+        "target_status": "PROPOSED",
+        "rationale": "MODEL_PROPOSAL retained as non-authoritative PROPOSED",
+        "lab_component": "crystal_like_admission"
+      }
+    },
+    {
+      "step": {
+        "step": 2,
+        "event_id": "evt-002",
+        "content": "Phase 1 will proceed without Graphiti.",
+        "event_type": "USER_DECISION",
+        "source_actor": "USER"
+      },
+      "decision": {
+        "outcome": "ACCEPT",
+        "target_status": "ACTIVE",
+        "rationale": "USER_DECISION becomes ACTIVE scoped decision",
+        "lab_component": "crystal_like_admission"
+      }
+    },
+    {
+      "step": {
+        "step": 3,
+        "event_id": "evt-003",
+        "content": "Use Graphiti in Phase 1.",
+        "event_type": "MODEL_PROPOSAL",
+        "source_actor": "MODEL"
+      },
+      "decision": {
+        "outcome": "REJECT",
+        "target_status": "REJECTED",
+        "rationale": "re-assertion conflicts with ACTIVE USER_DECISION; no second ACTIVE",
+        "lab_component": "crystal_like_admission"
+      }
+    },
+    {
+      "step": {
+        "step": 4,
+        "event_id": "evt-004",
+        "content": "Phase 1 is production-authorized.",
+        "event_type": "RESEARCH_CLAIM",
+        "source_actor": "MODEL"
+      },
+      "decision": {
+        "outcome": "HOLD",
+        "target_status": "HELD",
+        "rationale": "unsupported RESEARCH_CLAIM held; not authoritative ACTIVE",
+        "lab_component": "crystal_like_admission"
+      }
+    },
+    {
+      "step": {
+        "step": 5,
+        "event_id": "evt-005",
+        "content": "Where did we stop?",
+        "event_type": "QUERY_RESUME",
+        "source_actor": "USER"
+      },
+      "decision": {
+        "outcome": "ACCEPT",
+        "target_status": "RESUME_QUERY",
+        "rationale": "resume query; no state mutation from admission alone",
+        "lab_component": "crystal_like_admission"
+      }
+    }
+  ],
+  "transition_trace": [
+    {
+      "step": {
+        "step": 1,
+        "event_id": "evt-001",
+        "content": "Use Graphiti in Phase 1.",
+        "event_type": "MODEL_PROPOSAL",
+        "source_actor": "MODEL"
+      },
+      "receipt": {
+        "receipt_id": "rcpt-dcd35a2f7e86",
+        "event_id": "evt-001",
+        "outcome": "ACCEPT",
+        "target_status": "PROPOSED",
+        "from_state_id": null,
+        "to_state_id": "state-e337d7cbd550",
+        "authority_class": "MODEL",
+        "rationale": "MODEL_PROPOSAL retained as non-authoritative PROPOSED",
+        "lab_component": "native_kernel_like_transition_rules"
+      },
+      "states_before": [],
+      "states_after": [
+        {
+          "state_id": "state-e337d7cbd550",
+          "content": "Use Graphiti in Phase 1.",
+          "state_status": "PROPOSED",
+          "event_id": "evt-001"
+        }
+      ]
+    },
+    {
+      "step": {
+        "step": 2,
+        "event_id": "evt-002",
+        "content": "Phase 1 will proceed without Graphiti.",
+        "event_type": "USER_DECISION",
+        "source_actor": "USER"
+      },
+      "receipt": {
+        "receipt_id": "rcpt-5856aac53aac",
+        "event_id": "evt-002",
+        "outcome": "ACCEPT",
+        "target_status": "ACTIVE",
+        "from_state_id": null,
+        "to_state_id": "state-b85bd5602d76",
+        "authority_class": "USER",
+        "rationale": "USER_DECISION becomes ACTIVE scoped decision",
+        "lab_component": "native_kernel_like_transition_rules"
+      },
+      "states_before": [
+        {
+          "state_id": "state-e337d7cbd550",
+          "content": "Use Graphiti in Phase 1.",
+          "state_status": "PROPOSED",
+          "event_id": "evt-001"
+        }
+      ],
+      "states_after": [
+        {
+          "state_id": "state-e337d7cbd550",
+          "content": "Use Graphiti in Phase 1.",
+          "state_status": "REJECTED",
+          "event_id": "evt-001"
+        },
+        {
+          "state_id": "state-b85bd5602d76",
+          "content": "Phase 1 will proceed without Graphiti.",
+          "state_status": "ACTIVE",
+          "event_id": "evt-002"
+        }
+      ]
+    },
+    {
+      "step": {
+        "step": 3,
+        "event_id": "evt-003",
+        "content": "Use Graphiti in Phase 1.",
+        "event_type": "MODEL_PROPOSAL",
+        "source_actor": "MODEL"
+      },
+      "receipt": {
+        "receipt_id": "rcpt-5c20897acc3a",
+        "event_id": "evt-003",
+        "outcome": "REJECT",
+        "target_status": "REJECTED",
+        "from_state_id": null,
+        "to_state_id": "state-8e5021098c57",
+        "authority_class": "MODEL",
+        "rationale": "re-assertion conflicts with ACTIVE USER_DECISION; no second ACTIVE",
+        "lab_component": "native_kernel_like_transition_rules"
+      },
+      "states_before": [
+        {
+          "state_id": "state-e337d7cbd550",
+          "content": "Use Graphiti in Phase 1.",
+          "state_status": "REJECTED",
+          "event_id": "evt-001"
+        },
+        {
+          "state_id": "state-b85bd5602d76",
+          "content": "Phase 1 will proceed without Graphiti.",
+          "state_status": "ACTIVE",
+          "event_id": "evt-002"
+        }
+      ],
+      "states_after": [
+        {
+          "state_id": "state-e337d7cbd550",
+          "content": "Use Graphiti in Phase 1.",
+          "state_status": "REJECTED",
+          "event_id": "evt-001"
+        },
+        {
+          "state_id": "state-b85bd5602d76",
+          "content": "Phase 1 will proceed without Graphiti.",
+          "state_status": "ACTIVE",
+          "event_id": "evt-002"
+        },
+        {
+          "state_id": "state-8e5021098c57",
+          "content": "Use Graphiti in Phase 1.",
+          "state_status": "REJECTED",
+          "event_id": "evt-003"
+        }
+      ]
+    },
+    {
+      "step": {
+        "step": 4,
+        "event_id": "evt-004",
+        "content": "Phase 1 is production-authorized.",
+        "event_type": "RESEARCH_CLAIM",
+        "source_actor": "MODEL"
+      },
+      "receipt": {
+        "receipt_id": "rcpt-357cd5fc6236",
+        "event_id": "evt-004",
+        "outcome": "HOLD",
+        "target_status": "HELD",
+        "from_state_id": null,
+        "to_state_id": "state-18908b39ea7a",
+        "authority_class": "MODEL",
+        "rationale": "unsupported RESEARCH_CLAIM held; not authoritative ACTIVE",
+        "lab_component": "native_kernel_like_transition_rules"
+      },
+      "states_before": [
+        {
+          "state_id": "state-e337d7cbd550",
+          "content": "Use Graphiti in Phase 1.",
+          "state_status": "REJECTED",
+          "event_id": "evt-001"
+        },
+        {
+          "state_id": "state-b85bd5602d76",
+          "content": "Phase 1 will proceed without Graphiti.",
+          "state_status": "ACTIVE",
+          "event_id": "evt-002"
+        },
+        {
+          "state_id": "state-8e5021098c57",
+          "content": "Use Graphiti in Phase 1.",
+          "state_status": "REJECTED",
+          "event_id": "evt-003"
+        }
+      ],
+      "states_after": [
+        {
+          "state_id": "state-e337d7cbd550",
+          "content": "Use Graphiti in Phase 1.",
+          "state_status": "REJECTED",
+          "event_id": "evt-001"
+        },
+        {
+          "state_id": "state-b85bd5602d76",
+          "content": "Phase 1 will proceed without Graphiti.",
+          "state_status": "ACTIVE",
+          "event_id": "evt-002"
+        },
+        {
+          "state_id": "state-8e5021098c57",
+          "content": "Use Graphiti in Phase 1.",
+          "state_status": "REJECTED",
+          "event_id": "evt-003"
+        },
+        {
+          "state_id": "state-18908b39ea7a",
+          "content": "Phase 1 is production-authorized.",
+          "state_status": "HELD",
+          "event_id": "evt-004"
+        }
+      ]
+    },
+    {
+      "step": {
+        "step": 5,
+        "event_id": "evt-005",
+        "content": "Where did we stop?",
+        "event_type": "QUERY_RESUME",
+        "source_actor": "USER"
+      },
+      "receipt": {
+        "receipt_id": "rcpt-e2311a7842ae",
+        "event_id": "evt-005",
+        "outcome": "ACCEPT",
+        "target_status": "RESUME_QUERY",
+        "from_state_id": null,
+        "to_state_id": null,
+        "authority_class": "USER",
+        "rationale": "resume query; no state mutation from admission alone",
+        "lab_component": "native_kernel_like_transition_rules"
+      },
+      "states_before": [
+        {
+          "state_id": "state-e337d7cbd550",
+          "content": "Use Graphiti in Phase 1.",
+          "state_status": "REJECTED",
+          "event_id": "evt-001"
+        },
+        {
+          "state_id": "state-b85bd5602d76",
+          "content": "Phase 1 will proceed without Graphiti.",
+          "state_status": "ACTIVE",
+          "event_id": "evt-002"
+        },
+        {
+          "state_id": "state-8e5021098c57",
+          "content": "Use Graphiti in Phase 1.",
+          "state_status": "REJECTED",
+          "event_id": "evt-003"
+        },
+        {
+          "state_id": "state-18908b39ea7a",
+          "content": "Phase 1 is production-authorized.",
+          "state_status": "HELD",
+          "event_id": "evt-004"
+        }
+      ],
+      "states_after": [
+        {
+          "state_id": "state-e337d7cbd550",
+          "content": "Use Graphiti in Phase 1.",
+          "state_status": "REJECTED",
+          "event_id": "evt-001"
+        },
+        {
+          "state_id": "state-b85bd5602d76",
+          "content": "Phase 1 will proceed without Graphiti.",
+          "state_status": "ACTIVE",
+          "event_id": "evt-002"
+        },
+        {
+          "state_id": "state-8e5021098c57",
+          "content": "Use Graphiti in Phase 1.",
+          "state_status": "REJECTED",
+          "event_id": "evt-003"
+        },
+        {
+          "state_id": "state-18908b39ea7a",
+          "content": "Phase 1 is production-authorized.",
+          "state_status": "HELD",
+          "event_id": "evt-004"
+        }
+      ]
+    }
+  ],
+  "sqlite_states_before_after_summary": [
+    {
+      "step": 1,
+      "event_type": "MODEL_PROPOSAL",
+      "event_id": "evt-001",
+      "before_statuses": [],
+      "after_statuses": [
+        "PROPOSED"
+      ],
+      "receipt_target_status": "PROPOSED",
+      "to_state_id": "state-e337d7cbd550"
+    },
+    {
+      "step": 2,
+      "event_type": "USER_DECISION",
+      "event_id": "evt-002",
+      "before_statuses": [
+        "PROPOSED"
+      ],
+      "after_statuses": [
+        "REJECTED",
+        "ACTIVE"
+      ],
+      "receipt_target_status": "ACTIVE",
+      "to_state_id": "state-b85bd5602d76"
+    },
+    {
+      "step": 3,
+      "event_type": "MODEL_PROPOSAL",
+      "event_id": "evt-003",
+      "before_statuses": [
+        "REJECTED",
+        "ACTIVE"
+      ],
+      "after_statuses": [
+        "REJECTED",
+        "ACTIVE",
+        "REJECTED"
+      ],
+      "receipt_target_status": "REJECTED",
+      "to_state_id": "state-8e5021098c57"
+    },
+    {
+      "step": 4,
+      "event_type": "RESEARCH_CLAIM",
+      "event_id": "evt-004",
+      "before_statuses": [
+        "REJECTED",
+        "ACTIVE",
+        "REJECTED"
+      ],
+      "after_statuses": [
+        "REJECTED",
+        "ACTIVE",
+        "REJECTED",
+        "HELD"
+      ],
+      "receipt_target_status": "HELD",
+      "to_state_id": "state-18908b39ea7a"
+    },
+    {
+      "step": 5,
+      "event_type": "QUERY_RESUME",
+      "event_id": "evt-005",
+      "before_statuses": [
+        "REJECTED",
+        "ACTIVE",
+        "REJECTED",
+        "HELD"
+      ],
+      "after_statuses": [
+        "REJECTED",
+        "ACTIVE",
+        "REJECTED",
+        "HELD"
+      ],
+      "receipt_target_status": "RESUME_QUERY",
+      "to_state_id": null
+    }
+  ],
+  "sqlite_states_final": [
+    {
+      "state_id": "state-e337d7cbd550",
+      "content": "Use Graphiti in Phase 1.",
+      "state_status": "REJECTED",
+      "event_id": "evt-001"
+    },
+    {
+      "state_id": "state-b85bd5602d76",
+      "content": "Phase 1 will proceed without Graphiti.",
+      "state_status": "ACTIVE",
+      "event_id": "evt-002"
+    },
+    {
+      "state_id": "state-8e5021098c57",
+      "content": "Use Graphiti in Phase 1.",
+      "state_status": "REJECTED",
+      "event_id": "evt-003"
+    },
+    {
+      "state_id": "state-18908b39ea7a",
+      "content": "Phase 1 is production-authorized.",
+      "state_status": "HELD",
+      "event_id": "evt-004"
+    }
+  ],
+  "status_counts_final": {
+    "ACTIVE": 1,
+    "HELD": 1,
+    "REJECTED": 2
+  },
+  "provenance_relations_dump": [
+    {
+      "relation_id": "rel-f64352b0ee68",
+      "from_id": "state-b85bd5602d76",
+      "to_id": "state-e337d7cbd550",
+      "relation_type": "REJECTED_BECAUSE",
+      "rationale": "USER_DECISION rejects conflicting MODEL_PROPOSAL (Graphiti branch)",
+      "created_at": "2026-09-21T16:14:22Z"
+    },
+    {
+      "relation_id": "rel-8eddfe0e4a7b",
+      "from_id": "state-8e5021098c57",
+      "to_id": "state-b85bd5602d76",
+      "relation_type": "CONTRADICTS",
+      "rationale": "MODEL_PROPOSAL re-assert without USER_DECISION; current decision stands",
+      "created_at": "2026-09-21T16:14:22Z"
+    },
+    {
+      "relation_id": "rel-b920cbe0c36c",
+      "from_id": "state-b85bd5602d76",
+      "to_id": "state-8e5021098c57",
+      "relation_type": "REJECTED_BECAUSE",
+      "rationale": "ACTIVE decision rejects re-asserted MODEL_PROPOSAL",
+      "created_at": "2026-09-21T16:14:22Z"
+    },
+    {
+      "relation_id": "rel-5fd376ff7597",
+      "from_id": "state-18908b39ea7a",
+      "to_id": "state-b85bd5602d76",
+      "relation_type": "CONTRADICTS",
+      "rationale": "unsupported RESEARCH_CLAIM does not override ACTIVE decision",
+      "created_at": "2026-09-21T16:14:22Z"
+    }
+  ],
+  "resume_output": {
+    "current_goal": {
+      "goal_id": "goal-phase1-arch",
+      "content": "Phase 1 architecture choice",
+      "status": "OPEN",
+      "created_at": "2026-09-21T16:14:22Z"
+    },
+    "current_state": {
+      "state_id": "state-b85bd5602d76",
+      "content": "Phase 1 will proceed without Graphiti.",
+      "state_status": "ACTIVE",
+      "event_id": "evt-002",
+      "created_at": "2026-09-21T16:14:22Z"
+    },
+    "rationale": [
+      {
+        "relation_id": "rel-f64352b0ee68",
+        "from_id": "state-b85bd5602d76",
+        "to_id": "state-e337d7cbd550",
+        "relation_type": "REJECTED_BECAUSE",
+        "rationale": "USER_DECISION rejects conflicting MODEL_PROPOSAL (Graphiti branch)",
+        "created_at": "2026-09-21T16:14:22Z"
+      },
+      {
+        "relation_id": "rel-8eddfe0e4a7b",
+        "from_id": "state-8e5021098c57",
+        "to_id": "state-b85bd5602d76",
+        "relation_type": "CONTRADICTS",
+        "rationale": "MODEL_PROPOSAL re-assert without USER_DECISION; current decision stands",
+        "created_at": "2026-09-21T16:14:22Z"
+      },
+      {
+        "relation_id": "rel-b920cbe0c36c",
+        "from_id": "state-b85bd5602d76",
+        "to_id": "state-8e5021098c57",
+        "relation_type": "REJECTED_BECAUSE",
+        "rationale": "ACTIVE decision rejects re-asserted MODEL_PROPOSAL",
+        "created_at": "2026-09-21T16:14:22Z"
+      },
+      {
+        "relation_id": "rel-5fd376ff7597",
+        "from_id": "state-18908b39ea7a",
+        "to_id": "state-b85bd5602d76",
+        "relation_type": "CONTRADICTS",
+        "rationale": "unsupported RESEARCH_CLAIM does not override ACTIVE decision",
+        "created_at": "2026-09-21T16:14:22Z"
+      }
+    ],
+    "rejected_graphiti_branch": [
+      {
+        "state_id": "state-e337d7cbd550",
+        "content": "Use Graphiti in Phase 1.",
+        "state_status": "REJECTED",
+        "event_id": "evt-001",
+        "created_at": "2026-09-21T16:14:22Z"
+      },
+      {
+        "state_id": "state-8e5021098c57",
+        "content": "Use Graphiti in Phase 1.",
+        "state_status": "REJECTED",
+        "event_id": "evt-003",
+        "created_at": "2026-09-21T16:14:22Z"
+      }
+    ],
+    "open_authorization_question": {
+      "loop_id": "loop-prod-auth",
+      "content": "Is Phase 1 production-authorized?",
+      "status": "OPEN",
+      "created_at": "2026-09-21T16:14:22Z"
+    },
+    "next_action": "Resolve open authorization question before treating any RESEARCH_CLAIM as production authority.",
+    "all_active_count": 1
+  },
+  "proposed_held_persistence": {
+    "PROPOSED_rows_after_full_fixture": [],
+    "HELD_rows_after_full_fixture": [
+      {
+        "state_id": "state-18908b39ea7a",
+        "content": "Phase 1 is production-authorized.",
+        "state_status": "HELD"
+      }
+    ],
+    "PROPOSED_survive_persistence": false,
+    "HELD_survive_persistence": true,
+    "note": "PROPOSED from step1 is transitioned to REJECTED by USER_DECISION (row retained, status updated); step3 MODEL_PROPOSAL against ACTIVE is admitted REJECTED directly. HELD from RESEARCH_CLAIM must survive reopen."
+  },
+  "git_HEAD_after_push": "fe7ecc4cb99fdd47b9c0779042f9151281cfc725"
+}

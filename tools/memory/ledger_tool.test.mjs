@@ -1303,6 +1303,50 @@ test('M2.2a: legacy projection applies only to an absent lifecycle_state, never 
   }
 });
 
+test('M2.2a correction: persisted legacy OBSERVE rows must pass every strict semantic check', () => {
+  const corruptions = [
+    ['empty record', event => { event.record = {}; }, 'запись: отсутствует id'],
+    ['missing both source forms', event => { delete event.record.source; delete event.record.source_kind; }, 'SOURCE_XOR_REQUIRED'],
+    ['both source forms', event => { event.record.observed_source = допустимыйНаблюдаемыйИсточник(); }, 'SOURCE_XOR_BOTH'],
+    ['stale canonical hash', event => { event.envelope.base_canonical_sha256 = '0'.repeat(64); }, 'STALE_CANONICAL_HASH'],
+    ['non-null authorized_by', event => { event.envelope.authorized_by = 'HUMAN:owner'; }, 'все события требуют authorized_by null/отсутствует'],
+    ['invalid actor format', event => { event.envelope.source_actor = 'invalid actor'; }, 'конверт: неверный source_actor'],
+    ['source actor equals writer', event => { event.envelope.source_actor = event.envelope.recorded_by; }, 'ACTOR_SEPARATION'],
+    ['forbidden confidence field', event => { event.record.confidence = 0.9; }, 'QUARANTINE_FORBIDDEN_KEYS'],
+    ['malformed observed_source', event => {
+      delete event.record.source;
+      delete event.record.source_kind;
+      event.record.provenance = 'USER_RAW';
+      event.record.observed_source = { kind: 'CHAT_OBSERVATION' };
+    }, 'observed_source отсутствует label'],
+    ['private locator', event => { event.record.details_pointer = 'https://notion.so/private/abc123'; }, 'QUARANTINE_PRIVATE_LOCATOR'],
+    ['credential', event => { event.record.statement = 'example api_key=sk-abc123XYZ4567890'; }, 'QUARANTINE_CREDENTIAL'],
+  ];
+  const realLedgerBefore = fs.readFileSync(DEFAULT_LEDGER);
+
+  for (const [index, [name, corrupt, expectedError]] of corruptions.entries()) {
+    const journal = временныйЖурнал();
+    const legacy = допустимоеСобытие(`evt-m22a-corrupt-legacy-${index}`, `OBS-M22A-CORRUPT-${index}`, null);
+    delete legacy.envelope.lifecycle_state;
+    corrupt(legacy);
+    fs.writeFileSync(journal, JSON.stringify(legacy) + '\n');
+
+    const candidate = событиеЦикла(`evt-m22a-corrupt-child-${index}`, 'CANDIDATE', 'CANDIDATE', legacy.envelope.event_id, legacy.envelope.event_id);
+    const before = fs.readFileSync(journal);
+    const validation = validateEvent(candidate, { ledgerPath: journal });
+    assert.equal(validation.ok, false, `${name} unexpectedly allowed candidate validation`);
+    assert.ok(validation.errors.some(error => error.includes(expectedError)), `${name}: ${validation.errors.join(' | ')}`);
+    assert.deepEqual(fs.readFileSync(journal), before, `${name}: validation must not modify ledger bytes`);
+
+    const appended = appendEvent(candidate, { ledgerPath: journal });
+    assert.equal(appended.ok, false, `${name} unexpectedly allowed candidate append`);
+    assert.ok(appended.errors.some(error => error.includes(expectedError)), `${name}: ${appended.errors.join(' | ')}`);
+    assert.deepEqual(fs.readFileSync(journal), before, `${name}: failed append must preserve ledger bytes`);
+  }
+
+  assert.deepEqual(fs.readFileSync(DEFAULT_LEDGER), realLedgerBefore, 'real operational ledger must remain untouched');
+});
+
 test('M2.2a: semantic parent differs from physical prior and divergent open proposals only warn', () => {
   const журнал = временныйЖурнал();
   const root = 'evt-diverge-root';

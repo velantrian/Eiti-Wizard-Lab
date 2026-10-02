@@ -205,8 +205,8 @@ function collectStrings(value, out) {
 
 // Проекция legacy-событий без lifecycle_state: только старые OBSERVE означают OBSERVED.
 export function lifecycleStateOf(event) {
+  if (event && Object.prototype.hasOwnProperty.call(event, 'lifecycle_state')) return event.lifecycle_state ?? null;
   const env = event?.parsed?.envelope || event?.envelope || {};
-  if (!Object.prototype.hasOwnProperty.call(env, 'lifecycle_state') && env.event_kind === 'OBSERVE') return 'OBSERVED';
   return env.lifecycle_state ?? null;
 }
 
@@ -214,6 +214,12 @@ function isLegacyObserveWithoutLifecycle(entry) {
   const parsed = entry?.parsed || entry;
   const env = parsed?.envelope;
   return env?.event_kind === 'OBSERVE' && !Object.prototype.hasOwnProperty.call(env, 'lifecycle_state');
+}
+
+function persistedEventForSemanticValidation(entry) {
+  const event = entry?.parsed || entry;
+  if (!isLegacyObserveWithoutLifecycle(entry)) return event;
+  return { ...event, envelope: { ...event.envelope, lifecycle_state: 'OBSERVED' } };
 }
 
 // Семантическая граф-проверка. prior_event_id не участвует здесь: он остаётся
@@ -338,34 +344,35 @@ export function loadLedger(ledgerPath = DEFAULT_LEDGER) {
       errors.push(`строка ${номер}: prior_event_id ${String(prior)} не равен предыдущему ${String(prevId)} (FORK/CONFLICT)`);
     }
     prevId = eid;
-    events.push({ line: номер, event_id: eid, parsed, lifecycle_state: lifecycleStateOf(parsed) });
+    const lifecycleState = isLegacyObserveWithoutLifecycle(parsed) ? 'OBSERVED' : lifecycleStateOf(parsed);
+    events.push({ line: номер, event_id: eid, parsed, lifecycle_state: lifecycleState });
   });
   errors.push(...validateLifecycleGraph(events, { legacyExistingEntries: new Set(events.filter(isLegacyObserveWithoutLifecycle)) }));
   const tip = events.length ? events[events.length - 1].event_id : null;
   return { ok: errors.length === 0, errors, events, tip, lineCount: events.length, byteLength: Buffer.byteLength(raw, 'utf8') };
 }
 
-// Проверка одного события против манифеста, сида и текущего кончика журнала.
-export function validateEvent(event, opts = {}) {
+// Общая не-рекурсивная semantic/structural validation одного события.
+// ledger validation намеренно остаётся во внешнем validateEvent.
+function validateEventSemantics(event, opts = {}) {
   const errors = [];
   const warnings = [];
   const manifestPath = opts.manifestPath || DEFAULT_MANIFEST;
   const seedPath = opts.seedPath || DEFAULT_SEED;
-  const ledgerPath = opts.ledgerPath || DEFAULT_LEDGER;
   let manifest = opts.manifest || null;
   let seed = opts.seed || null;
   // Загрузка манифеста и сида (отказ с закрытием при отсутствии).
-  try { if (!manifest) manifest = loadManifest(manifestPath); } catch (e) { return { ok: false, errors: [`манифест не читается: ${String(e && e.message || e)}`], warnings }; }
-  try { if (!seed) seed = loadSeed(seedPath); } catch (e) { return { ok: false, errors: [`сид не читается: ${String(e && e.message || e)}`], warnings }; }
+  try { if (!manifest) manifest = loadManifest(manifestPath); } catch (e) { return { ok: false, errors: [`манифест не читается: ${String(e && e.message || e)}`], warnings, shapeValid: false }; }
+  try { if (!seed) seed = loadSeed(seedPath); } catch (e) { return { ok: false, errors: [`сид не читается: ${String(e && e.message || e)}`], warnings, shapeValid: false }; }
   // Проверка формы провода.
-  if (!event || typeof event !== 'object' || Array.isArray(event)) return { ok: false, errors: ['событие обязано быть объектом {envelope, record}'], warnings };
+  if (!event || typeof event !== 'object' || Array.isArray(event)) return { ok: false, errors: ['событие обязано быть объектом {envelope, record}'], warnings, shapeValid: false, manifest, seed };
   const topKeys = Object.keys(event);
   for (const k of topKeys) if (k !== 'envelope' && k !== 'record') errors.push(`лишний верхний ключ: ${k}`);
   const env = event.envelope;
   const rec = event.record;
   if (!env || typeof env !== 'object' || Array.isArray(env)) errors.push('envelope обязан быть объектом');
   if (!rec || typeof rec !== 'object' || Array.isArray(rec)) errors.push('record обязан быть объектом');
-  if (errors.length) return { ok: false, errors, warnings };
+  if (errors.length) return { ok: false, errors, warnings, shapeValid: false, manifest, seed };
   // Запрещённое имя хеша манифеста.
   if ('base_manifest_hash' in env) errors.push('запрещённое имя base_manifest_hash: используйте base_canonical_sha256');
   // Неизвестные ключи конверта.
@@ -592,9 +599,26 @@ export function validateEvent(event, opts = {}) {
       if (re.test(s)) { errors.push(`QUARANTINE_PRIVATE_LOCATOR: обнаружен приватный локатор (${re.source})`); break; }
     }
   }
-  // Если уже есть ошибки формы, цепочку всё равно проверяем для полноты отчёта, но итог уже отказ.
-  // Проверка целостности журнала и соответствия prior_event_id кончику.
+  return { ok: errors.length === 0, errors, warnings, shapeValid: true, manifest, seed };
+}
+
+// Проверка submitted event и строгая перепроверка каждого уже persisted event.
+// Для persisted legacy OBSERVE временно проецируется только lifecycle_state; bytes не меняются.
+export function validateEvent(event, opts = {}) {
+  const semantic = validateEventSemantics(event, opts);
+  const errors = [...semantic.errors];
+  const warnings = [...semantic.warnings];
+  if (!semantic.shapeValid) return { ok: false, errors, warnings };
+  const env = event.envelope;
+  const ledgerPath = opts.ledgerPath || DEFAULT_LEDGER;
+  const semanticOptions = { ...opts, manifest: semantic.manifest, seed: semantic.seed };
   const журнал = loadLedger(ledgerPath);
+  for (const entry of журнал.events) {
+    const persisted = persistedEventForSemanticValidation(entry);
+    const validation = validateEventSemantics(persisted, semanticOptions);
+    errors.push(...validation.errors.map(error => `событие журнала ${entry.event_id}: ${error}`));
+    warnings.push(...validation.warnings);
+  }
   if (!журнал.ok) {
     for (const e of журнал.errors) errors.push(`журнал CONFLICT: ${e}`);
     errors.push('журнал CONFLICT: отказ с закрытием до ручного разбора');

@@ -1217,6 +1217,92 @@ test('M2.2a: legacy events без lifecycle_state проецируются ка�
   assert.equal(validateEvent(newLegacy, { ledgerPath: журнал }).ok, false, 'legacy projection must not permit lifecycle omission on new writes');
 });
 
+test('M2.2a: real two-row legacy ledger remains a valid OBSERVED parent for a new candidate', () => {
+  const realBefore = fs.readFileSync(DEFAULT_LEDGER);
+  const realHash = sha256Bytes(realBefore);
+  const real = loadLedger(DEFAULT_LEDGER);
+  assert.equal(real.ok, true, real.errors.join(' | '));
+  assert.equal(real.lineCount, 2);
+  assert.deepEqual(real.events.map(event => event.lifecycle_state), ['OBSERVED', 'OBSERVED']);
+
+  const rootId = real.events[0].event_id;
+  const tipId = real.tip;
+  const candidate = событиеЦикла('evt-m22a-real-legacy-candidate', 'CANDIDATE', 'CANDIDATE', tipId, rootId);
+  assert.equal(candidate.envelope.prior_event_id, tipId, 'physical prior remains the ledger tip');
+  assert.equal(candidate.envelope.applies_to_event_id, rootId, 'semantic parent remains the legacy OBSERVE root');
+  const validation = validateEvent(candidate, { ledgerPath: DEFAULT_LEDGER });
+  assert.equal(validation.ok, true, validation.errors.join(' | '));
+
+  const temporaryLedger = временныйЖурнал();
+  fs.writeFileSync(temporaryLedger, realBefore);
+  const prefix = fs.readFileSync(temporaryLedger);
+  const appended = appendEvent(candidate, { ledgerPath: temporaryLedger });
+  assert.equal(appended.ok, true, appended.errors.join(' | '));
+  const after = fs.readFileSync(temporaryLedger);
+  assert.ok(after.subarray(0, prefix.length).equals(prefix), 'legacy ledger bytes remain an exact prefix');
+  const state = loadLedger(temporaryLedger);
+  assert.equal(state.ok, true, state.errors.join(' | '));
+  assert.equal(state.lineCount, 3);
+  assert.equal(state.events[2].parsed.envelope.prior_event_id, tipId);
+  assert.equal(state.events[2].parsed.envelope.applies_to_event_id, rootId);
+  const board = projectProposals(temporaryLedger);
+  assert.equal(board.ok, true, board.errors.join(' | '));
+  assert.deepEqual(board.categories.ACTIVE_CANDIDATE.map(item => [item.event_id, item.root_event_id]), [
+    [candidate.envelope.event_id, rootId],
+  ]);
+
+  assert.deepEqual(fs.readFileSync(DEFAULT_LEDGER), realBefore, 'operational ledger bytes must remain untouched');
+  assert.equal(sha256File(DEFAULT_LEDGER), realHash);
+});
+
+test('M2.2a: new OBSERVE, CANDIDATE, and PROPOSE events still require explicit lifecycle_state', () => {
+  const journal = временныйЖурнал();
+  fs.writeFileSync(journal, fs.readFileSync(DEFAULT_LEDGER));
+  const existing = loadLedger(journal);
+  assert.equal(existing.ok, true, existing.errors.join(' | '));
+  const rootId = existing.events[0].event_id;
+  const priorId = existing.tip;
+  const acceptedCandidate = событиеЦикла('evt-m22a-strict-valid-candidate', 'CANDIDATE', 'CANDIDATE', priorId, rootId);
+  const accepted = appendEvent(acceptedCandidate, { ledgerPath: journal });
+  assert.equal(accepted.ok, true, accepted.errors.join(' | '));
+
+  const cases = [
+    ['OBSERVE', событиеЦикла('evt-m22a-missing-observe-state', 'OBSERVE', 'OBSERVED', acceptedCandidate.envelope.event_id, null)],
+    ['CANDIDATE', событиеЦикла('evt-m22a-missing-candidate-state', 'CANDIDATE', 'CANDIDATE', acceptedCandidate.envelope.event_id, rootId)],
+    ['PROPOSE', событиеЦикла('evt-m22a-missing-propose-state', 'PROPOSE', 'PROPOSED', acceptedCandidate.envelope.event_id, acceptedCandidate.envelope.event_id)],
+  ];
+  for (const [kind, event] of cases) {
+    delete event.envelope.lifecycle_state;
+    const before = fs.readFileSync(journal);
+    const validation = validateEvent(event, { ledgerPath: journal });
+    assert.equal(validation.ok, false, `${kind} without lifecycle_state unexpectedly validated`);
+    assert.ok(validation.errors.some(error => error.includes('lifecycle_state')), validation.errors.join(' | '));
+    const appended = appendEvent(event, { ledgerPath: journal });
+    assert.equal(appended.ok, false, `${kind} without lifecycle_state unexpectedly appended`);
+    assert.deepEqual(fs.readFileSync(journal), before, `${kind} rejection must not write bytes`);
+  }
+});
+
+test('M2.2a: legacy projection applies only to an absent lifecycle_state, never malformed or invalid values', () => {
+  const journal = временныйЖурнал();
+  const absent = допустимоеСобытие('evt-m22a-absent-state-root', 'OBS-M22A-ABSENT', null);
+  delete absent.envelope.lifecycle_state;
+  fs.writeFileSync(journal, JSON.stringify(absent) + '\n');
+  const accepted = loadLedger(journal);
+  assert.equal(accepted.ok, true, accepted.errors.join(' | '));
+  assert.equal(accepted.events[0].lifecycle_state, 'OBSERVED');
+
+  const invalidStates = [null, '', 'NOT_A_LIFECYCLE_STATE', 7, {}];
+  for (const [index, lifecycleState] of invalidStates.entries()) {
+    const malformed = допустимоеСобытие(`evt-m22a-invalid-state-${index}`, `OBS-M22A-INVALID-${index}`, null);
+    malformed.envelope.lifecycle_state = lifecycleState;
+    fs.writeFileSync(journal, JSON.stringify(malformed) + '\n');
+    const result = loadLedger(journal);
+    assert.equal(result.ok, false, `lifecycle_state ${JSON.stringify(lifecycleState)} unexpectedly passed`);
+    assert.ok(result.errors.some(error => error.includes('lifecycle_state')), result.errors.join(' | '));
+  }
+});
+
 test('M2.2a: semantic parent differs from physical prior and divergent open proposals only warn', () => {
   const журнал = временныйЖурнал();
   const root = 'evt-diverge-root';
@@ -1451,6 +1537,8 @@ test('M2.2a: ADMIT, ADMITTED, and non-null authorized_by remain forbidden for ev
     событиеЦикла('evt-authority-admit', 'ADMIT', 'OBSERVED', root, root),
     событиеЦикла('evt-authority-admitted', 'CANDIDATE', 'CANDIDATE', root, root, { admission_state: 'ADMITTED' }),
     событиеЦикла('evt-authority-authorizer', 'CANDIDATE', 'CANDIDATE', root, root, { authorized_by: 'HUMAN:owner' }),
+    событиеЦикла('evt-authority-human-admit', 'ADMIT', 'OBSERVED', root, root, { recorded_by: 'HUMAN:owner' }),
+    событиеЦикла('evt-authority-human-admitted', 'CANDIDATE', 'CANDIDATE', root, root, { admission_state: 'ADMITTED', recorded_by: 'HUMAN:owner' }),
   ];
   for (const event of cases) {
     const before = fs.readFileSync(journal);

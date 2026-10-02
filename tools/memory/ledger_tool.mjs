@@ -206,12 +206,19 @@ function collectStrings(value, out) {
 // Проекция legacy-событий без lifecycle_state: только старые OBSERVE означают OBSERVED.
 export function lifecycleStateOf(event) {
   const env = event?.parsed?.envelope || event?.envelope || {};
-  return env.lifecycle_state ?? (env.event_kind === 'OBSERVE' ? 'OBSERVED' : null);
+  if (!Object.prototype.hasOwnProperty.call(env, 'lifecycle_state') && env.event_kind === 'OBSERVE') return 'OBSERVED';
+  return env.lifecycle_state ?? null;
+}
+
+function isLegacyObserveWithoutLifecycle(entry) {
+  const parsed = entry?.parsed || entry;
+  const env = parsed?.envelope;
+  return env?.event_kind === 'OBSERVE' && !Object.prototype.hasOwnProperty.call(env, 'lifecycle_state');
 }
 
 // Семантическая граф-проверка. prior_event_id не участвует здесь: он остаётся
 // исключительно физической последовательностью строк; родитель задаётся applies_to_event_id.
-function validateLifecycleGraph(entries, { allowLegacy = true } = {}) {
+function validateLifecycleGraph(entries, { legacyExistingEntries = new Set() } = {}) {
   const errors = [];
   const byId = new Map();
   const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -223,13 +230,14 @@ function validateLifecycleGraph(entries, { allowLegacy = true } = {}) {
     if (typeof id !== 'string' || !RE_EVENT_ID.test(id)) continue;
     const kind = env.event_kind;
     const hasLifecycle = hasOwn(env, 'lifecycle_state');
-    const state = hasLifecycle ? env.lifecycle_state : (allowLegacy && kind === 'OBSERVE' ? 'OBSERVED' : null);
+    const isPersistedLegacyObserve = legacyExistingEntries.has(entry) && kind === 'OBSERVE' && !hasLifecycle;
+    const state = hasLifecycle ? env.lifecycle_state : (isPersistedLegacyObserve ? 'OBSERVED' : null);
     if (env.admission_state !== 'OBSERVED') errors.push(`событие ${id}: ADMISSION_IMPLEMENTATION_ABSENT — admission_state обязан оставаться OBSERVED`);
     if (env.authorized_by !== undefined && env.authorized_by !== null) errors.push(`событие ${id}: authorized_by обязан оставаться null/отсутствовать`);
     if (kind === 'ADMIT') errors.push(`событие ${id}: ADMISSION_IMPLEMENTATION_ABSENT — ADMIT запрещён`);
     else if (!EVENT_KINDS.includes(kind)) errors.push(`событие ${id}: неверный event_kind ${String(kind)}`);
-    if (!hasLifecycle && !(allowLegacy && kind === 'OBSERVE')) errors.push(`событие ${id}: отсутствует обязательный lifecycle_state`);
-    if (state !== null && !LIFECYCLE_STATES.includes(state)) errors.push(`событие ${id}: неверный lifecycle_state ${String(state)}`);
+    if (!hasLifecycle && !isPersistedLegacyObserve) errors.push(`событие ${id}: отсутствует обязательный lifecycle_state`);
+    if (hasLifecycle && !LIFECYCLE_STATES.includes(state)) errors.push(`событие ${id}: неверный lifecycle_state ${String(state)}`);
     const expectedState = EVENT_LIFECYCLE_STATE[kind];
     if (expectedState && state !== expectedState) errors.push(`событие ${id}: event_kind ${kind} требует lifecycle_state ${expectedState}`);
 
@@ -332,7 +340,7 @@ export function loadLedger(ledgerPath = DEFAULT_LEDGER) {
     prevId = eid;
     events.push({ line: номер, event_id: eid, parsed, lifecycle_state: lifecycleStateOf(parsed) });
   });
-  errors.push(...validateLifecycleGraph(events));
+  errors.push(...validateLifecycleGraph(events, { legacyExistingEntries: new Set(events.filter(isLegacyObserveWithoutLifecycle)) }));
   const tip = events.length ? events[events.length - 1].event_id : null;
   return { ok: errors.length === 0, errors, events, tip, lineCount: events.length, byteLength: Buffer.byteLength(raw, 'utf8') };
 }
@@ -605,7 +613,8 @@ export function validateEvent(event, opts = {}) {
   if (env.applies_to_event_id !== undefined && env.applies_to_event_id !== null && !множествоИд.has(String(env.applies_to_event_id))) {
     errors.push(`журнал CHAIN: applies_to_event_id ${String(env.applies_to_event_id)} отсутствует в журнале`);
   }
-  errors.push(...validateLifecycleGraph([...журнал.events, { parsed: event, event_id: String(env.event_id ?? '') }], { allowLegacy: false }));
+  const legacyExistingEntries = new Set(журнал.events.filter(isLegacyObserveWithoutLifecycle));
+  errors.push(...validateLifecycleGraph([...журнал.events, { parsed: event, event_id: String(env.event_id ?? '') }], { legacyExistingEntries }));
   return { ok: errors.length === 0, errors, warnings };
 }
 

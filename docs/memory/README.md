@@ -1,5 +1,25 @@
 # docs/memory — Ruslan Orientation Passport
 
+## Continuity status — 2026-10-02
+
+- **M1 — MERGED** (`PR #13`)
+- **M2 — MERGED** (`PR #15`)
+- **M3 — DONE / MERGED / CLOSED** (`PR #16`)
+  - accepted head: `78fbf5eee74e0184c71e9dcfd0e5393a484707f3`
+  - merge commit / completion point on `main`: `826e27abb9e1f114a11773adc2a79e1bc60927d0`
+  - post-merge Manus run: **66/66 PASS**
+  - seed validate: **79 records, 0 errors, 0 warnings**
+  - `CANON_UNCHANGED = TRUE`
+  - `MANIFEST_UNCHANGED = TRUE`
+  - `EVENT_LEDGER_UNCHANGED = TRUE`
+  - `ADMISSION_IMPLEMENTATION = ABSENT`
+  - `M4_NOT_STARTED = TRUE`
+
+M3 provides the provider-neutral read-only runtime bridge:
+`Canon → verified M2 bootstrap → committed derived runtime artifact → browser loader → 35-record runtime core → central instructions → selected provider/model`.
+
+**M3 is complete.** Future work is separate and must not be treated as M3 debt: M4 selective retrieval, runtime-artifact content binding, whole-record context budget, Service Worker stale-cache hardening, future SNAP+Continuity composition, and future admission/write architecture.
+
 | Файл | Что это |
 |---|---|
 | `RUSLAN_ORIENTATION_PASSPORT.md` | Паспорт ориентации (RU, 13 разделов), написан вручную по seed. |

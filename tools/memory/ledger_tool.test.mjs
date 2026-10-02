@@ -14,6 +14,13 @@ import { loadSeed, loadSeed as загрузитьСид } from './seed_tool.mjs'
 // Базовый коммит вехи М1 (только формат 40 hex проверяется в М2.1.1).
 const БАЗОВЫЙ_КОММИТ = 'b8db5d7e16a23832ee1b2695d26c9c6bbbec33f7';
 
+// Точные байтовые хеши двух исходных legacy OBSERVE-строк (включая LF).
+const LEGACY_OBSERVE_PREFIX_EVENT_IDS = ['evt-m211-resmoke2-20261001-01', 'evt-m211-resmoke2-20261001-02'];
+const LEGACY_OBSERVE_PREFIX_LINE_SHA256 = [
+  '381a61ebdefaa13c0c1987ed94088ec9afc1d76c6ac947e32dfd76e7613905af',
+  '5ef441577b6b45743a7268b4237af53ebf73ef4a8d81ba50460692184ca31922',
+];
+
 // Чтение текущего канонического хеша из манифеста.
 function каноническийХеш() {
   return JSON.parse(fs.readFileSync(DEFAULT_MANIFEST, 'utf8')).canonical_content_sha256;
@@ -424,31 +431,49 @@ test('13: malformed цепочка и форк приводят к отказу 
 });
 
 // ── Реальный журнал сохраняет целостность append-only ──────────────────────────
-test('реальный журнал event_ledger.jsonl сохраняет целостность append-only', () => {
-  // Все тесты выше писали только во временные файлы. Реальный журнал может законно
-  // содержать настоящие события OBSERVED, поэтому пустота не требуется — требуется целостность.
+test('реальный журнал сохраняет append-only инварианты без фиксированного числа событий', () => {
+  // Операционный журнал может расти lifecycle-событиями; фиксируется только его
+  // неизменяемый начальный legacy-префикс и структурные инварианты всей цепочки.
   const сырьё = fs.existsSync(DEFAULT_LEDGER) ? fs.readFileSync(DEFAULT_LEDGER, 'utf8') : '';
   if (сырьё !== '') {
     assert.equal(сырьё.endsWith('\n'), true, 'непустой журнал обязан завершаться переводом строки');
     const строки = сырьё.split('\n');
     assert.equal(строки[строки.length - 1], '', 'последний фрагмент после финального перевода строки обязан быть пустым');
-    for (const [индекс, строка] of строки.slice(0, -1).entries()) {
+    const строкиСобытий = строки.slice(0, -1);
+    assert.ok(строкиСобытий.length >= 2, 'начальные две legacy OBSERVE-строки должны сохраняться');
+    for (const [индекс, строка] of строкиСобытий.entries()) {
       assert.notEqual(строка, '', `строка ${индекс + 1} не должна быть пустой`);
       JSON.parse(строка); // malformed строка роняет тест
     }
+    const первыеДва = строкиСобытий.slice(0, 2);
+    const первыеДваСобытия = первыеДва.map(строка => JSON.parse(строка));
+    assert.deepEqual(первыеДваСобытия.map(событие => событие.envelope.event_id), LEGACY_OBSERVE_PREFIX_EVENT_IDS);
+    assert.deepEqual(первыеДваСобытия.map(событие => событие.envelope.event_kind), ['OBSERVE', 'OBSERVE']);
+    assert.deepEqual(первыеДва.map(строка => sha256Bytes(Buffer.from(`${строка}\n`, 'utf8'))), LEGACY_OBSERVE_PREFIX_LINE_SHA256,
+      'исходные байты двух legacy OBSERVE-строк включая LF должны оставаться неизменными');
   }
   const журнал = loadLedger(DEFAULT_LEDGER);
   assert.equal(журнал.ok, true, 'цепочка журнала: ' + журнал.errors.join(' | '));
-  if (сырьё !== '') {
-    assert.ok(журнал.tip, 'непустой журнал обязан иметь кончик');
-    assert.ok(журнал.lineCount > 0, 'непустой журнал обязан содержать строки');
-  }
-  // Каждое событие реального журнала — только OBSERVED/OBSERVE без authorized_by.
-  for (const { parsed } of журнал.events) {
-    assert.equal(parsed.envelope.admission_state, 'OBSERVED');
-    assert.equal(parsed.envelope.event_kind, 'OBSERVE');
+  assert.ok(журнал.lineCount >= 2, 'operational ledger retains its two-event legacy prefix');
+  const eventIds = журнал.events.map(entry => entry.event_id);
+  assert.equal(журнал.lineCount, eventIds.length);
+  assert.equal(new Set(eventIds).size, eventIds.length, 'event IDs must be unique');
+  assert.equal(журнал.tip, eventIds.at(-1), 'tip must equal the last physical event');
+  const allowedKinds = new Set(['OBSERVE', 'CANDIDATE', 'PROPOSE', 'HOLD', 'CONFLICT_MARK', 'SUPERSEDE']);
+  for (const [index, { parsed }] of журнал.events.entries()) {
+    const envelope = parsed.envelope;
+    assert.equal(envelope.prior_event_id ?? null, index === 0 ? null : eventIds[index - 1], `physical prior at row ${index + 1}`);
+    assert.equal(envelope.admission_state, 'OBSERVED');
+    assert.ok(allowedKinds.has(envelope.event_kind), `unexpected event kind ${envelope.event_kind}`);
     assert.ok(parsed.envelope.authorized_by === null || parsed.envelope.authorized_by === undefined);
   }
+  const hashCheck = checkHash({ ledgerPath: DEFAULT_LEDGER });
+  assert.equal(hashCheck.ok, true, hashCheck.errors.join(' | '));
+  assert.equal(hashCheck.ledger_lines, журнал.lineCount);
+  assert.equal(hashCheck.ledger_tip, журнал.tip);
+  const manifest = JSON.parse(fs.readFileSync(DEFAULT_MANIFEST, 'utf8'));
+  assert.equal(sha256Bytes(fs.readFileSync(DEFAULT_SEED)), manifest.canonical_content_sha256, 'Canon hash matches unchanged seed bytes');
+  assert.equal(manifest.admission_implementation, 'ABSENT');
 });
 
 // ── Снимок реальных файлов до и после (защита от мутаций) ───────────────────
@@ -1217,42 +1242,63 @@ test('M2.2a: legacy events без lifecycle_state проецируются ка�
   assert.equal(validateEvent(newLegacy, { ledgerPath: журнал }).ok, false, 'legacy projection must not permit lifecycle omission on new writes');
 });
 
-test('M2.2a: real two-row legacy ledger remains a valid OBSERVED parent for a new candidate', () => {
+test('M2.2a: isolated two-row legacy fixture appends cleanly while the operational ledger may grow', () => {
   const realBefore = fs.readFileSync(DEFAULT_LEDGER);
   const realHash = sha256Bytes(realBefore);
+  const seedBefore = fs.readFileSync(DEFAULT_SEED);
+  const manifestBefore = fs.readFileSync(DEFAULT_MANIFEST);
   const real = loadLedger(DEFAULT_LEDGER);
   assert.equal(real.ok, true, real.errors.join(' | '));
-  assert.equal(real.lineCount, 2);
-  assert.deepEqual(real.events.map(event => event.lifecycle_state), ['OBSERVED', 'OBSERVED']);
-
-  const rootId = real.events[0].event_id;
-  const tipId = real.tip;
-  const candidate = событиеЦикла('evt-m22a-real-legacy-candidate', 'CANDIDATE', 'CANDIDATE', tipId, rootId);
-  assert.equal(candidate.envelope.prior_event_id, tipId, 'physical prior remains the ledger tip');
-  assert.equal(candidate.envelope.applies_to_event_id, rootId, 'semantic parent remains the legacy OBSERVE root');
-  const validation = validateEvent(candidate, { ledgerPath: DEFAULT_LEDGER });
-  assert.equal(validation.ok, true, validation.errors.join(' | '));
+  assert.ok(real.lineCount >= 2);
+  assert.deepEqual(real.events.slice(0, 2).map(event => event.event_id), LEGACY_OBSERVE_PREFIX_EVENT_IDS);
+  assert.deepEqual(real.events.slice(0, 2).map(event => event.parsed.envelope.event_kind), ['OBSERVE', 'OBSERVE']);
+  const candidateOnReal = событиеЦикла(`evt-m22a-growing-ledger-candidate-${process.pid}`, 'CANDIDATE', 'CANDIDATE', real.tip, real.events[0].event_id);
+  const realValidation = validateEvent(candidateOnReal, { ledgerPath: DEFAULT_LEDGER });
+  assert.equal(realValidation.ok, true, realValidation.errors.join(' | '));
 
   const temporaryLedger = временныйЖурнал();
-  fs.writeFileSync(temporaryLedger, realBefore);
+  const realFragments = realBefore.toString('utf8').split('\n');
+  assert.equal(realFragments.at(-1), '');
+  const legacyFixture = Buffer.from(`${realFragments[0]}\n${realFragments[1]}\n`, 'utf8');
+  fs.writeFileSync(temporaryLedger, legacyFixture);
   const prefix = fs.readFileSync(temporaryLedger);
+  const fixture = loadLedger(temporaryLedger);
+  assert.equal(fixture.ok, true, fixture.errors.join(' | '));
+  assert.equal(fixture.lineCount, 2, 'exactly-two-row behavior belongs only to this isolated legacy fixture');
+  assert.deepEqual(fixture.events.map(event => event.lifecycle_state), ['OBSERVED', 'OBSERVED']);
+
+  const rootId = fixture.events[0].event_id;
+  const tipId = fixture.tip;
+  const candidate = событиеЦикла(`evt-m22a-two-row-fixture-candidate-${process.pid}`, 'CANDIDATE', 'CANDIDATE', tipId, rootId);
+  assert.equal(candidate.envelope.prior_event_id, tipId, 'physical prior remains the fixture tip');
+  assert.equal(candidate.envelope.applies_to_event_id, rootId, 'semantic parent remains the legacy OBSERVE root');
+  const validation = validateEvent(candidate, { ledgerPath: temporaryLedger });
+  assert.equal(validation.ok, true, validation.errors.join(' | '));
   const appended = appendEvent(candidate, { ledgerPath: temporaryLedger });
   assert.equal(appended.ok, true, appended.errors.join(' | '));
   const after = fs.readFileSync(temporaryLedger);
   assert.ok(after.subarray(0, prefix.length).equals(prefix), 'legacy ledger bytes remain an exact prefix');
   const state = loadLedger(temporaryLedger);
   assert.equal(state.ok, true, state.errors.join(' | '));
-  assert.equal(state.lineCount, 3);
-  assert.equal(state.events[2].parsed.envelope.prior_event_id, tipId);
-  assert.equal(state.events[2].parsed.envelope.applies_to_event_id, rootId);
+  assert.equal(state.lineCount, fixture.lineCount + 1);
+  assert.ok(state.lineCount > 2, 'loadLedger must accept a grown lifecycle ledger');
+  assert.equal(state.tip, candidate.envelope.event_id);
+  assert.equal(new Set(state.events.map(event => event.event_id)).size, state.events.length);
+  assert.equal(state.events.at(-1).parsed.envelope.prior_event_id, tipId);
+  assert.equal(state.events.at(-1).parsed.envelope.applies_to_event_id, rootId);
+  assert.equal(after.toString('utf8').endsWith('\n'), true, 'appended ledger keeps terminal newline');
+  const hashCheck = checkHash({ ledgerPath: temporaryLedger });
+  assert.equal(hashCheck.ok, true, hashCheck.errors.join(' | '));
+  assert.equal(hashCheck.ledger_lines, state.lineCount);
+  assert.equal(hashCheck.ledger_tip, state.tip);
   const board = projectProposals(temporaryLedger);
   assert.equal(board.ok, true, board.errors.join(' | '));
-  assert.deepEqual(board.categories.ACTIVE_CANDIDATE.map(item => [item.event_id, item.root_event_id]), [
-    [candidate.envelope.event_id, rootId],
-  ]);
+  assert.ok(board.categories.ACTIVE_CANDIDATE.some(item => item.event_id === candidate.envelope.event_id && item.root_event_id === rootId));
 
   assert.deepEqual(fs.readFileSync(DEFAULT_LEDGER), realBefore, 'operational ledger bytes must remain untouched');
   assert.equal(sha256File(DEFAULT_LEDGER), realHash);
+  assert.deepEqual(fs.readFileSync(DEFAULT_SEED), seedBefore, 'Canon seed bytes must remain unchanged');
+  assert.deepEqual(fs.readFileSync(DEFAULT_MANIFEST), manifestBefore, 'manifest bytes must remain unchanged');
 });
 
 test('M2.2a: new OBSERVE, CANDIDATE, and PROPOSE events still require explicit lifecycle_state', () => {

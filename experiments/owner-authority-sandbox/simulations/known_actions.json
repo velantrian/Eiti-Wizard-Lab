@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "sensitivity": "TEST_ONLY",
+  "authoritative": false,
+  "kind": "SYNTHETIC_ACTION_CATALOG",
+  "not": "RUNTIME_TOOL_AUTHORIZATION",
+  "notes": "Наличие действия в каталоге ≠ разрешение на выполнение. TOOL_AVAILABLE != TOOL_AUTHORIZED.",
+  "actions": [
+    "sandbox.note.create",
+    "sandbox.note.read",
+    "sandbox.note.delete",
+    "sandbox.note.expired",
+    "sandbox.note.revoked",
+    "sandbox.note.conflict",
+    "sandbox.note.ambiguous",
+    "sandbox.note.deny-precedence",
+    "sandbox.note.ungranted",
+    "sandbox.export.bundle"
+  ]
+}

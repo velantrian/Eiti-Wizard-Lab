@@ -14,8 +14,9 @@ NOT_RECORDED != ABSENT
 SUPERSEDED != DELETED
 
 STRUCTURED_RESUME_TEST=PASS
-CROSS_SESSION_AI_RESUME_TEST=NOT_RUN
+CROSS_SESSION_AI_RESUME_TEST=PASS
 SESSION_A_COMPLETED=YES
+SESSION_B_COMPLETED=YES
 
 ## Назначение
 
@@ -35,12 +36,12 @@ SESSION_A_COMPLETED=YES
 ## Как читать (новая сессия)
 
 1. Прочитать этот README (метки эксперимента).
-2. Прочитать `RUSLAN_EXPERIMENTAL_MEMORY.md` (KEY=VALUE + секции).
-3. Прочитать последний файл в `checkpoints/`.
-4. Не читать официальную память и не заходить в Owner Authority sandbox для этой нити.
-5. Следующий шаг — только `NEXT_BOUNDED_ACTION`.
-6. `CROSS_SESSION_TEST_PLAN.md` — различие тестов + план Session A/B.
-7. Session B: только `tests/results/cross-session-v01/SESSION_B_PROMPT.md` (Q1–Q10); без prior chat.
+2. Прочитать `RUSLAN_EXPERIMENTAL_MEMORY.md` (KEY=VALUE + секции) — **текущая** ориентация.
+3. Прочитать последний файл в `checkpoints/` (сейчас `2026-10-05-cross-session-pass-v01.md`).
+4. Исторические checkpoint / `session-a-checkpoint.md` хранят SUPERSEDED-состояние (NOT_RUN / awaiting Session B); это не текущий статус.
+5. Не читать официальную память и не заходить в Owner Authority sandbox для этой нити.
+6. Следующий шаг — только `NEXT_BOUNDED_ACTION`.
+7. `CROSS_SESSION_TEST_PLAN.md` — различие тестов + план Session A/B (история). Результат: `tests/results/cross-session-v01/result.md`.
 
 ## Provenance
 
@@ -64,7 +65,7 @@ SESSION_A_COMPLETED=YES
 
 STRUCTURED_RESUME_TEST = детерминированный парсер KEY=VALUE; LLM не вызывается; статус PASS.
 
-CROSS_SESSION_AI_RESUME_TEST = живой ИИ в **новой** сессии отвечает Q1–Q10 только из этой папки; без prior chat; статус NOT_RUN (Session A completed, Session B not run).
+CROSS_SESSION_AI_RESUME_TEST = живой ИИ в **новой** сессии отвечает Q1–Q10 только из этой папки; без prior chat; статус PASS (10/10).
 
 Это **не** один и тот же тест.
 
@@ -72,10 +73,10 @@ CROSS_SESSION_AI_RESUME_TEST = живой ИИ в **новой** сессии о
 node --test experiments/ruslan-experimental-memory/tests/**/*.mjs
 ```
 
-Ожидается код выхода 0 (PASS) для STRUCTURED_RESUME_TEST.
+Ожидается код выхода 0.
 
 ## Статус v0.1
 
-Черновик PR #28 OPEN/DRAFT. Session A CROSS_SESSION handoff записан. Session B не выполнялась этим агентом.
-NEXT: Session B отвечает Q1–Q10, затем OWNER REVIEW of comparison.
+Черновик PR #28 OPEN/DRAFT. Session A и Session B завершены. CROSS_SESSION_AI_RESUME_TEST=PASS (10/10).
+NEXT=OWNER REVIEW OF RUSLAN EXPERIMENTAL MEMORY v0.1 RESULT
 Нет v0.2, нет интеграции в Canon, нет RAG.

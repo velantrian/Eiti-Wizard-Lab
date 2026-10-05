@@ -19,9 +19,10 @@ PRIVATE_LIFE=FORBIDDEN
 CREDENTIALS=FORBIDDEN
 
 STRUCTURED_RESUME_TEST=PASS | OBSERVED_FROM_PROJECT_SOURCE | SOURCE_CLASS=test_evidence | SOURCE_REF=node --test experiments/ruslan-experimental-memory/tests/**/*.mjs | OBSERVED_AT=2026-10-05T16:02:00Z
-CROSS_SESSION_AI_RESUME_TEST=NOT_RUN | OWNER_ASSERTED
-SESSION_A_COMPLETED=YES | MODEL_SUMMARY
-SESSION_B_COMPLETED=NO | MODEL_SUMMARY
+CROSS_SESSION_AI_RESUME_TEST=PASS | OBSERVED_FROM_PROJECT_SOURCE | SOURCE_REF=tests/results/cross-session-v01/result.md | OBSERVED_AT=2026-10-05T18:10:00+02:00
+SESSION_A_COMPLETED=YES | OBSERVED_FROM_PROJECT_SOURCE | SOURCE_REF=checkpoints/2026-10-05-cross-session-session-a-v01.md
+SESSION_B_COMPLETED=YES | OBSERVED_FROM_PROJECT_SOURCE | SOURCE_REF=tests/results/cross-session-v01/session-b-answers.md
+QUESTIONS_CORRECT=10/10 | OBSERVED_FROM_PROJECT_SOURCE | SOURCE_REF=tests/results/cross-session-v01/comparison.md
 
 <!--
 Формат факта: KEY=VALUE | PROVENANCE [| SOURCE_CLASS=... | SOURCE_REF=... | OBSERVED_AT=...]
@@ -34,12 +35,12 @@ OWNER_ASSERTED = Ruslan явно сказал / решил / авторизов�
 
 CURRENT_PROJECT=экспериментальная непрерывность Ruslan (continuity memory v0.1), отдельно от Owner Authority / PDP | MODEL_SUMMARY
 CURRENT_THREAD=CROSS-SESSION AI RESUME TEST v0.1 for experiments/ruslan-experimental-memory/ on PR #28 | OWNER_ASSERTED
-CURRENT_GOAL=отличить STRUCTURED_RESUME_TEST от CROSS_SESSION_AI_RESUME_TEST и подготовить handoff Session B | MODEL_SUMMARY
-CURRENT_STATUS=PR #28 OPEN DRAFT; Session A completed (checkpoint + expected-answers + SESSION_B_PROMPT); STRUCTURED_RESUME_TEST=PASS; CROSS_SESSION_AI_RESUME_TEST=NOT_RUN; awaiting Session B | MODEL_SUMMARY
-LAST_COMPLETED_STEP=Session A: labeled test distinction; checkpoint 2026-10-05-cross-session-session-a-v01.md; expected-answers.md; SESSION_B_PROMPT.md; session-a-checkpoint.md | MODEL_SUMMARY
-CURRENT_BLOCKER=ожидание отдельного агента Session B (Q1–Q10); нет технического блокера в папке | MODEL_SUMMARY
-LAST_STOP_POINT=Session A ended after writing checkpoint + expected-answers; awaiting Session B | OWNER_ASSERTED
-NEXT_BOUNDED_ACTION=SESSION_B must answer Q1–Q10 from experimental memory only; then STOP for OWNER REVIEW of comparison. | OWNER_ASSERTED
+CURRENT_GOAL=OWNER REVIEW OF RUSLAN EXPERIMENTAL MEMORY v0.1 RESULT | MODEL_SUMMARY
+CURRENT_STATUS=cross-session AI resume test completed successfully; 10/10; waiting owner review | MODEL_SUMMARY
+LAST_COMPLETED_STEP=fresh Session B restored project continuity correctly from experimental memory only | MODEL_SUMMARY
+CURRENT_BLOCKER=no technical blocker; process stop for owner review | MODEL_SUMMARY
+LAST_STOP_POINT=after successful Session B comparison and PASS result | MODEL_SUMMARY
+NEXT_BOUNDED_ACTION=OWNER REVIEW OF RUSLAN EXPERIMENTAL MEMORY v0.1 RESULT | OWNER_ASSERTED
 
 ## HARD_DO_NOT
 
@@ -95,10 +96,11 @@ EXPERIMENTS_DIR_ON_BASE_SHA=ABSENT | OBSERVED_FROM_PROJECT_SOURCE | SOURCE_CLASS
 
 ## RECENT_CHECKPOINTS
 
-- [MODEL_SUMMARY] 2026-10-05 (Europe/Berlin): checkpoint `checkpoints/2026-10-05-cross-session-session-a-v01.md` — Session A handoff (не перезаписывает предыдущий).
+- [MODEL_SUMMARY] 2026-10-05 (Europe/Berlin): checkpoint `checkpoints/2026-10-05-cross-session-pass-v01.md` — текущий: CROSS=PASS, Session B done, next=OWNER REVIEW OF RUSLAN EXPERIMENTAL MEMORY v0.1 RESULT.
+- [MODEL_SUMMARY] 2026-10-05 (Europe/Berlin): checkpoint `checkpoints/2026-10-05-cross-session-session-a-v01.md` — исторический handoff Session A (CROSS=NOT_RUN на тот момент; SUPERSEDED ≠ DELETED).
 - [MODEL_SUMMARY] 2026-10-05 (Europe/Berlin): checkpoint `checkpoints/2026-10-05-project-lane-v01.md` — проектная полоса + старт памяти + правка provenance.
 - [OWNER_ASSERTED] Checkpoints описывают только проектную работу, без биографии и частной жизни.
-- [NOT_RECORDED] Session B answers / comparison / result — ещё не записаны.
+- [OBSERVED_FROM_PROJECT_SOURCE] Session B answers / comparison / result записаны под tests/results/cross-session-v01/ | SOURCE_REF=tests/results/cross-session-v01/result.md
 
 ## OWNER_ASSERTED
 
@@ -114,11 +116,12 @@ EXPERIMENTS_DIR_ON_BASE_SHA=ABSENT | OBSERVED_FROM_PROJECT_SOURCE | SOURCE_CLASS
 - [OWNER_ASSERTED] GO CROSS-SESSION AI RESUME TEST v0.1: Session A готовит handoff; Session B — отдельный агент.
 - [OWNER_ASSERTED] STRUCTURED_RESUME_TEST = детерминированный парсер KEY=VALUE; LLM не вызывается.
 - [OWNER_ASSERTED] CROSS_SESSION_AI_RESUME_TEST = живой ИИ в новой сессии отвечает Q1–Q10 только из этой папки; без prior chat.
-- [OWNER_ASSERTED] NEXT_BOUNDED_ACTION = SESSION_B must answer Q1–Q10 from experimental memory only; then STOP for OWNER REVIEW of comparison.
-- [OWNER_ASSERTED] LAST_STOP_POINT = Session A ended after writing checkpoint + expected-answers; awaiting Session B.
+- [OWNER_ASSERTED] NEXT_BOUNDED_ACTION = OWNER REVIEW OF RUSLAN EXPERIMENTAL MEMORY v0.1 RESULT.
+- [OWNER_ASSERTED] Предыдущий LAST_STOP_POINT «Session A ended after writing checkpoint + expected-answers; awaiting Session B» SUPERSEDED текущим стопом после PASS (SUPERSEDED ≠ DELETED; остаётся в историческом checkpoint).
+- [OWNER_ASSERTED] Предыдущий next «SESSION_B must answer Q1–Q10…» SUPERSEDED (SUPERSEDED ≠ DELETED; остаётся в историческом checkpoint Session A).
 - [OWNER_ASSERTED] Этот агент Session A не выполняет Session B как продолжение своей identity.
 - [OWNER_ASSERTED] Diff этой нити должен быть только под experiments/ruslan-experimental-memory/.
-- [OWNER_ASSERTED] Предыдущий next «OWNER REVIEW BEFORE CROSS_SESSION_AI_RESUME_TEST» SUPERSEDED этим GO (SUPERSEDED ≠ DELETED).
+- [OWNER_ASSERTED] Предыдущий next «OWNER REVIEW BEFORE CROSS_SESSION_AI_RESUME_TEST» SUPERSEDED более ранним GO (SUPERSEDED ≠ DELETED).
 
 ## OBSERVED_FROM_PROJECT_SOURCE
 
@@ -129,6 +132,7 @@ EXPERIMENTS_DIR_ON_BASE_SHA=ABSENT | OBSERVED_FROM_PROJECT_SOURCE | SOURCE_CLASS
 - [OBSERVED_FROM_PROJECT_SOURCE] PR #28: OPEN DRAFT NOT MERGED | SOURCE_REF=GitHub PR #28 | OBSERVED_AT=2026-10-05T16:02:00Z
 - [OBSERVED_FROM_PROJECT_SOURCE] На SHA e9e5ea3cd3fcdb19902c071f1b24b2705a6fef31 каталога experiments/ в рабочем дереве не было | SOURCE_REF=git listing at base SHA | OBSERVED_AT=2026-10-05T14:12:00Z
 - [OBSERVED_FROM_PROJECT_SOURCE] STRUCTURED_RESUME_TEST подтверждается `node --test experiments/ruslan-experimental-memory/tests/**/*.mjs` | SOURCE_CLASS=test_evidence | SOURCE_REF=tests/results/clean-resume-latest.md
+- [OBSERVED_FROM_PROJECT_SOURCE] CROSS_SESSION_AI_RESUME_TEST=PASS; QUESTIONS_CORRECT=10/10 | SOURCE_REF=tests/results/cross-session-v01/result.md | OBSERVED_AT=2026-10-05T18:10:00+02:00
 
 ## MODEL_SUMMARY
 
@@ -139,13 +143,13 @@ EXPERIMENTS_DIR_ON_BASE_SHA=ABSENT | OBSERVED_FROM_PROJECT_SOURCE | SOURCE_CLASS
 - [MODEL_SUMMARY] Для PR #27 ранее сообщалось 28/28 тестов; этот прогон в данной сессии не повторялся.
 - [MODEL_SUMMARY] NEXT нити PR #27 был independent read-only review; это не next action этой карты.
 - [MODEL_SUMMARY] Этот файл не меняет официальную память и не является Canon.
-- [MODEL_SUMMARY] CURRENT_STATUS / CURRENT_BLOCKER / LAST_COMPLETED_STEP после Session A — сводка агента, не дословная цитата владельца, кроме LAST_STOP_POINT и NEXT_BOUNDED_ACTION (те заданы владельцем дословно).
-- [MODEL_SUMMARY] Session A topic выполнен: различие тестов записано; материалы handoff лежат в tests/results/cross-session-v01/.
+- [MODEL_SUMMARY] CURRENT_STATUS / CURRENT_BLOCKER / LAST_COMPLETED_STEP / LAST_STOP_POINT после PASS — сводка агента; NEXT_BOUNDED_ACTION задан владельцем дословно.
+- [MODEL_SUMMARY] Session A topic выполнен исторически; Session B восстановил непрерывность; текущий next — OWNER REVIEW OF RUSLAN EXPERIMENTAL MEMORY v0.1 RESULT.
 
 ## OPEN_QUESTIONS
 
-- [NOT_RECORDED] Ответы Session B Q1–Q10 — ещё нет (NOT_RECORDED ≠ ABSENT после Session B).
-- [NOT_RECORDED] comparison.md / result.md — для координатора после Session B.
+- [OBSERVED_FROM_PROJECT_SOURCE] Ответы Session B Q1–Q10 записаны | SOURCE_REF=tests/results/cross-session-v01/session-b-answers.md
+- [OBSERVED_FROM_PROJECT_SOURCE] comparison.md / result.md записаны координатором; CROSS_SESSION_AI_RESUME_TEST=PASS | SOURCE_REF=tests/results/cross-session-v01/result.md
 - [NOT_RECORDED] Нужен ли v0.2 после review — не решать в v0.1.
 - [OWNER_ASSERTED] Интеграция в Canon / RAG / graph — запрещена в v0.1; вопрос интеграции вне scope.
 - [UNKNOWN] Точное расписание следующего рабочего слота владельца.
@@ -161,4 +165,5 @@ EXPERIMENTS_DIR_ON_BASE_SHA=ABSENT | OBSERVED_FROM_PROJECT_SOURCE | SOURCE_CLASS
 - [OBSERVED_FROM_PROJECT_SOURCE] Фактическое состояние PR #28: OPEN/DRAFT/NOT_MERGED | SOURCE_REF=GitHub PR #28 | OBSERVED_AT=2026-10-05T16:02:00Z
 - [OWNER_ASSERTED] STRUCTURED_RESUME_TEST ≠ CROSS_SESSION_AI_RESUME_TEST.
 - [OWNER_ASSERTED] Session B — отдельный агент; Session A не выдаёт себя за свежую сессию.
-- [OWNER_ASSERTED] После Session A — STOP для этого агента. NEXT: Session B отвечает Q1–Q10, затем OWNER REVIEW of comparison.
+- [OWNER_ASSERTED] После PASS Session B — STOP. NEXT_BOUNDED_ACTION = OWNER REVIEW OF RUSLAN EXPERIMENTAL MEMORY v0.1 RESULT.
+- [OWNER_ASSERTED] Предыдущий next «Session B отвечает Q1–Q10, затем OWNER REVIEW of comparison» SUPERSEDED (SUPERSEDED ≠ DELETED).

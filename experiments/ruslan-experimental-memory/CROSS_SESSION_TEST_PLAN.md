@@ -6,9 +6,9 @@ CANON=NO
 OFFICIAL_MEMORY=NO
 
 STRUCTURED_RESUME_TEST=PASS
-CROSS_SESSION_AI_RESUME_TEST=NOT_RUN
+CROSS_SESSION_AI_RESUME_TEST=PASS
 SESSION_A_COMPLETED=YES
-SESSION_B_COMPLETED=NO
+SESSION_B_COMPLETED=YES
 
 ## Различие (обязательно)
 
@@ -67,6 +67,10 @@ NEXT_BOUNDED_ACTION=SESSION_B must answer Q1–Q10 from experimental memory only
 ## Сейчас
 
 SESSION_A_COMPLETED=YES
-CROSS_SESSION_AI_RESUME_TEST=NOT_RUN
-NEXT=Session B Q1–Q10, then OWNER REVIEW of comparison
-STOP=YES (для агента Session A)
+SESSION_B_COMPLETED=YES
+CROSS_SESSION_AI_RESUME_TEST=PASS
+QUESTIONS_CORRECT=10/10
+NEXT=OWNER REVIEW OF RUSLAN EXPERIMENTAL MEMORY v0.1 RESULT
+STOP=YES (process stop for owner review)
+
+Исторический NOT_RUN / awaiting Session B остаётся в `checkpoints/2026-10-05-cross-session-session-a-v01.md` и `tests/results/cross-session-v01/session-a-checkpoint.md` (SUPERSEDED ≠ DELETED).

@@ -31,6 +31,9 @@ const КЛЮЧИ_НЕ_OWNER_ASSERTED = [
   'CURRENT_PROJECT',
   'CURRENT_GOAL',
   'LAST_COMPLETED_STEP',
+  'LAST_STOP_POINT',
+  'CROSS_SESSION_AI_RESUME_TEST',
+  'SESSION_B_COMPLETED',
   'PR_28_STATE',
   'PR_27_STATE',
   'PR_27_HEAD',
@@ -50,7 +53,7 @@ function записатьДоказательство(итог) {
     '# STRUCTURED_RESUME_TEST — результат',
     '',
     `STRUCTURED_RESUME_TEST=${итог.status}`,
-    'CROSS_SESSION_AI_RESUME_TEST=NOT_RUN',
+    `CROSS_SESSION_AI_RESUME_TEST=${итог.cross}`,
     `CLEAN_RESUME_TEST=${итог.status}`,
     `RECORDED_AT=${итог.recorded_at}`,
     'EXPERIMENTAL_ONLY=YES',
@@ -115,6 +118,7 @@ test('карта содержит обязательные KEY=VALUE и секц
     'OFFICIAL_MEMORY',
     'STRUCTURED_RESUME_TEST',
     'CROSS_SESSION_AI_RESUME_TEST',
+    'SESSION_B_COMPLETED',
     'PR_28_STATE',
   ]) {
     assert.ok(карта.keys[ключ], `нет ключа ${ключ}`);
@@ -124,7 +128,8 @@ test('карта содержит обязательные KEY=VALUE и секц
   assert.equal(карта.keys.CANON.value, 'NO');
   assert.equal(карта.keys.OFFICIAL_MEMORY.value, 'NO');
   assert.equal(карта.keys.STRUCTURED_RESUME_TEST.value, 'PASS');
-  assert.equal(карта.keys.CROSS_SESSION_AI_RESUME_TEST.value, 'NOT_RUN');
+  assert.equal(карта.keys.CROSS_SESSION_AI_RESUME_TEST.value, 'PASS');
+  assert.equal(карта.keys.SESSION_B_COMPLETED.value, 'YES');
   for (const секция of ОБЯЗАТЕЛЬНЫЕ_СЕКЦИИ) {
     assert.ok(карта.sections[секция], `нет секции ${секция}`);
     assert.ok(карта.sections[секция].length > 0, `секция ${секция} пуста`);
@@ -155,13 +160,15 @@ test('регрессия: технические и сводные поля не
     );
   }
   assert.equal(карта.keys.CURRENT_THREAD.provenance, 'OWNER_ASSERTED');
-  assert.equal(карта.keys.LAST_STOP_POINT.provenance, 'OWNER_ASSERTED');
+  assert.equal(карта.keys.LAST_STOP_POINT.provenance, 'MODEL_SUMMARY');
   assert.equal(карта.keys.NEXT_BOUNDED_ACTION.provenance, 'OWNER_ASSERTED');
   assert.equal(карта.keys.DO_NOT_MERGE.provenance, 'OWNER_ASSERTED');
   assert.equal(карта.keys.DO_NOT_TOUCH_CANON.provenance, 'OWNER_ASSERTED');
   assert.equal(карта.keys.PR_28_STATE.provenance, 'OBSERVED_FROM_PROJECT_SOURCE');
   assert.equal(карта.keys.PR_27_STATE.provenance, 'OBSERVED_FROM_PROJECT_SOURCE');
   assert.equal(карта.keys.STRUCTURED_RESUME_TEST.provenance, 'OBSERVED_FROM_PROJECT_SOURCE');
+  assert.equal(карта.keys.CROSS_SESSION_AI_RESUME_TEST.provenance, 'OBSERVED_FROM_PROJECT_SOURCE');
+  assert.equal(карта.keys.SESSION_B_COMPLETED.provenance, 'OBSERVED_FROM_PROJECT_SOURCE');
   assert.equal(карта.keys.CURRENT_STATUS.provenance, 'MODEL_SUMMARY');
   assert.equal(карта.keys.CURRENT_BLOCKER.provenance, 'MODEL_SUMMARY');
   assert.equal(карта.keys.CURRENT_PROJECT.provenance, 'MODEL_SUMMARY');
@@ -197,31 +204,34 @@ test('STRUCTURED_RESUME_TEST: 5 вопросов свежего агента', (
   // 1) что происходит
   assert.match(ответы.current_project, /экспериментальн|continuity memory|непрерывн/i);
   assert.match(ответы.current_thread, /ruslan-experimental-memory|owner review/i);
-  assert.match(ответы.current_goal, /STRUCTURED_RESUME_TEST|CROSS_SESSION_AI_RESUME_TEST|handoff Session B/i);
-  assert.match(ответы.current_status, /PR #28|OWNER REVIEW|STRUCTURED_RESUME_TEST/i);
+  assert.match(ответы.current_goal, /OWNER REVIEW OF RUSLAN EXPERIMENTAL MEMORY v0\.1 RESULT/i);
+  assert.match(ответы.current_status, /completed successfully|10\/10|waiting owner review/i);
   assert.equal(ответы.structured_resume_test, 'PASS');
-  assert.equal(ответы.cross_session_ai_resume_test, 'NOT_RUN');
+  assert.equal(ответы.cross_session_ai_resume_test, 'PASS');
   проверки.push('PASS Q1 current project/thread/goal/status');
 
   // 2) где остановились
-  assert.match(ответы.last_stop_point, /Session A ended after writing checkpoint \+ expected-answers/i);
-  assert.match(ответы.last_stop_point, /awaiting Session B/i);
+  assert.match(ответы.last_stop_point, /after successful Session B comparison and PASS result/i);
   проверки.push('PASS Q2 LAST_STOP_POINT');
 
   // 3) что уже сделано
   assert.match(
     ответы.last_completed_step,
-    /Session A|expected-answers|SESSION_B_PROMPT|cross-session-session-a-v01/i,
+    /Session B restored project continuity|experimental memory only/i,
   );
   const чекпоинты = списокЧекпоинтов();
-  assert.ok(чекпоинты.length >= 2, 'нужен новый Session A checkpoint без перезаписи старого');
+  assert.ok(чекпоинты.length >= 3, 'нужен PASS checkpoint без перезаписи старых');
   assert.ok(
     чекпоинты.includes('2026-10-05-project-lane-v01.md'),
     'старый project-lane checkpoint должен остаться',
   );
   assert.ok(
     чекпоинты.includes('2026-10-05-cross-session-session-a-v01.md'),
-    'нет Session A checkpoint',
+    'исторический Session A checkpoint должен остаться',
+  );
+  assert.ok(
+    чекпоинты.includes('2026-10-05-cross-session-pass-v01.md'),
+    'нет PASS checkpoint',
   );
   const текстЧекпоинта = читатьТолькоЭксперимент(
     path.join('checkpoints', '2026-10-05-cross-session-session-a-v01.md'),
@@ -231,7 +241,7 @@ test('STRUCTURED_RESUME_TEST: 5 вопросов свежего агента', (
   const чекпоинтКарта = разобратьКарту(текстЧекпоинта);
   assert.equal(чекпоинтКарта.keys.LAST_STOP_POINT?.provenance, 'OWNER_ASSERTED');
   assert.equal(чекпоинтКарта.keys.NEXT_BOUNDED_ACTION?.provenance, 'OWNER_ASSERTED');
-  проверки.push('PASS Q3 LAST_COMPLETED_STEP + checkpoint 2026-10-05-cross-session-session-a-v01.md');
+  проверки.push('PASS Q3 LAST_COMPLETED_STEP + historical Session A checkpoint preserved');
 
   // 4) чего не делать
   assert.equal(ответы.do_not_touch_canon, 'YES');
@@ -251,23 +261,22 @@ test('STRUCTURED_RESUME_TEST: 5 вопросов свежего агента', (
   проверки.push('PASS Q4 HARD_DO_NOT Canon/official memory/merge/sandbox/graph-RAG-SQLite-ingestion-authority');
 
   // 5) следующий ограниченный шаг
-  assert.match(ответы.next_bounded_action, /SESSION_B must answer Q1–Q10/i);
-  assert.match(ответы.next_bounded_action, /experimental memory only/i);
-  assert.match(ответы.next_bounded_action, /OWNER REVIEW of comparison/i);
+  assert.match(ответы.next_bounded_action, /OWNER REVIEW OF RUSLAN EXPERIMENTAL MEMORY v0\.1 RESULT/);
   assert.equal(ответы.do_not_canon_integration, 'YES');
   assert.equal(ответы.do_not_start_v02, 'YES');
   проверки.push('PASS Q5 NEXT_BOUNDED_ACTION');
 
   const файл = записатьДоказательство({
     status: 'PASS',
-    recorded_at: '2026-10-05T17:30:00+02:00',
+    cross: ответы.cross_session_ai_resume_test,
+    recorded_at: '2026-10-05T18:16:00+02:00',
     answers: ответы,
     checks: проверки,
   });
   assert.equal(путьВнутриЭксперимента(файл), true);
   const доказательство = читатьТолькоЭксперимент(path.join('tests', 'results', 'clean-resume-latest.md'));
   assert.match(доказательство, /STRUCTURED_RESUME_TEST=PASS/);
-  assert.match(доказательство, /CROSS_SESSION_AI_RESUME_TEST=NOT_RUN/);
+  assert.match(доказательство, /CROSS_SESSION_AI_RESUME_TEST=PASS/);
   assert.match(доказательство, /CLEAN_RESUME_TEST=PASS/);
 
   const промпт = читатьТолькоЭксперимент(

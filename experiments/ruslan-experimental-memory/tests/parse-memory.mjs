@@ -6,11 +6,14 @@ import { fileURLToPath } from 'node:url';
 
 export const PROVENANCE = new Set([
   'OWNER_ASSERTED',
+  'OBSERVED_FROM_PROJECT_SOURCE',
   'MODEL_SUMMARY',
   'MODEL_DERIVED_HYPOTHESIS',
   'UNKNOWN',
   'NOT_RECORDED',
 ]);
+
+const ДОП_ПОЛЯ = new Set(['SOURCE_CLASS', 'SOURCE_REF', 'OBSERVED_AT']);
 
 const ЭТОТ_ФАЙЛ = fileURLToPath(import.meta.url);
 export const КОРЕНЬ_ЭКСПЕРИМЕНТА = path.resolve(path.dirname(ЭТОТ_ФАЙЛ), '..');
@@ -49,24 +52,76 @@ export function читатьТолькоЭксперимент(относите�
   return fs.readFileSync(абсолютный, 'utf8');
 }
 
+function разобратьХвостProvenance(хвост) {
+  const части = хвост.split(/\s*\|\s*/).map((ч) => ч.trim()).filter(Boolean);
+  let provenance = null;
+  const extras = {};
+  for (const часть of части) {
+    if (PROVENANCE.has(часть) && !provenance) {
+      provenance = часть;
+      continue;
+    }
+    const доп = часть.match(/^([A-Z_]+)=(.*)$/);
+    if (доп && ДОП_ПОЛЯ.has(доп[1])) {
+      extras[доп[1]] = доп[2].trim();
+      continue;
+    }
+    return null;
+  }
+  return { provenance, extras };
+}
+
 export function разобратьКлючЗначение(строка) {
   const обрезанная = строка.trim();
-  const сопоставление = обрезанная.match(
-    /^([A-Z][A-Z0-9_]*)=(.*?)(?:\s*\|\s*([A-Z_]+))?\s*$/,
-  );
+  const бар = обрезанная.indexOf('|');
+  let левая;
+  let хвост = '';
+  if (бар === -1) {
+    левая = обрезанная;
+  } else {
+    левая = обрезанная.slice(0, бар).trim();
+    хвост = обрезанная.slice(бар + 1).trim();
+  }
+  const сопоставление = левая.match(/^([A-Z][A-Z0-9_]*)=(.*)$/);
   if (!сопоставление) return null;
-  const provenance = сопоставление[3] || null;
+  let provenance = null;
+  let extras = {};
+  if (хвост) {
+    const разобранныйХвост = разобратьХвостProvenance(хвост);
+    if (!разобранныйХвост) return null;
+    provenance = разобранныйХвост.provenance;
+    extras = разобранныйХвост.extras;
+  }
   if (provenance && !PROVENANCE.has(provenance)) return null;
   return {
     key: сопоставление[1],
     value: сопоставление[2].trim(),
     provenance,
+    extras,
   };
+}
+
+export function разобратьМаркерСписка(строка) {
+  const сопоставление = строка.trim().match(/^- \[([A-Z_]+)\]\s+(.*)$/);
+  if (!сопоставление) return null;
+  const provenance = сопоставление[1];
+  if (!PROVENANCE.has(provenance)) return null;
+  const остаток = сопоставление[2].trim();
+  const бар = остаток.indexOf(' | ');
+  let text = остаток;
+  let extras = {};
+  if (бар !== -1) {
+    text = остаток.slice(0, бар).trim();
+    const хвост = разобратьХвостProvenance(остаток.slice(бар + 3).trim());
+    if (хвост) extras = хвост.extras;
+  }
+  return { provenance, text, extras };
 }
 
 export function разобратьКарту(текст) {
   const keys = {};
   const sections = {};
+  const bullets = [];
   let текущаяСекция = 'ROOT';
   sections[текущаяСекция] = [];
 
@@ -85,10 +140,14 @@ export function разобратьКарту(текст) {
     }
     if (строка.startsWith('- ')) {
       sections[текущаяСекция].push(строка.slice(2).trim());
+      const bullet = разобратьМаркерСписка(строка);
+      if (bullet) {
+        bullets.push({ section: текущаяСекция, ...bullet, raw: строка });
+      }
     }
   }
 
-  return { keys, sections };
+  return { keys, sections, bullets };
 }
 
 export function загрузитьКартуПамяти() {
@@ -135,5 +194,7 @@ export function извлечьОтветыДляResume(карта) {
     do_not_canon_integration: значение(карта, 'DO_NOT_CANON_INTEGRATION'),
     do_not_start_v02: значение(карта, 'DO_NOT_START_V02'),
     allowed_read_root: значение(карта, 'ALLOWED_READ_ROOT'),
+    structured_resume_test: значение(карта, 'STRUCTURED_RESUME_TEST'),
+    cross_session_ai_resume_test: значение(карта, 'CROSS_SESSION_AI_RESUME_TEST'),
   };
 }

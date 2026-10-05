@@ -6,11 +6,15 @@ CANON=NO
 OFFICIAL_MEMORY=NO
 
 OWNER_ASSERTED != MODEL_SUMMARY
+OWNER_ASSERTED != OBSERVED_FROM_PROJECT_SOURCE
 MODEL_SUMMARY != OWNER_FACT
 MODEL_DERIVED_HYPOTHESIS != OWNER_ASSERTED
 UNKNOWN != FALSE
 NOT_RECORDED != ABSENT
 SUPERSEDED != DELETED
+
+STRUCTURED_RESUME_TEST=PASS
+CROSS_SESSION_AI_RESUME_TEST=NOT_RUN
 
 ## Назначение
 
@@ -34,30 +38,39 @@ SUPERSEDED != DELETED
 3. Прочитать последний файл в `checkpoints/`.
 4. Не читать официальную память и не заходить в Owner Authority sandbox для этой нити.
 5. Следующий шаг — только `NEXT_BOUNDED_ACTION`.
+6. `CROSS_SESSION_TEST_PLAN.md` — план Session A/B; Session B **не** выполнять, пока owner не даст GO.
 
 ## Provenance
 
-Каждая фактическая строка в карте памяти помечена одним из:
+Каждая фактическая строка в карте памяти помечена **ровно** одним из:
 
-- `OWNER_ASSERTED` — владелец явно сказал / дал GO.
-- `MODEL_SUMMARY` — сводка агента по инженерному состоянию; это не факт владельца.
+- `OWNER_ASSERTED` — Ruslan явно сказал / решил / авторизовал.
+- `OBSERVED_FROM_PROJECT_SOURCE` — напрямую проверено по GitHub / Notion / Drive / test evidence.
+- `MODEL_SUMMARY` — сводка агента по проверенному или обсуждённому состоянию; это не факт владельца.
 - `MODEL_DERIVED_HYPOTHESIS` — вывод модели; не утверждение владельца.
 - `UNKNOWN` — неизвестно; не равно «ложь».
 - `NOT_RECORDED` — не записано; не равно «отсутствует в мире».
 
+Нельзя превращать формулировку модели в `OWNER_ASSERTED`.
+Типично **не** `OWNER_ASSERTED` (если Ruslan не сказал ту же фразу дословно): `CURRENT_STATUS`, `CURRENT_BLOCKER`, техническое состояние PR, счётчики тестов, branch/head, производные сводки проекта → `OBSERVED_FROM_PROJECT_SOURCE` или `MODEL_SUMMARY`.
+
+Для важных технических строк опционально: `SOURCE_CLASS=` / `SOURCE_REF=` / `OBSERVED_AT=`.
+
 `SUPERSEDED` заменяет предыдущую запись; это не удаление истории.
 
-## Тест Clean Resume
+## Тесты
 
-Детерминированный разбор KEY=VALUE / секций. LLM не вызывается.
+STRUCTURED_RESUME_TEST=PASS (существующий детерминированный парсер Clean Resume; LLM не вызывается)
+
+CROSS_SESSION_AI_RESUME_TEST=NOT_RUN
 
 ```bash
 node --test experiments/ruslan-experimental-memory/tests/**/*.mjs
 ```
 
-Ожидается код выхода 0 (PASS).
+Ожидается код выхода 0 (PASS) для STRUCTURED_RESUME_TEST.
 
 ## Статус v0.1
 
-Создание экспериментальной памяти, Clean Resume Test, draft PR, затем STOP на OWNER REVIEW.
+Черновик PR #28; правка provenance после OWNER REVIEW PASS_WITH_CORRECTIONS; STOP на OWNER REVIEW BEFORE CROSS_SESSION_AI_RESUME_TEST.
 Нет v0.2, нет интеграции в Canon, нет RAG.

@@ -31,7 +31,6 @@ const КЛЮЧИ_НЕ_OWNER_ASSERTED = [
   'CURRENT_PROJECT',
   'CURRENT_GOAL',
   'LAST_COMPLETED_STEP',
-  'LAST_STOP_POINT',
   'PR_28_STATE',
   'PR_27_STATE',
   'PR_27_HEAD',
@@ -156,6 +155,7 @@ test('регрессия: технические и сводные поля не
     );
   }
   assert.equal(карта.keys.CURRENT_THREAD.provenance, 'OWNER_ASSERTED');
+  assert.equal(карта.keys.LAST_STOP_POINT.provenance, 'OWNER_ASSERTED');
   assert.equal(карта.keys.NEXT_BOUNDED_ACTION.provenance, 'OWNER_ASSERTED');
   assert.equal(карта.keys.DO_NOT_MERGE.provenance, 'OWNER_ASSERTED');
   assert.equal(карта.keys.DO_NOT_TOUCH_CANON.provenance, 'OWNER_ASSERTED');
@@ -197,31 +197,41 @@ test('STRUCTURED_RESUME_TEST: 5 вопросов свежего агента', (
   // 1) что происходит
   assert.match(ответы.current_project, /экспериментальн|continuity memory|непрерывн/i);
   assert.match(ответы.current_thread, /ruslan-experimental-memory|owner review/i);
-  assert.match(ответы.current_goal, /сессии|стоп|шаг|памяти/i);
+  assert.match(ответы.current_goal, /STRUCTURED_RESUME_TEST|CROSS_SESSION_AI_RESUME_TEST|handoff Session B/i);
   assert.match(ответы.current_status, /PR #28|OWNER REVIEW|STRUCTURED_RESUME_TEST/i);
   assert.equal(ответы.structured_resume_test, 'PASS');
   assert.equal(ответы.cross_session_ai_resume_test, 'NOT_RUN');
   проверки.push('PASS Q1 current project/thread/goal/status');
 
   // 2) где остановились
-  assert.match(ответы.last_stop_point, /PR #28|draft PR/i);
-  assert.match(ответы.last_stop_point, /STRUCTURED_RESUME_TEST|Clean Resume Test|provenance/i);
+  assert.match(ответы.last_stop_point, /Session A ended after writing checkpoint \+ expected-answers/i);
+  assert.match(ответы.last_stop_point, /awaiting Session B/i);
   проверки.push('PASS Q2 LAST_STOP_POINT');
 
   // 3) что уже сделано
   assert.match(
     ответы.last_completed_step,
-    /provenance|STRUCTURED_RESUME_TEST|CROSS_SESSION_TEST_PLAN|v0\.1/i,
+    /Session A|expected-answers|SESSION_B_PROMPT|cross-session-session-a-v01/i,
   );
   const чекпоинты = списокЧекпоинтов();
-  assert.ok(чекпоинты.length >= 1, 'нет markdown checkpoint');
-  const текстЧекпоинта = читатьТолькоЭксперимент(path.join('checkpoints', чекпоинты[0]));
+  assert.ok(чекпоинты.length >= 2, 'нужен новый Session A checkpoint без перезаписи старого');
+  assert.ok(
+    чекпоинты.includes('2026-10-05-project-lane-v01.md'),
+    'старый project-lane checkpoint должен остаться',
+  );
+  assert.ok(
+    чекпоинты.includes('2026-10-05-cross-session-session-a-v01.md'),
+    'нет Session A checkpoint',
+  );
+  const текстЧекпоинта = читатьТолькоЭксперимент(
+    path.join('checkpoints', '2026-10-05-cross-session-session-a-v01.md'),
+  );
   assert.match(текстЧекпоинта, /LAST_STOP_POINT|NEXT_BOUNDED_ACTION/);
   assert.match(текстЧекпоинта, /OWNER_ASSERTED|MODEL_SUMMARY|OBSERVED_FROM_PROJECT_SOURCE/);
   const чекпоинтКарта = разобратьКарту(текстЧекпоинта);
-  assert.notEqual(чекпоинтКарта.keys.LAST_STOP_POINT?.provenance, 'OWNER_ASSERTED');
+  assert.equal(чекпоинтКарта.keys.LAST_STOP_POINT?.provenance, 'OWNER_ASSERTED');
   assert.equal(чекпоинтКарта.keys.NEXT_BOUNDED_ACTION?.provenance, 'OWNER_ASSERTED');
-  проверки.push(`PASS Q3 LAST_COMPLETED_STEP + checkpoint ${чекпоинты[0]}`);
+  проверки.push('PASS Q3 LAST_COMPLETED_STEP + checkpoint 2026-10-05-cross-session-session-a-v01.md');
 
   // 4) чего не делать
   assert.equal(ответы.do_not_touch_canon, 'YES');
@@ -241,11 +251,9 @@ test('STRUCTURED_RESUME_TEST: 5 вопросов свежего агента', (
   проверки.push('PASS Q4 HARD_DO_NOT Canon/official memory/merge/sandbox/graph-RAG-SQLite-ingestion-authority');
 
   // 5) следующий ограниченный шаг
-  assert.match(ответы.next_bounded_action, /OWNER REVIEW BEFORE CROSS_SESSION_AI_RESUME_TEST/i);
-  assert.match(ответы.next_bounded_action, /read-only/i);
-  assert.match(ответы.next_bounded_action, /No v0\.2/i);
-  assert.match(ответы.next_bounded_action, /no Canon integration/i);
-  assert.match(ответы.next_bounded_action, /no RAG/i);
+  assert.match(ответы.next_bounded_action, /SESSION_B must answer Q1–Q10/i);
+  assert.match(ответы.next_bounded_action, /experimental memory only/i);
+  assert.match(ответы.next_bounded_action, /OWNER REVIEW of comparison/i);
   assert.equal(ответы.do_not_canon_integration, 'YES');
   assert.equal(ответы.do_not_start_v02, 'YES');
   проверки.push('PASS Q5 NEXT_BOUNDED_ACTION');
@@ -261,4 +269,11 @@ test('STRUCTURED_RESUME_TEST: 5 вопросов свежего агента', (
   assert.match(доказательство, /STRUCTURED_RESUME_TEST=PASS/);
   assert.match(доказательство, /CROSS_SESSION_AI_RESUME_TEST=NOT_RUN/);
   assert.match(доказательство, /CLEAN_RESUME_TEST=PASS/);
+
+  const промпт = читатьТолькоЭксперимент(
+    path.join('tests', 'results', 'cross-session-v01', 'SESSION_B_PROMPT.md'),
+  );
+  assert.match(промпт, /Read ONLY files under `experiments\/ruslan-experimental-memory\/`/);
+  assert.match(промпт, /Q10\./);
+  assert.equal(промпт.includes('EXPECTED='), false);
 });

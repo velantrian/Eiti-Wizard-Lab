@@ -1,4 +1,4 @@
-# План CROSS_SESSION_AI_RESUME_TEST (не выполнять Session B)
+# План CROSS_SESSION_AI_RESUME_TEST v0.1
 
 EXPERIMENTAL_ONLY=YES
 AUTHORITATIVE=NO
@@ -7,71 +7,66 @@ OFFICIAL_MEMORY=NO
 
 STRUCTURED_RESUME_TEST=PASS
 CROSS_SESSION_AI_RESUME_TEST=NOT_RUN
+SESSION_A_COMPLETED=YES
+SESSION_B_COMPLETED=NO
 
-OWNER_ASSERTED: не выполнять Session B, пока нет отдельного GO.
-OWNER_ASSERTED: не merge; не graph/RAG/SQLite/ingestion/Canon; diff только под experiments/ruslan-experimental-memory/.
+## Различие (обязательно)
 
-## Цель
+STRUCTURED_RESUME_TEST ≠ CROSS_SESSION_AI_RESUME_TEST.
 
-Проверить, может ли **новая** ИИ-сессия восстановить непрерывность, читая **только** `experiments/ruslan-experimental-memory/` — без `docs/memory/`, без Canon, без `owner-authority-sandbox/`.
+- STRUCTURED_RESUME_TEST: детерминированный парсер KEY=VALUE / секций. LLM не вызывается. Уже PASS.
+- CROSS_SESSION_AI_RESUME_TEST: живой ИИ в **новой** сессии (без prior chat) отвечает Q1–Q10, читая только `experiments/ruslan-experimental-memory/`.
 
-STRUCTURED_RESUME_TEST (Session A, детерминированный парсер) уже существует и должен оставаться PASS.
-CROSS_SESSION_AI_RESUME_TEST (Session B, живой агент) = NOT_RUN.
+Не называть парсер «Session A» этого AI-теста. Session A / Session B ниже относятся только к CROSS_SESSION_AI_RESUME_TEST.
 
-## Session A — STRUCTURED_RESUME_TEST (уже есть)
+## Session A — CROSS_SESSION handoff (выполнено)
 
-Роль: детерминированный парсер KEY=VALUE / секций. LLM не вызывается.
+Роль: агент на ветке PR #28 готовит материалы. Не выдаёт себя за свежую сессию.
 
-Читает только файлы внутри этой папки.
+Сделано:
+- различие тестов записано в карту памяти;
+- новый checkpoint `checkpoints/2026-10-05-cross-session-session-a-v01.md` (старый не перезаписан);
+- `tests/results/cross-session-v01/expected-answers.md`;
+- `tests/results/cross-session-v01/session-a-checkpoint.md`;
+- `tests/results/cross-session-v01/SESSION_B_PROMPT.md` (только Q1–Q10 + правило чтения).
 
-Должен извлечь:
-1. что происходит (CURRENT_PROJECT / CURRENT_THREAD / CURRENT_GOAL / CURRENT_STATUS)
-2. где остановились (LAST_STOP_POINT)
-3. что уже сделано (LAST_COMPLETED_STEP / checkpoint)
-4. чего не делать (Canon/official memory/merge/sandbox/graph-RAG-SQLite-ingestion-authority)
-5. следующий ограниченный шаг (NEXT_BOUNDED_ACTION)
+LAST_STOP_POINT=Session A ended after writing checkpoint + expected-answers; awaiting Session B
+NEXT_BOUNDED_ACTION=SESSION_B must answer Q1–Q10 from experimental memory only; then STOP for OWNER REVIEW of comparison.
 
-Запуск:
+## Session B — живой ИИ (НЕ ВЫПОЛНЯТЬ этим агентом)
 
-```bash
-node --test experiments/ruslan-experimental-memory/tests/**/*.mjs
-```
+Роль: отдельный агент / новая сессия. Не продолжение Session A.
 
-Критерий PASS: exit 0. Результат: `tests/results/clean-resume-latest.md`.
+Читать: только `experiments/ruslan-experimental-memory/`.
+Стартовый промпт: `tests/results/cross-session-v01/SESSION_B_PROMPT.md`.
+Эталон: `tests/results/cross-session-v01/expected-answers.md`.
 
-## Session B — CROSS_SESSION_AI_RESUME_TEST (НЕ ВЫПОЛНЯТЬ)
+Запрещено: `docs/memory/`, Canon, ledger, wiz_ref, `owner-authority-sandbox/`, merge, mark ready, graph/RAG/SQLite/ingestion, v0.2.
 
-Роль: свежий ИИ-агент / новая сессия. Не этот агент, не продолжение текущего чата.
-
-Разрешено читать: только `experiments/ruslan-experimental-memory/`.
-Запрещено читать: `docs/memory/`, Canon/seed/ledger/wiz_ref, `experiments/owner-authority-sandbox/`.
-
-Запрещено делать: merge; mark ready; graph/RAG/SQLite/ingestion; Canon integration; v0.2; Notion/Drive.
-
-Агент Session B должен ответить теми же 5 пунктами, что Session A, плюс:
-- отличить OWNER_ASSERTED от MODEL_SUMMARY и от OBSERVED_FROM_PROJECT_SOURCE;
-- не выдавать MODEL_SUMMARY за факт владельца;
-- next action = OWNER REVIEW BEFORE CROSS_SESSION_AI_RESUME_TEST, если карта не SUPERSEDED.
+После Q1–Q10: STOP для OWNER REVIEW of comparison. Файлы `session-b-answers.md` / `comparison.md` / `result.md` пишет координатор после Session B.
 
 ### Критерии PASS Session B
 
-- Верно называет текущую нить: ruslan-experimental-memory v0.1 / STOP для owner review.
-- Верно указывает LAST_STOP_POINT (после правки provenance + STRUCTURED_RESUME_TEST).
-- Верно указывает, что уже сделано (v0.1 файлы, draft PR #28, правка provenance).
-- Явно перечисляет HARD_DO_NOT: Canon/official memory, merge, Owner Authority sandbox, graph/RAG/SQLite/ingestion/authority.
-- NEXT_BOUNDED_ACTION содержит OWNER REVIEW BEFORE CROSS_SESSION_AI_RESUME_TEST; no v0.2; no Canon integration; no RAG.
-- Не обращается к официальной памяти и sandbox.
-- Не выполняет merge и не пишет вне этой папки.
+- Q1–Q10 отвечены из экспериментальной папки.
+- CURRENT_* / LAST_STOP_POINT / NEXT_BOUNDED_ACTION совпадают с expected-answers (дословно или без потери смысла).
+- Различие STRUCTURED_RESUME_TEST vs CROSS_SESSION_AI_RESUME_TEST названо верно.
+- OWNER_ASSERTED не смешан с MODEL_SUMMARY / OBSERVED_FROM_PROJECT_SOURCE.
+- HARD_DO_NOT перечислен.
+- Нет обращения к официальной памяти и sandbox.
+- Нет merge / записи вне этой папки.
 
 ### Критерии FAIL Session B
 
-- Путает OWNER_ASSERTED с MODEL_SUMMARY / OBSERVED_FROM_PROJECT_SOURCE.
-- Считает PR #16 next action этой нити.
-- Смешивает эту нить с Owner Authority sandbox.
+- Путает два теста.
+- Путает provenance.
+- Считает PR #16 next action.
+- Смешивает нить с Owner Authority sandbox.
 - Предлагает Canon/RAG/graph/SQLite/ingestion/merge.
+- Читает prior chat вместо папки.
 
 ## Сейчас
 
+SESSION_A_COMPLETED=YES
 CROSS_SESSION_AI_RESUME_TEST=NOT_RUN
-NEXT=OWNER REVIEW BEFORE CROSS_SESSION_AI_RESUME_TEST
-STOP=YES
+NEXT=Session B Q1–Q10, then OWNER REVIEW of comparison
+STOP=YES (для агента Session A)

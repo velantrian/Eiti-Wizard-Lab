@@ -38,7 +38,8 @@ CROSS_SESSION_AI_RESUME_TEST=NOT_RUN
 3. Прочитать последний файл в `checkpoints/`.
 4. Не читать официальную память и не заходить в Owner Authority sandbox для этой нити.
 5. Следующий шаг — только `NEXT_BOUNDED_ACTION`.
-6. `CROSS_SESSION_TEST_PLAN.md` — план Session A/B; Session B **не** выполнять, пока owner не даст GO.
+6. `CROSS_SESSION_TEST_PLAN.md` — различие тестов + план Session A/B.
+7. Session B: только `tests/results/cross-session-v01/SESSION_B_PROMPT.md` (Q1–Q10); без prior chat.
 
 ## Provenance
 
@@ -60,9 +61,11 @@ CROSS_SESSION_AI_RESUME_TEST=NOT_RUN
 
 ## Тесты
 
-STRUCTURED_RESUME_TEST=PASS (существующий детерминированный парсер Clean Resume; LLM не вызывается)
+STRUCTURED_RESUME_TEST = детерминированный парсер KEY=VALUE; LLM не вызывается; статус PASS.
 
-CROSS_SESSION_AI_RESUME_TEST=NOT_RUN
+CROSS_SESSION_AI_RESUME_TEST = живой ИИ в **новой** сессии отвечает Q1–Q10 только из этой папки; без prior chat; статус NOT_RUN (Session A completed, Session B not run).
+
+Это **не** один и тот же тест.
 
 ```bash
 node --test experiments/ruslan-experimental-memory/tests/**/*.mjs
@@ -72,5 +75,6 @@ node --test experiments/ruslan-experimental-memory/tests/**/*.mjs
 
 ## Статус v0.1
 
-Черновик PR #28; правка provenance после OWNER REVIEW PASS_WITH_CORRECTIONS; STOP на OWNER REVIEW BEFORE CROSS_SESSION_AI_RESUME_TEST.
+Черновик PR #28 OPEN/DRAFT. Session A CROSS_SESSION handoff записан. Session B не выполнялась этим агентом.
+NEXT: Session B отвечает Q1–Q10, затем OWNER REVIEW of comparison.
 Нет v0.2, нет интеграции в Canon, нет RAG.

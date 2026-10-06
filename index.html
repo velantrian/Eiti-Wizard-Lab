@@ -38,6 +38,9 @@
   <!-- lab/sqlite-reference-memory: separate reference namespace (wiz_ref_*) in the same SQLite DB -->
   <script src="wiz-ref-memory.js"></script>
 
+  <!-- working-memory-mvp-v0.1: isolated wm_* core data layer -->
+  <script src="working-memory.js"></script>
+
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -5939,6 +5942,11 @@ function _wizInitMemSchema() {
     USING fts5(id UNINDEXED, title, body, tokenize='unicode61')`);
   // lab/sqlite-reference-memory: additive, idempotent wiz_ref_* schema (does not touch wiz_facts)
   if (window.WizRef) { try { window.WizRef.initSchema(db); } catch(e) { console.warn('[WizRef] schema', e); } }
+  // working-memory-mvp-v0.1: separate wm_* namespace; writes use awaited durable save/read-back.
+  if (window.WorkingMemory) {
+    try { window.WmStore = window.WorkingMemory.create(db); }
+    catch(e) { console.warn('[WorkingMemory] schema', e); window.WmStore = null; }
+  }
   _wizSaveDB();
 }
 

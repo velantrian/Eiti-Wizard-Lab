@@ -83,7 +83,7 @@ WHAT_IT_SUPPORTS: Further bounded causal/retraction tests only after separate au
 WHAT_IT_DOES_NOT_PROVE: Robust Beacon benefit, necessity of Beacon, or a final memory architecture.\
 OPEN_FINDING: JST-CAUSAL-01 and JST-RETRACT-02 remain candidate next experiments; exact protocols need review.\
 PRIMARY_EVIDENCE: N06 describes the live condition; raw artifacts are referenced there, not copied here.\
-GITHUB_REF: `UNKNOWN` in Eiti-Wizard-Lab. NOTION_REF: [N01](#f-external-source-records), [N06](#f-external-source-records). DRIVE_REF: [D02](#f-external-source-records), unreadable here; [D01](#f-external-source-records) is the global registry.\
+GITHUB_REF: `UNKNOWN` in Eiti-Wizard-Lab. NOTION_REF: [N01](#f-external-source-records), [N06](#f-external-source-records). DRIVE_REF: [D02](#f-external-source-records) (content reviewed in T3.2); [D01](#f-external-source-records) is the global registry.\
 NOTION_STATUS: No robust causal benefit; TAIL-02/T15 disputed; follow-ups candidate. DRIVE_STATUS: D01 and D02 reviewed; Condition B/no matched A and TAIL-02 limits align. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: Do not repeat Condition B as a causal test without a matched control and a distinct question.
 

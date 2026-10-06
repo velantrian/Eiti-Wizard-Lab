@@ -27,7 +27,7 @@ An independent read-only reviewer answered all eight questions using only the tw
 - Claim-level counters are `MATCH=18`, `PARTIAL_MISMATCH=2`, `STALE_DRIVE=3`, `STALE_NOTION=0`, `SOURCE_ONLY_NOTION=0`, `SOURCE_ONLY_DRIVE=0`, and `UNKNOWN=0`. `PARTIAL_MISMATCH` marks source-pointer/chronology limitations, not an invented experimental contradiction; `STALE_DRIVE` reflects the verified D01 timestamp predating later PR creation.
 - `AGENT_START_HERE.md`, `docs/research/EXPERIMENT_EVIDENCE_INDEX.md`, and this validation file are the only authorized PR paths. T3.2 adds no Canon, runtime, memory, ledger, or `wiz_ref` changes.
 
-## Recorded run
+## Recorded run — PRE-MERGE VALIDATION SNAPSHOT
 
 ```text
 FRESH_READER_RESULT=PASS (Q1-Q8, independent read-only reviewer)
@@ -47,3 +47,14 @@ PR31_STATE=OPEN/DRAFT; MERGED=NO; READY=NO
 PR31_HEAD_AT_REVIEW_START=f6edf764b44d3065ab72508f1baea5aecdcc2dd4
 OVERALL_RESULT=PASS_WITH_SOURCE_LIMITATIONS; KEEP_PR_OPEN_DRAFT
 ```
+
+## POST-MERGE VERIFICATION — HISTORICAL PR #31 CHECK
+
+```text
+PR31=MERGED
+MERGE_COMMIT=3653345d7ba40ceab22d7d6d1781f4b2c0b8abcd
+CURRENT_MAIN_AT_PR31_POST_MERGE_CHECK=3653345d7ba40ceab22d7d6d1781f4b2c0b8abcd
+GATEWAY_FILES_PRESENT=YES (AGENT_START_HERE.md; docs/research/EXPERIMENT_EVIDENCE_INDEX.md; docs/research/evidence-index-validation.md)
+```
+
+This records the historical verification at PR #31 post-merge; it is not a permanent current-main pointer. Current main is mutable and must be checked live; do not infer it from this historical gateway checkpoint.

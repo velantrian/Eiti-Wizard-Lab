@@ -211,14 +211,14 @@ NOTES: `IMPLEMENTED ≠ ACTIVATED`; `TESTED ≠ PRODUCTION_AUTHORIZED`.
 EXPERIMENT_ID / NAME: Eiti continuity carrier and provider-neutral orientation stages.\
 PROJECT: Eiti-Wizard-Lab.\
 QUESTION: Can source-qualified continuity state be represented, exported, validated, and read through bounded project stages without silently granting admission/write authority?\
-STATUS: **Stage map:** M1 PR #13 merged to `main`; M2 export-context PR #15 merged to `main`; M3 read-only runtime bridge PR #16 merged at current `main@826e27a`. Separate carrier branch `lab/continuity-carrier-m1@e9e5ea3` contains M2.1 PR #14, M2.1.1 PR #18/#20, and M2.2a PR #25; those later carrier stages are **not merged to main**.\
+STATUS: **Stage map:** M1 PR #13 merged to `main`; M2 export-context PR #15 merged to `main`; M3 read-only runtime bridge PR #16 merged at the pre-PR31 main checkpoint `826e27a` (PR #31 base; not current main after PR #31). Separate carrier branch `lab/continuity-carrier-m1@e9e5ea3` contains M2.1 PR #14, M2.1.1 PR #18/#20, and M2.2a PR #25; those later carrier stages are **not merged to main**.\
 EXECUTION_VERDICT: Main-branch M3 checkpoint reports 66/66 Node tests and seed validation of 79 records with 0 errors/0 warnings. Separate M2.1/M2.1.1/M2.2a memory-layer checks passed; the M2.2a checkpoint reports 52/52 ledger, 18/18 seed, 10/10 browser, and Reference DB 35/36 with the reproduced baseline `CACHE_NAME not bumped`.\
 SCIENTIFIC_INTERPRETATION: These are bounded implementation/check results, not evidence of learning, subjective continuity, or production authorization.\
 WHAT_WAS_OBSERVED: M1 declarations and M2/M3 read-only orientation are in main; later OBSERVED-only ledger/intake/step work remains on its separate experimental carrier branch.\
 WHAT_IT_SUPPORTS: The exact tests and bounded stage semantics at the referenced commits.\
 WHAT_IT_DOES_NOT_PROVE: USER ADMIT, Canon apply, authenticated writer, provider portability, experience, or that later carrier stages are part of main.\
 OPEN_FINDING: Checkpoint says stop before M2.2b; resolve the documented baseline issue and obtain the appropriate review before any next stage.\
-PRIMARY_EVIDENCE: M1/M2/M3 exact PRs and paths are GH05–GH07; M2.1/M2.1.1/M2.2a are GH08–GH11. Main SHA `826e27abb9e1f114a11773adc2a79e1bc60927d0`; carrier SHA `e9e5ea3cd3fcdb19902c071f1b24b2705a6fef31`.\
+PRIMARY_EVIDENCE: M1/M2/M3 exact PRs and paths are GH05–GH07; M2.1/M2.1.1/M2.2a are GH08–GH11. Pre-PR31 main/base SHA `826e27abb9e1f114a11773adc2a79e1bc60927d0`; current repository main after PR #31 is `3653345d7ba40ceab22d7d6d1781f4b2c0b8abcd`; carrier SHA `e9e5ea3cd3fcdb19902c071f1b24b2705a6fef31`.\
 GITHUB_REF: [GH01](#f-external-source-records), [GH05](#f-external-source-records)–[GH11](#f-external-source-records). NOTION_REF: [N02](#f-external-source-records), [N03](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records), plus any linked report UNKNOWN.\
 NOTION_STATUS: M1/M2/M2.1/M2.1.1/M2.2a bounded checkpoints complete; branch distinction and stop retained. DRIVE_STATUS: D01 reviewed; main/carrier branch distinction aligns with live PR refs. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: Do not conflate the merged main line with the later carrier branch. `IMPLEMENTED ≠ ACTIVATED`; `EXPERIMENTAL ≠ OFFICIAL_MEMORY`.
@@ -441,7 +441,7 @@ NOTES: Do not run automatically.
 8. **R08 — SIGNET-TRACE / SOURCE-RECOVERY — `CONSISTENCY=MATCH`.** N06 (`3e1ac84d-0547-8182-a48e-ed965721de93`), N01, and D01 (§14) agree that the work is blocked at Step 0 by a source gap, without an end-to-end result. GH20 at branch `research/signet-trace-01-protocol-v0-1-20260927`, head `943281bda8e96bfb6b3613ab14941131e41d93eb`, `docs/research/SIGNET_TRACE_01.md`, explicitly withdraws “TRACE_COMPLETE” as official and records no result. The bounded status is a match; the raw source remains unresolved.
 9. **R09 — E0-A Ownership & Governance — `CONSISTENCY=MATCH`.** N01 and D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §20) report the five bounded governance checks as PASS. GH02 is open PR #6 head `c36c5bc1fb9ddd5a54a8499cf9439e35ba3ca19c`, `experiments/memory-governance-e0a/RESULTS.md` and `logs/test_run.txt`; it records the same five checks. This is bounded branch evidence, not merged or production behavior.
 10. **R10 — Memory Admission Controller v0.1 — `CONSISTENCY=MATCH`.** N01, D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §20.4), and GH04 at open/draft PR #10 head `105b880e5439f2022ca052747bdf10bfee97262c`, `docs/checkpoints/MEMORY_ADMISSION_CONTROLLER_v0.1.md`, agree on reported suites: 38/38 admission DB, 13/13 admission browser, 36/36 existing Reference Memory DB, 10/10 Reference Memory browser, private scan PASS/0 hits, at code commit `e286c50aed03a7cd1956d36fc5b216f2f15ea81d`. The checkpoint is lab-only, no live CI, final audit pending, and not runtime authorization.
-11. **R11 — Eiti continuity stages M1/M2/M2.1/M2.1.1/M2.2a/M3 — `CONSISTENCY=MATCH`.** N02 (`3ecac84d-0547-81b3-a8d2-e0aea1d44ba5`), N03 (`3ecac84d-0547-81a7-9b7a-d6a916bf0709`), N01, and D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §§20.5–20.13) preserve the main/branch distinction. GH01 main is `826e27abb9e1f114a11773adc2a79e1bc60927d0`; PRs #13/#15/#16 are on main, while #14/#18/#20/#25 are merged into the separate `lab/continuity-carrier-m1` chain, not main. Live PR metadata confirms the branch map.
+11. **R11 — Eiti continuity stages M1/M2/M2.1/M2.1.1/M2.2a/M3 — `CONSISTENCY=MATCH`.** N02 (`3ecac84d-0547-81b3-a8d2-e0aea1d44ba5`), N03 (`3ecac84d-0547-81a7-9b7a-d6a916bf0709`), N01, and D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §§20.5–20.13) preserve the main/branch distinction. GH01 records `INDEX_BASE_BEFORE_PR31=826e27abb9e1f114a11773adc2a79e1bc60927d0` and `CURRENT_MAIN_AFTER_PR31=3653345d7ba40ceab22d7d6d1781f4b2c0b8abcd`; PRs #13/#15/#16 are on main, while #14/#18/#20/#25 are merged into the separate `lab/continuity-carrier-m1` chain, not main. Live PR metadata confirms the branch map.
 12. **R12 — Ruslan Experimental Continuity Memory v0.1 — `CONSISTENCY=STALE_DRIVE`.** N02/N10 describe the experimental-memory and owner-review boundaries; D01’s `modifiedTime=2026-10-05T10:34:28.190Z` predates PR #28 creation at `2026-10-05T14:15:54Z`. GH13 is OPEN/DRAFT at head `ec1a3b665cc0da29a7e10773a142aca45bda31b2`; its README labels the work experimental, separate from official memory. D01’s omission is stale, not proof the work did not exist.
 13. **R13 — Cross-session AI Resume Test — `CONSISTENCY=STALE_DRIVE`.** N10 calls its proposed first test a candidate, while N01 records a separate PR #28 result. D01’s `modifiedTime=2026-10-05T10:34:28.190Z` predates PR #28. GH13 at the exact head records `CROSS_SESSION_AI_RESUME_TEST=PASS`, 10/10 correct, zero listed errors, `NEXT=OWNER REVIEW`. Preserve the separate-scope distinction; D01’s missing line is temporal, not absence.
 14. **R14 — Owner Authority sandbox — `CONSISTENCY=STALE_DRIVE`.** N01/N10 describe a synthetic boundary proposal; D01’s `modifiedTime=2026-10-05T10:34:28.190Z` predates PR #27 creation at `2026-10-05T13:19:29Z`. GH12 is OPEN/DRAFT at head `2d6877fc937f3b09c93d68c9b950170b358495d8`; `experiments/owner-authority-sandbox/README.md` explicitly uses synthetic fixtures and says no real grants, production authorization, or Canon Apply. D01’s omission is temporal, not evidence of absence.
@@ -468,7 +468,7 @@ The following status fields summarize repository evidence only. `IMPLEMENTED` me
 | M2.1 — PR #14 | Yes, at continuity branch | Memory-layer checks SUCCESS | Merged to `lab/continuity-carrier-m1`, not main | Branch line active | Yes | No | No | OBSERVED-only ledger semantics |
 | M2.1.1 — PR #18/#20 | Yes, at continuity branch | Memory-layer checks SUCCESS | Merged to continuity branch, not main | Branch line active | Yes | No | No | Intake/re-smoke limits and next gate |
 | M2.2a — PR #25 | Yes, at continuity branch | Checkpoint: 52/52 ledger, 18/18 seed, 10/10 browser; Reference DB 35/36 baseline | Merged to continuity branch, not main | Latest bounded branch stage | Yes | No | No | Stop before M2.2b; address noted baseline/review gate |
-| M3 — PR #16 read-only runtime bridge | Yes, on main | Checkpoint: 66/66 Node suite; seed validation 79 records, 0 errors/warnings | Yes, exact current main `826e27a…` | Yes in main; default OFF per guide | No; bounded merged feature | No; read-only orientation only | No; derived runtime bootstrap does not write Canon | Preserve read-only and Clean Resume boundaries |
+| M3 — PR #16 read-only runtime bridge | Yes, on main | Checkpoint: 66/66 Node suite; seed validation 79 records, 0 errors/warnings | Yes; M3 merge checkpoint `826e27a…` (pre-PR31; current main after PR #31 `3653345d…`) | Yes in main; default OFF per guide | No; bounded merged feature | No; read-only orientation only | No; derived runtime bootstrap does not write Canon | Preserve read-only and Clean Resume boundaries |
 | E0-A — PR #6 | Result/test files on open branch | Five bounded report checks PASS; no PR checks | No | Open | Yes | No | No | Open PR review/currentness |
 | E0-B — PR #7 | Capture artifacts on open branch | Phase 1B captured; ground truth pending; blind run NOT_RUN | No | Open but stopped at human labels | Yes | No | No | Boundary/provenance and human-label gate |
 | Memory Admission Controller — PR #10 | Prototype on open branch | Checkpoint reports suites; no PR checks | No | Review-mode draft | Yes | No | No | Independent audit and residuals |
@@ -617,9 +617,11 @@ SOURCE_ROLE=SEPARATE_HUMAN_COGNITION_SOURCE_FOR_CARD_17; OWNER_VERIFIED_CONTENT_
 
 **GH01**\
 SOURCE_SYSTEM=GITHUB\
-SOURCE_TITLE=Eiti-Wizard-Lab main, live base for this index\
-SOURCE_ID=main@826e27abb9e1f114a11773adc2a79e1bc60927d0 ([commit](https://github.com/velantrian/Eiti-Wizard-Lab/commit/826e27abb9e1f114a11773adc2a79e1bc60927d0))\
-SOURCE_ROLE=VERIFIED_BASE_BRANCH_AND_MAIN_IMPLEMENTATION
+SOURCE_TITLE=Eiti-Wizard-Lab main — PR #31 base and post-merge current state\
+SOURCE_ID=main branch\
+INDEX_BASE_BEFORE_PR31=826e27abb9e1f114a11773adc2a79e1bc60927d0 ([base commit](https://github.com/velantrian/Eiti-Wizard-Lab/commit/826e27abb9e1f114a11773adc2a79e1bc60927d0))\
+CURRENT_MAIN_AFTER_PR31=3653345d7ba40ceab22d7d6d1781f4b2c0b8abcd ([merge/current-main commit](https://github.com/velantrian/Eiti-Wizard-Lab/commit/3653345d7ba40ceab22d7d6d1781f4b2c0b8abcd))\
+SOURCE_ROLE=VERIFIED_PR31_BASE_AND_POST_MERGE_MAIN
 
 **GH02**\
 SOURCE_SYSTEM=GITHUB\
@@ -654,7 +656,7 @@ SOURCE_ROLE=MERGED_M2_IMPLEMENTATION_AND_TEST_POINTER
 **GH07**\
 SOURCE_SYSTEM=GITHUB\
 SOURCE_TITLE=PR #16 — M3 read-only runtime bridge\
-SOURCE_ID=merge/current main 826e27abb9e1f114a11773adc2a79e1bc60927d0; `continuity-runtime.mjs`, `tools/memory/continuity_runtime.test.mjs`, `docs/memory/AI_CONTEXT_RUNTIME.md` ([PR](https://github.com/velantrian/Eiti-Wizard-Lab/pull/16))\
+SOURCE_ID=PR #16 M3 merge checkpoint before PR #31: 826e27abb9e1f114a11773adc2a79e1bc60927d0; `continuity-runtime.mjs`, `tools/memory/continuity_runtime.test.mjs`, `docs/memory/AI_CONTEXT_RUNTIME.md` ([PR](https://github.com/velantrian/Eiti-Wizard-Lab/pull/16))\
 SOURCE_ROLE=MERGED_M3_IMPLEMENTATION_AND_TEST_POINTER
 
 **GH08**\

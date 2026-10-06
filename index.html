@@ -40,6 +40,9 @@
 
   <!-- working-memory-mvp-v0.1: isolated wm_* core data layer -->
   <script src="working-memory.js"></script>
+  <!-- working-memory-agent-read-bridge-v0.1 (B1): read-only wm_* tools + research router (pointer only) -->
+  <script src="research-router.js"></script>
+  <script src="wm-agent-read.js"></script>
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5515,6 +5518,8 @@ const AGENT_TOOLS_SPEC = [
     parameters:{ type:'object', properties:{ project_id:{type:'string'}}, required:['project_id']}},
   { name:'ref_trace', description:'Trace a REFERENCE item version: source, relations pinned to that exact version, supersession lineage. A logical item_id traces the current version; an archived id (item@hash) traces that old version.',
     parameters:{ type:'object', properties:{ item_id:{type:'string'}}, required:['item_id']}},
+  // working-memory-agent-read-bridge-v0.1 (B1): READ-ONLY Working Memory + research pointer (no writes)
+  ...(window.WmAgentRead ? window.WmAgentRead.TOOLS_SPEC.map(t => ({ name:t.name, description:t.description, parameters:t.parameters })) : []),
 
   { name:'task_add', description:'Добавить задачу в Доску. status: To Do|In Progress|Done|Blocked, priority: low|medium|high',
     parameters:{ type:'object', properties:{
@@ -6369,6 +6374,16 @@ async function executeAgentTool(name, args) {
         return `${t.item.block}\ntraced version: ${t.version_id}${t.is_current_version ? ' (current)' : ` (archived; current = ${t.logical_item_id})`} · versions=[${t.versions.map(v=>v.version_id).join(', ')}]\ncurrent source record: rev=${sc.revision||'—'} · as_of ${sc.as_of||'—'} · currentness=${sc.currentness||'—'}${t.item.source_changed_since_capture ? ' (DIFFERS from capture)' : ''}\nrelations:\n${rel.join('\n') || '(none)'}\nlineage: newer=[${t.lineage.newer.map(x=>x.item_id).join(', ')}] older=[${t.lineage.older.map(x=>x.item_id).join(', ')}]`;
       }
 
+      // ── working-memory-agent-read-bridge-v0.1 (B1): read-only; no wm_* writes, no research promotion ──
+      case 'wm_orientation': case 'wm_list_projects': case 'wm_list': case 'wm_get': case 'wm_search':
+      case 'wm_related': case 'wm_project_sources': case 'research_route': {
+        await wizInitSQLite();
+        if (!window.WmStore || !window.WmAgentRead) return 'Working Memory unavailable (SQLite not initialised).';
+        const bridge = window.WmAgentRead.create({ store: window.WmStore, router: window.ResearchRouter,
+          loadResearchIndex: async () => { const r = await fetch(window.ResearchRouter.INDEX_PATH, { cache: 'no-store' }); return r.ok ? r.text() : null; } });
+        return JSON.stringify(await bridge.execute(name, args));
+      }
+
       case 'task_add': {
         const tags = args.tags
           ? (Array.isArray(args.tags) ? args.tags : String(args.tags).split(',').map(s=>s.trim()).filter(Boolean))
@@ -6739,7 +6754,8 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
 3. Если пользователь упоминает чат по имени («что обсуждали с Лёвой») — используй chat_read(title:"Лёва") или chat_search.
 4. Перед изменением — прочитай (note_read / eiti_file_read / mem_list / task_list / chat_read).
 5. ОБЯЗАТЕЛЬНО заверши ответ ОБЫЧНЫМ ТЕКСТОМ на русском после всех инструментов — расскажи пользователю что сделал / что нашёл. Без финального текста пользователь не увидит результата.
-6. Никогда не возвращай пустой ответ. Если инструменты не нужны и ответить нечего — напиши хотя бы короткое подтверждение.`;
+6. Никогда не возвращай пустой ответ. Если инструменты не нужны и ответить нечего — напиши хотя бы короткое подтверждение.
+${window.WmAgentRead ? '\n' + window.WmAgentRead.GUIDANCE : ''}`;
   const instructions = userInstr ? `${userInstr}\n\n${toolSysPrompt}` : toolSysPrompt;
   // М3 Continuity (read-only): то же ограниченное ядро через единый помощник.
   // Цикл инструментов недостижим при активном Clean Resume (только панель агента

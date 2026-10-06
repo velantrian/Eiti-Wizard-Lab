@@ -716,6 +716,9 @@
       if (!filters.includeArchived) sql += ' AND archived_at IS NULL';
       if (filters.project_id) { sql += ' AND project_id=?'; params.push(filters.project_id); }
       if (filters.status) { sql += ' AND status=?'; params.push(enumValue(filters.status, 'status')); }
+      if (filters.type) { sql += ' AND type=?'; params.push(enumValue(filters.type, 'type')); }
+      if (filters.priority) { sql += ' AND priority=?'; params.push(enumValue(filters.priority, 'priority')); }
+      if (filters.thread != null && filters.thread !== '') { sql += ' AND thread=?'; params.push(String(filters.thread)); }
       sql += ' ORDER BY updated_at DESC, work_id ASC';
       if (filters.limit != null) { const limit = Math.max(1, Math.min(100, Math.floor(Number(filters.limit) || 20))); sql += ' LIMIT ?'; params.push(limit); }
       return dbRows(db, sql, params);
@@ -743,6 +746,19 @@
       sql += ' ORDER BY updated_at DESC, work_id ASC';
       if (filters.limit != null) { sql += ' LIMIT ?'; params.push(Math.max(1, Math.min(100, Math.floor(Number(filters.limit) || 20)))); }
       return dbRows(db, sql, params);
+    }
+    // Read-only accessors for the agent read bridge (B1). No mutation, no inference.
+    function listProjects() { return dbRows(db, 'SELECT * FROM wm_projects ORDER BY code ASC, project_id ASC'); }
+    function listSources(projectId) {
+      return dbRows(db, 'SELECT * FROM wm_sources WHERE project_id=? ORDER BY role ASC, title ASC, source_id ASC', [assertId(projectId, 'project_id')]);
+    }
+    function listItemSources(workId) {
+      return dbRows(db, `SELECT s.*, l.is_primary AS is_primary FROM wm_item_sources l JOIN wm_sources s ON s.source_id=l.source_id
+        WHERE l.work_id=? ORDER BY l.is_primary DESC, s.source_id ASC`, [assertId(workId, 'work_id')]);
+    }
+    function listRelations(workId) {
+      const id = assertId(workId, 'work_id');
+      return dbRows(db, 'SELECT * FROM wm_relations WHERE from_work_id=? OR to_work_id=? ORDER BY created_at ASC, relation_id ASC', [id, id]);
     }
     function getItem(workId) { return getById(db, 'wm_items', 'work_id', assertId(workId, 'work_id')); }
     function listChanges(workId) {
@@ -778,7 +794,7 @@
 
     return Object.freeze({
       createProject, createSource, createItem, updateItem, archiveItem, addItemSource, addRelation, appendChange,
-      getItem, listItems, searchItems, listUnresolved, listResolved, listCompleted, listChanges,
+      getItem, listItems, listProjects, listSources, listItemSources, listRelations, searchItems, listUnresolved, listResolved, listCompleted, listChanges,
       exportData, exportJSON, importJSON,
     });
   }

@@ -8,6 +8,8 @@ const STATIC_ASSETS = [
   BASE_PATH + '/manifest.json',
   BASE_PATH + '/wiz-ref-memory.js',
   BASE_PATH + '/working-memory.js',
+  BASE_PATH + '/wm-agent-read.js',
+  BASE_PATH + '/research-router.js',
   BASE_PATH + '/icon-48x48.png',
   BASE_PATH + '/icon-72x72.png',
   BASE_PATH + '/icon-96x96.png',

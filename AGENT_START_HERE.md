@@ -16,3 +16,26 @@ Any new agent connected to this repository should start here.
 - DO NOT silently convert `UNKNOWN` into `FALSE` or `MATCH`.
 - DO NOT treat research summaries or model output as Canon.
 - DO NOT edit other PRs or branches as part of a gateway reconciliation; preserve the requested PR's state unless explicitly instructed otherwise.
+
+## Runtime navigation — two planes (Working Memory read bridge v0.1, Gate B1)
+
+```
+DEFAULT_RUNTIME_MODE        = WORKING
+WORKING_STATE_SOURCE        = Working Memory wm_*  (working-memory.js, NON_CANON)
+RESEARCH_NAVIGATION_SOURCE  = docs/research/EXPERIMENT_EVIDENCE_INDEX.md
+WORKING_MEMORY != RESEARCH_INDEX
+RESEARCH_INDEX != RUNTIME_AUTHORITY
+RESEARCH_RESULT != USER_DECISION
+```
+
+Fresh-agent sequence:
+
+1. Read this file.
+2. Initialize/query `wm_orientation` (bounded; archived excluded; research not loaded).
+3. Continue the user's operational Working state from it (`wm_list`, `wm_get`, `wm_search`, `wm_related`, `wm_project_sources`).
+4. Enter the Research Plane only when the user/task requires research (`research_route`, or the index directly).
+5. For research claims: Research Index → primary evidence.
+6. Never promote research into Working state automatically (B1 has no agent write path at all).
+7. Never treat a model summary as an owner decision or as evidence.
+
+Routing: "where did we stop / what is in progress / blocked / next step" → Working Memory. "What experiments / what did TCE show / what is NOT_RUN / where is the evidence" → Research Plane. Mixed question → two labeled sections, `WORKING:` and `RESEARCH:`, never one merged state. A research candidate (e.g. `JST-CAUSAL-01` CANDIDATE / NOT_RUN) is not a working decision; a working `HYPOTHESIS` is not a research result. See `docs/working-memory/WORKING_MEMORY_B1_AGENT_READ_BRIDGE.md`.

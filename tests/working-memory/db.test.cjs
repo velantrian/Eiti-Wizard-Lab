@@ -506,7 +506,9 @@ async function createItem(store, title, extra) { return ok(await store.createIte
     assert.strictEqual(count(db, "SELECT count(*) FROM sqlite_master WHERE name LIKE 'wiz_ref_%'"), 0);
     const source = fs.readFileSync(path.join(ROOT, 'working-memory.js'), 'utf8');
     assert(!/\b(?:INSERT|UPDATE|DELETE|ALTER|DROP)\s+(?:TABLE\s+)?(?:wiz_facts|wiz_ledger|ledger|wiz_ref_)/i.test(source));
-    assert(!/case\s+['"]wm_[a-z_]+['"]\s*:/i.test(INDEX), 'WM agent tool was added');
+    // Gate B1 supersedes the Gate A "no agent tool" guard: only the read-only bridge names may be dispatched.
+    const READ_ONLY_WM = new Set(['wm_orientation','wm_list_projects','wm_list','wm_get','wm_search','wm_related','wm_project_sources']);
+    for (const m of INDEX.matchAll(/case\s+['"](wm_[a-z_]+)['"]\s*:/gi)) assert(READ_ONLY_WM.has(m[1]), 'non-read WM agent tool was added: ' + m[1]);
     assert(!/<button\b[^>]*(?:working[- ]memory|wm_)/i.test(INDEX), 'WM UI was added');
     assert(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8').includes("BASE_PATH + '/working-memory.js'"));
   });

@@ -28,7 +28,11 @@ Keep these distinctions intact: `RETRIEVAL ≠ TRUTH`; `CROSS_MODEL_REPRODUCED �
 **Notion — Experiment Registry** is the main discovery map: [N01](#f-external-source-records).\
 **Google Drive — companion Experiment Registry** is intended as the long-form registry/evidence companion: [D01](#f-external-source-records).
 
-The authorized browser showed a “JavaScript disabled” error for both the Drive Registry and the directly linked TCE report. No Drive document text was accessible. Therefore `DRIVE_REGISTRY_VERIFIED=NO`, `DRIVE_DOCS_REVIEWED=0`, and every experiment card below records `DRIVE_STATUS=UNKNOWN` and `CONSISTENCY=UNKNOWN`. This is **not** evidence of a mismatch or that a line is absent from Drive. Do not mark `SOURCE_ONLY_NOTION`, `SOURCE_ONLY_DRIVE`, `MATCH`, or stale status until the Drive documents can be read and compared.
+**Drive status is per source, not global.** Owner-side connected Drive verification says content is accessible for D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`), D02 (`1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs`), D04 (`1Z-tjZGi_-2ETkWp3NHsmClZIZ_mC23KAOGvAScXLYGA`), and D05 (`1-ZreAQzB43qTe67h6OG3egZX1zooqCtmYA_8yfu1FrM`). This is **owner-verified availability**, not a claim that this task independently reviewed the documents.
+
+The current authorized browser session was tried read-only on D01, D02, D04, and D05. In each, Google Docs displayed: “Не удалось открыть файл, поскольку в вашем браузере отключено использование JavaScript. Включите его и перезагрузите страницу.” The document titles were visible, but no document body text was available for comparison. This is a browser/tool limitation, not evidence that the documents are absent or that their claims match. Accordingly `DRIVE_REGISTRY_VERIFIED=OWNER_VERIFIED_ACCESS_YES (D01; local content review not completed)` and `DRIVE_DOCS_REVIEWED=0` (content-level reviews). All 23 cards retain `CONSISTENCY=UNKNOWN`; claim-level reasons and exact Notion/Drive/GitHub references are recorded in §C.1. Do not infer `MATCH`, `STALE_*`, or `SOURCE_ONLY_*` from availability alone.
+
+D03’s current locator `1ZwacnCQe-wREwE4sy1TM4eBkGj1H_t6mIrYYIA22-k` was reported by the owner as NOT FOUND/404 through connected Drive. Its identity/provenance is unresolved; this is not a finding that the source is absent or deleted. The similar but different ID is recorded separately as D06 and must not replace D03.
 
 Notion page timestamps vary. `LAST_VERIFIED` below means the page/branch was checked on 2026-10-06; use the source’s own date for the age of its claims. For source-record details, see [External source records](#f-external-source-records).
 
@@ -319,7 +323,7 @@ WHAT_IT_SUPPORTS: Research orientation and cautious hypothesis formation.\
 WHAT_IT_DOES_NOT_PROVE: That a computational analogy reproduces a biological mechanism or subjective experience.\
 OPEN_FINDING: Consciousness, subjectivity, identity, understanding, and durable learning remain open in the synthesis.\
 PRIMARY_EVIDENCE: This map is a synthesis; follow its linked owning pages and experimental artifacts for primary evidence.\
-GITHUB_REF: `UNKNOWN` in Eiti-Wizard-Lab. NOTION_REF: [N09](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records); any research-dossier links unverified.\
+GITHUB_REF: `UNKNOWN` in Eiti-Wizard-Lab. NOTION_REF: [N09](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records), [D06](#f-external-source-records) (separate Human Cognition source; not D03).\
 NOTION_STATUS: Current synthesis, not Canon. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: `FUNCTIONAL REPRODUCTION ≠ BIOLOGICAL REPRODUCTION ≠ CONSCIOUSNESS REPRODUCTION`.
 
@@ -424,6 +428,36 @@ PRIMARY_EVIDENCE: Candidate design in N06; no run artifact.\
 GITHUB_REF: `UNKNOWN`. NOTION_REF: [N06](#f-external-source-records), [N01](#f-external-source-records). DRIVE_REF: [D02](#f-external-source-records), unreadable.\
 NOTION_STATUS: Candidate/not started/not authorized. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: Do not run automatically.
+
+## C.1. T3.1 cross-source reconciliation record (2026-10-06)
+
+**Rule:** each row names the current Notion-derived claim, the relevant Drive ID and owner/local-review state, and the exact GitHub source when present. D01/D02/D04/D05 availability is owner-verified, but their bodies did not render locally. Therefore every overall card classification remains `UNKNOWN`; GitHub-only support or pointer tensions do not create a Drive match. `GITHUB_REF=UNKNOWN` means the current card/index has no exact GitHub source for that claim.
+
+1. **R01 — Crystal E0 / Project Aurora — `CONSISTENCY=UNKNOWN`.** Notion N01 `3edac84d-0547-81ad-9634-db49b600ad08` and N12 `3edac84d-0547-81d9-9165-ebbf2ad0222f` summarize temporal/currentness findings and report SHA `3ed3a53ee9b8445a5f2ebf16046f782a3095555e` as the frozen Crystal E0 source. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; local text not reviewed (JavaScript-disabled error). GitHub GH17 resolves to `docs/research/CONTINUUM_CURRENT_STATE_VS_TRAJECTORY_CROSS_PROJECT_EVIDENCE.md`, a Continuum/CONT-E0T cross-project note, not an identified Crystal E0 run artifact. Flag the source pointer for owner/source-map resolution; do not guess a replacement or conclude a Drive mismatch.
+2. **R02 — TCE / Snapshot / Observer / Continuity — `CONSISTENCY=UNKNOWN`.** Compared N06 `3e1ac84d-0547-8182-a48e-ed965721de93` and N01 `3edac84d-0547-81ad-9634-db49b600ad08`: bounded 04A/04B/Observer/SLOT outcomes and limitations. Drive D02 `1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs` and D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; body text not reviewed. Exact GitHub run source=UNKNOWN; 04B continuation and unestablished Observer benefit cannot be compared with Drive text.
+3. **R03 — Beacon experiments — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` and N06 `3e1ac84d-0547-8182-a48e-ed965721de93` say Condition B had five calls, no matched Condition A, no robust causal benefit, and disputed TAIL-02/T15 effect. Drive D02 `1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs` and D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; body text not reviewed. Exact GitHub run source=UNKNOWN; no Drive/GitHub consistency claim is supported.
+4. **R04 — GSJ semantic preflight — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` and N07 `3dbac84d-0547-8199-800d-c1132b75738b` describe 36/36 reported preflight agreement, not a formal pilot, with authorization open. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source for current v0.5.1 artifacts=UNKNOWN; no comparison with D01 content.
+5. **R05 — E0-B Typing Reliability — `CONSISTENCY=UNKNOWN`.** N04 `3e3ac84d-0547-8103-9762-eec24dadd4eb` and N01 `3edac84d-0547-81ad-9634-db49b600ad08` say U0 count/intent frozen 30/30, Phase 1B captured, labels pending, and blind run/A0/A1/B not run. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH03, PR #7 head `b14fbd76995c36c69526103a3598f4c753d5bb31`, files `experiments/memory-governance-e0b/RESULT.md` and `SOURCE_INTEGRITY_REPORT.md`, report 42 verbatim atoms, human confirmation pending, ground truth pending, blind run not run. This supports those Phase 1B limits but does not independently verify the separate 30/30 U0 claim or Drive content.
+6. **R06 — CONT-E0T — `CONSISTENCY=UNKNOWN`.** N08 `3bcac84d-0547-81eb-b7b3-cbd281bdcdc6` and N01 `3edac84d-0547-81ad-9634-db49b600ad08` report a historical run/result, raw evidence not recovered, and an unsealed reproduction package. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH19 commit `6847eb759d747955b8618021d2414f5ffa840584`, `docs/research/CONT_E0T_FINAL_PREREGISTRATION.md`, says separate owner GO required, authorization NOT_AUTHORIZED, and no reader/scoring/outputs; its cross-project summary records `CONT_E0T_EXECUTED=NO` and `CONT_E0T_RESULT=NOT_ESTABLISHED`. This is an unresolved chronology/status tension, not a final adjudication; remain UNKNOWN pending source/owner reconciliation.
+7. **R07 — Graphiti FM-13 → FM-17-pre — `CONSISTENCY=UNKNOWN`.** N05 `3d8ac84d-0547-8188-9133-c5e27c14f8f1` and N01 `3edac84d-0547-81ad-9634-db49b600ad08` describe an integrity/preflight gate with minor findings and no annotation/ablation outcome. Drive D04 `1Z-tjZGi_-2ETkWp3NHsmClZIZ_mC23KAOGvAScXLYGA` and D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH18 commit `080e1959fe6a3d996f2690059fcdc687dd5c832e`, `docs/research/fm17_pre/` including README and `EXTERNAL_FREEZE_ANCHOR.md`, documents the v1.3.1 external-root gate and says ablation not executed. Readiness/integrity evidence is not an outcome or Drive comparison.
+8. **R08 — SIGNET-TRACE / SOURCE-RECOVERY — `CONSISTENCY=UNKNOWN`.** N06 `3e1ac84d-0547-8182-a48e-ed965721de93` and N01 `3edac84d-0547-81ad-9634-db49b600ad08` state blocked at Step 0 by source gap and no end-to-end result. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH20 at `943281bda8e96bfb6b3613ab14941131e41d93eb`, `docs/research/SIGNET_TRACE_01.md`, withdraws “TRACE_COMPLETE” as official and records blocked at Step 0 / no result. GitHub supports bounded status; D01 remains unreviewed.
+9. **R09 — E0-A Ownership & Governance — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` summarizes five bounded checks as PASS on an open, unmerged branch. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH02 PR #6 head `c36c5bc1fb9ddd5a54a8499cf9439e35ba3ca19c`, `RESULTS.md` and `logs/test_run.txt`, lists PASS for tests 1, 2, 5, 11, and 12; PR #6 remains open. This corroborates the bounded reported result, not a Drive comparison or merged behavior.
+10. **R10 — Memory Admission Controller v0.1 — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` reports checkpointed suites at code commit `e286c50` and an unmerged lab implementation. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH04 PR #10 is OPEN/DRAFT at head `105b880e5439f2022ca052747bdf10bfee97262c`; `docs/checkpoints/MEMORY_ADMISSION_CONTROLLER_v0.1.md` pins code commit `e286c50aed03a7cd1956d36fc5b216f2f15ea81d` and labels the work lab-only, synthetic, non-Canon/non-runtime, with final audit pending. This is not live CI and cannot establish a Drive match.
+11. **R11 — Eiti continuity M1/M2/M2.1/M2.1.1/M2.2a/M3 — `CONSISTENCY=UNKNOWN`.** N02 `3ecac84d-0547-81b3-a8d2-e0aea1d44ba5`, N03 `3ecac84d-0547-81a7-9b7a-d6a916bf0709`, and N01 `3edac84d-0547-81ad-9634-db49b600ad08` distinguish main from the continuity-carrier branch. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH01 is `main@826e27abb9e1f114a11773adc2a79e1bc60927d0`; GH05/#13, GH06/#15, GH07/#16 are main merges; GH08–GH11/#14/#18/#20/#25 are merged to `lab/continuity-carrier-m1`, not main. Live metadata supports the branch map, not Drive consistency.
+12. **R12 — Ruslan Experimental Continuity Memory v0.1 — `CONSISTENCY=UNKNOWN`.** N02 `3ecac84d-0547-81b3-a8d2-e0aea1d44ba5` and N10 `3f0ac84d-0547-81fb-aec2-de6544dcfd95` describe an experimental memory and owner-review boundary. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH13 PR #28 head `ec1a3b665cc0da29a7e10773a142aca45bda31b2`, README, marks it experimental, non-authoritative, non-Canon, and separate from official memory; PR #28 remains OPEN/DRAFT. Scope/status only; no Drive comparison.
+13. **R13 — Cross-session AI Resume Test — `CONSISTENCY=UNKNOWN`.** N10 `3f0ac84d-0547-81fb-aec2-de6544dcfd95` treats its proposed first test as a candidate; N01 `3edac84d-0547-81ad-9634-db49b600ad08` records a separate PR #28 result. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH13 PR #28 head `ec1a3b665cc0da29a7e10773a142aca45bda31b2`, `tests/results/cross-session-v01/result.md`, reports PASS, 10/10 correct, listed errors zero, NEXT=OWNER REVIEW. Keep the distinct test scopes separate; no Drive match.
+14. **R14 — Owner Authority sandbox — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` and N10 `3f0ac84d-0547-81fb-aec2-de6544dcfd95` describe a synthetic boundary proposal without a verified run result. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH12 PR #27 head `2d6877fc937f3b09c93d68c9b950170b358495d8`, README, says synthetic-only, non-authoritative, no real grants/PEP/production authorization; test files exist but no result is cited in the reviewed material.
+15. **R15 — Working Research Workspace / Digital Identity Routing — `CONSISTENCY=UNKNOWN`.** N10 `3f0ac84d-0547-81fb-aec2-de6544dcfd95` describes a proposal/candidate test, not a result. Drive D05 `1-ZreAQzB43qTe67h6OG3egZX1zooqCtmYA_8yfu1FrM` and D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH14 PR #30 head `9c2410d0a026748ccb2f13cfef41d12040776ea6`, `WORKING_RESEARCH_WORKSPACE.md`, is an architecture proposal; PR #30 OPEN/DRAFT, no run result recorded. Proposal-only scope, not Drive consistency.
+16. **R16 — HLC Human ↔ LLM behavioral trace — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08`, N09 `3f0ac84d-0547-815e-95c6-d5dad0e842cf`, and N11 `3efac84d-0547-81c7-a04a-f81b001ed319` describe exploratory/non-blind limited traces and distinguish HLC-001B/not-run from Pilot-A/B. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source=UNKNOWN; no cross-source status assigned.
+17. **R17 — Human Cognition → Computational Reconstruction Map — `CONSISTENCY=UNKNOWN`.** Notion N09 `3f0ac84d-0547-815e-95c6-d5dad0e842cf` describes a dated synthesis. D03 `1ZwacnCQe-wREwE4sy1TM4eBkGj1H_t6mIrYYIA22-k` is unresolved/404 and is not substituted. Similar but distinct D06 ID `1ZwacnCQe-wREwE4syx1TM4eBkGj1H_t6mIrYYIA22-k` is owner-identified by the title “🧠 Human Cognition → Computational Reconstruction Map — Science · Velantrim · Open Questions · 2026-10-05”; its content accessibility/review is unknown. D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos` is owner-accessible but locally unreadable. Exact GitHub source=UNKNOWN; no content match claimed.
+18. **R18 — PAL-CONTAM-01 — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` lists a candidate/preregistration, not run or authorized, with no dedicated protocol reviewed. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source=UNKNOWN; do not infer result or absence.
+19. **R19 — FORK-01 — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` supports identifier discovery only; project, question, execution state, and primary evidence remain unknown. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source=UNKNOWN; no status promotion.
+20. **R20 — INTENT-CONTINUITY-EXTRACTION-01 — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` lists a candidate identifier but does not verify protocol/run. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source=UNKNOWN; no inference from identifier alone.
+21. **R21 — JST-CAUSAL-01 — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` lists a candidate, not a completed causal result or authorization. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source=UNKNOWN; do not treat candidate as run or authorized.
+22. **R22 — JST-RETRACT-02 — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` lists a candidate, not a retraction result or authorization. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source=UNKNOWN; no failure mode inferred.
+23. **R23 — TCE-BEACON-SHIFT-01 — `CONSISTENCY=UNKNOWN`.** N06 `3e1ac84d-0547-8182-a48e-ed965721de93` and N01 `3edac84d-0547-81ad-9634-db49b600ad08` describe an unstarted, unauthorized relevance/over-anchoring candidate. Drive D02 `1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs` and D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source=UNKNOWN; do not run automatically or claim an effect.
+
+**T3.1 counters:** `MATCH=0`; `PARTIAL_MISMATCH=0`; `STALE_NOTION=0`; `STALE_DRIVE=0`; `SOURCE_ONLY_NOTION=0`; `SOURCE_ONLY_DRIVE=0`; `UNKNOWN=23`. Every row names the specific claim and exact relevant source IDs; the cards remain unknown because Drive bodies could not be read in this session. GitHub-only confirmations or pointer tensions are not substitutes for the missing Drive-side comparison.
 
 ## D. Eiti-Wizard-Lab implementation and status map
 
@@ -537,31 +571,37 @@ SOURCE_ROLE=CROSS_SOURCE_AUDIT_CONTEXT_NOT_CURRENT_CRYSTAL_LIVE_STATE
 SOURCE_SYSTEM=GOOGLE_DRIVE\
 SOURCE_TITLE=Velantrim Experiment Registry — Evidence, Results & Findings\
 SOURCE_ID=1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos ([open](https://docs.google.com/document/d/1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos/edit))\
-SOURCE_ROLE=LONG_FORM_REGISTRY_COMPANION — NOT CONTENT_VERIFIED (JavaScript-disabled viewer error)
+SOURCE_ROLE=GLOBAL_REGISTRY_COMPANION; OWNER_VERIFIED_CONTENT_ACCESS=YES; LOCAL_CONTENT_REVIEW=NO (Google Docs JavaScript-disabled viewer error)
 
 **D02**\
 SOURCE_SYSTEM=GOOGLE_DRIVE\
 SOURCE_TITLE=TCE Snapshot / Observer Experiments — 04A · 04B · Observer-01 · SLOT-01\
 SOURCE_ID=1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs ([open](https://docs.google.com/document/d/1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs/edit))\
-SOURCE_ROLE=DEDICATED_EXPERIMENT_REPORT_POINTER — NOT CONTENT_VERIFIED (JavaScript-disabled viewer error)
+SOURCE_ROLE=DEDICATED_EXPERIMENT_REPORT; OWNER_VERIFIED_CONTENT_ACCESS=YES; LOCAL_CONTENT_REVIEW=NO (Google Docs JavaScript-disabled viewer error)
 
 **D03**\
 SOURCE_SYSTEM=GOOGLE_DRIVE\
-SOURCE_TITLE=Eiti-Wizard-Lab consolidated evidence companion (title as linked from Registry; document title not independently confirmed)\
-SOURCE_ID=1ZwacnCQe-wREwE4sy1TM4eBkGj1H_t6mIrYYIA22-k ([open](https://docs.google.com/document/d/1ZwacnCQe-wREwE4sy1TM4eBkGj1H_t6mIrYYIA22-k/edit))\
-SOURCE_ROLE=REGISTRY-LINKED_EITI_EVIDENCE_POINTER — NOT CONTENT_VERIFIED
+SOURCE_TITLE=Eiti-Wizard-Lab consolidated evidence companion (Registry-linked title; document title not confirmed)\
+SOURCE_ID=1ZwacnCQe-wREwE4sy1TM4eBkGj1H_t6mIrYYIA22-k ([current locator](https://docs.google.com/document/d/1ZwacnCQe-wREwE4sy1TM4eBkGj1H_t6mIrYYIA22-k/edit))\
+SOURCE_ROLE=REGISTRY-LINKED_EITI_EVIDENCE_POINTER; OWNER_VERIFIED_LOOKUP=NOT_FOUND/404; LOCATOR=UNRESOLVED/INACCESSIBLE; NOT EVIDENCE OF ABSENCE OR DELETION; DO NOT SUBSTITUTE D06
 
 **D04**\
 SOURCE_SYSTEM=GOOGLE_DRIVE\
 SOURCE_TITLE=Graphiti Fractal — Retrieval Relevance Research Track — Current\
 SOURCE_ID=1Z-tjZGi_-2ETkWp3NHsmClZIZ_mC23KAOGvAScXLYGA ([open](https://docs.google.com/document/d/1Z-tjZGi_-2ETkWp3NHsmClZIZ_mC23KAOGvAScXLYGA/edit))\
-SOURCE_ROLE=DEDICATED_RESEARCH_REPORT_POINTER — NOT CONTENT_VERIFIED (ID discovered in N05; document not opened here)
+SOURCE_ROLE=DEDICATED_RESEARCH_REPORT; OWNER_VERIFIED_CONTENT_ACCESS=YES; LOCAL_CONTENT_REVIEW=NO (Google Docs JavaScript-disabled viewer error)
 
 **D05**\
 SOURCE_SYSTEM=GOOGLE_DRIVE\
-SOURCE_TITLE=Google Drive architecture / long-form record (title as linked from N10; document title not independently confirmed)\
+SOURCE_TITLE=🧠 Eiti Working Memory & Research Workspace — Digital Identity Routing Policy · 2026-10-05\
 SOURCE_ID=1-ZreAQzB43qTe67h6OG3egZX1zooqCtmYA_8yfu1FrM ([open](https://docs.google.com/document/d/1-ZreAQzB43qTe67h6OG3egZX1zooqCtmYA_8yfu1FrM/edit))\
-SOURCE_ROLE=WORKSPACE_ARCHITECTURE_LINK — NOT CONTENT_VERIFIED (ID discovered in N10; document not opened here)
+SOURCE_ROLE=WORKSPACE_ARCHITECTURE_LINK; OWNER_VERIFIED_CONTENT_ACCESS=YES; LOCAL_CONTENT_REVIEW=NO (Google Docs JavaScript-disabled viewer error)
+
+**D06**\
+SOURCE_SYSTEM=GOOGLE_DRIVE\
+SOURCE_TITLE=🧠 Human Cognition → Computational Reconstruction Map — Science · Velantrim · Open Questions · 2026-10-05\
+SOURCE_ID=1ZwacnCQe-wREwE4syx1TM4eBkGj1H_t6mIrYYIA22-k\
+SOURCE_ROLE=SEPARATE_HUMAN_COGNITION_SOURCE_FOR_CARD_17; OWNER_VERIFIED_TITLE_AND_ID_ONLY; NOT_D03; CONTENT_ACCESSIBILITY_AND_LOCAL_CONTENT_REVIEW=UNKNOWN
 
 ### GitHub records
 
@@ -663,9 +703,9 @@ SOURCE_ROLE=OPEN_DRAFT_DONOR_CATALOG_NOT_EXPERIMENT_RESULT
 
 **GH17**\
 SOURCE_SYSTEM=GITHUB\
-SOURCE_TITLE=Crystal E0 frozen source pointer\
+SOURCE_TITLE=Registry-reported Crystal E0 source pointer — exact commit is a Continuum cross-project research note\
 SOURCE_ID=commit 3ed3a53ee9b8445a5f2ebf16046f782a3095555e ([commit](https://github.com/velantrian/velantrim-exocortex-crystal/commit/3ed3a53ee9b8445a5f2ebf16046f782a3095555e))\
-SOURCE_ROLE=REGISTRY_REPORTED_FROZEN_PRIMARY_SOURCE_POINTER_NOT_PATH_VERIFIED
+SOURCE_ROLE=COMMIT_REVIEWED; changed file `docs/research/CONTINUUM_CURRENT_STATE_VS_TRAJECTORY_CROSS_PROJECT_EVIDENCE.md` points to CONT-E0T preregistration; not verified as Crystal E0 primary evidence
 
 **GH18**\
 SOURCE_SYSTEM=GITHUB\
@@ -682,5 +722,5 @@ SOURCE_ROLE=FROZEN_SOURCE_POINTER_RAW_RUN_NOT_RECOVERED
 **GH20**\
 SOURCE_SYSTEM=GITHUB\
 SOURCE_TITLE=Crystal SIGNET-TRACE-01 / SOURCE-RECOVERY-01-R1 record\
-SOURCE_ID=branch `research/signet-trace-01-protocol-v0-1-20260927`, path `docs/research/SIGNET_TRACE_01.md`; Issue #489; Draft PR #490 ([record](https://github.com/velantrian/velantrim-exocortex-crystal/blob/research/signet-trace-01-protocol-v0-1-20260927/docs/research/SIGNET_TRACE_01.md), [issue](https://github.com/velantrian/velantrim-exocortex-crystal/issues/489), [PR](https://github.com/velantrian/velantrim-exocortex-crystal/pull/490))\
-SOURCE_ROLE=BLOCKED_TRACE_AND_SOURCE_RECOVERY_POINTER_REPORTED_BY_NOTION_NOT_LIVE_STATE_VERIFIED
+SOURCE_ID=branch `research/signet-trace-01-protocol-v0-1-20260927` at HEAD `943281bda8e96bfb6b3613ab14941131e41d93eb`, path `docs/research/SIGNET_TRACE_01.md`; Issue #489; Draft PR #490 ([record](https://github.com/velantrian/velantrim-exocortex-crystal/blob/research/signet-trace-01-protocol-v0-1-20260927/docs/research/SIGNET_TRACE_01.md), [issue](https://github.com/velantrian/velantrim-exocortex-crystal/issues/489), [PR](https://github.com/velantrian/velantrim-exocortex-crystal/pull/490))\
+SOURCE_ROLE=CURRENT_BRANCH_RECORD_REVIEWED; confirms Step-0 source gap, no end-to-end result, and no protocol validation/falsification

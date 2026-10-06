@@ -48,11 +48,13 @@ PR31_HEAD_AT_REVIEW_START=f6edf764b44d3065ab72508f1baea5aecdcc2dd4
 OVERALL_RESULT=PASS_WITH_SOURCE_LIMITATIONS; KEEP_PR_OPEN_DRAFT
 ```
 
-## POST-MERGE VERIFICATION
+## POST-MERGE VERIFICATION — HISTORICAL PR #31 CHECK
 
 ```text
 PR31=MERGED
 MERGE_COMMIT=3653345d7ba40ceab22d7d6d1781f4b2c0b8abcd
-CURRENT_MAIN=3653345d7ba40ceab22d7d6d1781f4b2c0b8abcd
+CURRENT_MAIN_AT_PR31_POST_MERGE_CHECK=3653345d7ba40ceab22d7d6d1781f4b2c0b8abcd
 GATEWAY_FILES_PRESENT=YES (AGENT_START_HERE.md; docs/research/EXPERIMENT_EVIDENCE_INDEX.md; docs/research/evidence-index-validation.md)
 ```
+
+This records the historical verification at PR #31 post-merge; it is not a permanent current-main pointer. Current main is mutable and must be checked live; do not infer it from this historical gateway checkpoint.

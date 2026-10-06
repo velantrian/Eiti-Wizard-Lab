@@ -687,7 +687,13 @@
       const needle = query.trim(), folded = needle.toLowerCase();
       const max = Math.max(1, Math.min(100, Number.isFinite(Number(limit)) ? Math.floor(Number(limit)) : 20));
       const includeArchived = !!(searchOptions && searchOptions.includeArchived);
-      const candidates = dbRows(db, 'SELECT * FROM wm_items' + (includeArchived ? '' : ' WHERE archived_at IS NULL'));
+      // Optional project scope is applied to the candidate set BEFORE ranking and LIMIT.
+      const projectId = searchOptions && searchOptions.project_id ? String(searchOptions.project_id) : null;
+      const where = [];
+      const params = [];
+      if (!includeArchived) where.push('archived_at IS NULL');
+      if (projectId) { where.push('project_id=?'); params.push(projectId); }
+      const candidates = dbRows(db, 'SELECT * FROM wm_items' + (where.length ? ' WHERE ' + where.join(' AND ') : ''), params);
       const matches = [];
       for (const item of candidates) {
         const title = (item.title || '').toLowerCase();

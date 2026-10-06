@@ -33,7 +33,7 @@ Fresh-agent sequence:
 1. Read this file.
 2. Initialize/query `wm_orientation` (bounded; archived excluded; research not loaded).
 3. Continue the user's operational Working state from it (`wm_list`, `wm_get`, `wm_search`, `wm_related`, `wm_project_sources`).
-4. Enter the Research Plane only when the user/task requires research (`research_route`, or the index directly).
+4. Enter the Research Plane only when the user/task requires research (`research_route` with `card` or `query`, or the index directly). Its fields are verbatim index text; read the whole `STATUS` / `EXECUTION_VERDICT`, never a single token from it.
 5. For research claims: Research Index → primary evidence.
 6. Never promote research into Working state automatically (B1 has no agent write path at all).
 7. Never treat a model summary as an owner decision or as evidence.

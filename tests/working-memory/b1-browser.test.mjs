@@ -72,13 +72,27 @@ try {
   assert.equal(first.out.wm_orientation.in_progress[0].next_action, 'Continue browser step');
   assert.equal(first.out.wm_project_sources.sources[0].locator, 'local://synthetic/b1');
   assert.equal(first.fp, fpBefore, 'read tools mutated wm_*');
-  const route = await page.evaluate(async () => JSON.parse(await executeAgentTool('research_route', { line: 21 })));
+  const route = await page.evaluate(async () => JSON.parse(await executeAgentTool('research_route', { query: 'NOT_RUN' })));
   assert.equal(route.plane, 'RESEARCH'); assert.equal(route.promoted_to_working, false);
-  assert.equal(route.index_loaded, true); assert.equal(route.cards[0].execution_verdict_token, 'NOT_RUN');
+  assert.equal(route.index_loaded, true); assert.equal(route.parse_status, 'OK'); assert(route.matched >= 1, 'NOT_RUN query found no research cards');
+  assert(route.cards.every(c => !('execution_verdict_token' in c)), 'derived verdict field present');
+  const both = await page.evaluate(async () => JSON.parse(await executeAgentTool('research_route', { card: 1, query: 'x' })));
+  assert.equal(both.ok, false); assert.equal(both.code, 'VALIDATION');
   const fpAfterRoute = await page.evaluate(() => JSON.stringify(['wm_projects','wm_sources','wm_items','wm_item_sources','wm_relations','wm_changes'].map(t => window._wizDB.exec('SELECT * FROM ' + t + ' ORDER BY 1,2'))));
   assert.equal(fpAfterRoute, fpBefore, 'research_route mutated wm_*');
   const prompt = await page.evaluate(() => window.WmAgentRead.GUIDANCE.includes('DEFAULT_RUNTIME_MODE = WORKING'));
   assert(prompt);
+
+  // WORKING PLANE FAILURE != RESEARCH PLANE FAILURE: research_route must work with WmStore unavailable.
+  const noWm = await page.evaluate(async () => {
+    const saved = window.WmStore; window.WmStore = null;
+    try {
+      return { research: JSON.parse(await executeAgentTool('research_route', { query: 'NOT_RUN' })), working: JSON.parse(await executeAgentTool('wm_orientation', {})) };
+    } finally { window.WmStore = saved; }
+  });
+  assert.equal(noWm.research.index_loaded, true); assert(noWm.research.matched >= 1);
+  assert.equal(noWm.working.ok, false); assert.equal(noWm.working.code, 'WORKING_MEMORY_UNAVAILABLE');
+  assert.equal(await page.evaluate(() => !!window.WmStore), true, 'WmStore restored');
 
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => window._wizDB && window.WmStore && window.WmAgentRead, { timeout: 30000 });

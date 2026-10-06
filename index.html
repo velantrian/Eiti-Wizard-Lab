@@ -6158,6 +6158,15 @@ function wizDecayTick() {
 
 // ════════════════════════════════════════════════════════════════
 
+// Research Index loader for research_route: fresh over the network (SW is network-first for this path);
+// reports OFFLINE_CACHE when the service worker served its offline fallback copy.
+async function wizResearchIndexLoader() {
+  const res = await fetch(window.ResearchRouter.INDEX_PATH, { cache: 'no-store' });
+  if (!res.ok) return null;
+  const served = res.headers.get(window.ResearchRouter.OFFLINE_HEADER);
+  return { text: await res.text(), source: served === window.ResearchRouter.OFFLINE_VALUE ? 'OFFLINE_CACHE' : 'NETWORK' };
+}
+
 async function executeAgentTool(name, args) {
   args = args || {};
   try {
@@ -6375,13 +6384,19 @@ async function executeAgentTool(name, args) {
       }
 
       // ── working-memory-agent-read-bridge-v0.1 (B1): read-only; no wm_* writes, no research promotion ──
+      // research_route is the Research Plane: it never needs SQLite or Working Memory (plane failures are independent).
+      case 'research_route': {
+        if (!window.ResearchRouter) return JSON.stringify({ ok: false, plane: 'RESEARCH', code: 'ROUTER_UNAVAILABLE', entrypoint: 'docs/research/EXPERIMENT_EVIDENCE_INDEX.md' });
+        return JSON.stringify(await window.ResearchRouter.routeWithLoader(wizResearchIndexLoader, args));
+      }
       case 'wm_orientation': case 'wm_list_projects': case 'wm_list': case 'wm_get': case 'wm_search':
-      case 'wm_related': case 'wm_project_sources': case 'research_route': {
-        await wizInitSQLite();
-        if (!window.WmStore || !window.WmAgentRead) return 'Working Memory unavailable (SQLite not initialised).';
-        const bridge = window.WmAgentRead.create({ store: window.WmStore, router: window.ResearchRouter,
-          loadResearchIndex: async () => { const r = await fetch(window.ResearchRouter.INDEX_PATH, { cache: 'no-store' }); return r.ok ? r.text() : null; } });
-        return JSON.stringify(await bridge.execute(name, args));
+      case 'wm_related': case 'wm_project_sources': {
+        try { await wizInitSQLite(); } catch (_) {}
+        if (!window.WmAgentRead) return JSON.stringify({ ok: false, plane: 'WORKING', code: 'WORKING_MEMORY_UNAVAILABLE', error: 'Working Memory read bridge not loaded' });
+        const store = window.WmStore || null;
+        if (!window._wmAgentBridge || window._wmAgentBridge.store !== store)
+          window._wmAgentBridge = { store, bridge: window.WmAgentRead.create({ store, router: window.ResearchRouter, loadResearchIndex: wizResearchIndexLoader }) };
+        return JSON.stringify(await window._wmAgentBridge.bridge.execute(name, args));
       }
 
       case 'task_add': {

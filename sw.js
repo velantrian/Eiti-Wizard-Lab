@@ -1,6 +1,8 @@
 // sw.js — Eiti Wizard Service Worker v1.8.10
-const CACHE_NAME = 'eiti-wizard-lab-v1.8.10-wm0'; // bump on every change to a cached static asset
+const CACHE_NAME = 'eiti-wizard-lab-v1.8.10-wm1'; // bump on every change to a cached static asset
 const BASE_PATH = '/Eiti-Wizard-Lab';
+// Research Index (navigation only, not runtime authority): served network-first so online clients get a fresh copy.
+const RESEARCH_INDEX_PATH = BASE_PATH + '/docs/research/EXPERIMENT_EVIDENCE_INDEX.md';
 
 const STATIC_ASSETS = [
   BASE_PATH + '/',
@@ -26,7 +28,13 @@ const STATIC_ASSETS = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(STATIC_ASSETS);
+      // cache:'reload' bypasses the HTTP cache: plain addAll() can precache stale scripts (e.g. max-age on static hosts)
+      // right after a CACHE_NAME bump. Any failed asset still fails the install, like addAll.
+      return Promise.all(STATIC_ASSETS.map(asset =>
+        fetch(new Request(asset, { cache: 'reload' })).then(response => {
+          if (!response || !response.ok) throw new TypeError('precache failed: ' + asset);
+          return cache.put(asset, response);
+        })));
     })
   );
   self.skipWaiting();
@@ -81,6 +89,26 @@ self.addEventListener('fetch', event => {
           });
         });
       })
+    );
+    return;
+  }
+
+  // Research Index — network-first (exact path only). The cache is an offline fallback; a cached copy is
+  // flagged with X-Eiti-Served-From so callers can tell it may be stale. Not precached (never blocks install).
+  if (url.pathname === RESEARCH_INDEX_PATH) {
+    event.respondWith(
+      fetch(request, { cache: 'no-store' }).then(response => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+        }
+        return response;
+      }).catch(() => caches.open(CACHE_NAME).then(cache => cache.match(request)).then(cached => {
+        if (!cached) return new Response('', { status: 504, statusText: 'Offline' });
+        const headers = new Headers(cached.headers);
+        headers.set('X-Eiti-Served-From', 'sw-offline-cache');
+        return new Response(cached.body, { status: cached.status, statusText: cached.statusText, headers });
+      }))
     );
     return;
   }

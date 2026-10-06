@@ -1,5 +1,5 @@
 // DB-level acceptance tests for the isolated wm_* core data layer.
-// Uses the repository's SQL.js/WASM build and synthetic records only.
+// Uses the repository SQL.js/WASM build and synthetic records only.
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
@@ -12,34 +12,41 @@ const WM = require(path.join(ROOT, 'working-memory.js'));
 const INDEX = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const results = [];
 let SQL;
+const NOW = '2026-10-06T11:23:45.000Z';
 
 async function T(id, name, fn) {
   try { await fn(); results.push([id, 'PASS', name]); console.log(`PASS  [${id}] ${name}`); }
-  catch (error) { results.push([id, 'FAIL', name, error.message]); console.log(`FAIL  [${id}] ${name}\n      ${error.stack.split('\n').slice(0, 4).join('\n      ')}`); }
+  catch (error) { results.push([id, 'FAIL', name, error.message]); console.log(`FAIL  [${id}] ${name}\n      ${error.stack.split('\n').slice(0, 5).join('\n      ')}`); }
 }
 function makeDb() { return new SQL.Database(); }
 function count(db, sql, params) { const r = db.exec(sql, params || []); return r.length ? r[0].values[0][0] : 0; }
-function dump(db, table) { return JSON.stringify(db.exec(`SELECT * FROM ${table} ORDER BY 1`)); }
 function byteCopy(value) { return value ? new Uint8Array(value).slice() : null; }
 function bytesEqual(a, b) { return !!a && !!b && a.length === b.length && a.every((v, i) => v === b[i]); }
-function makeStore(db, persistence) {
+function makeStore(db, persistence, options) {
   let sequence = 0;
   const saves = [];
   const persist = persistence || (async currentDb => {
-    const bytes = byteCopy(currentDb.export());
-    saves.push(bytes);
+    const bytes = byteCopy(currentDb.export()); saves.push(bytes);
     return { verified: bytesEqual(bytes, byteCopy(bytes)), bytes: bytes.length, method: 'test-readback' };
   });
-  const store = WM.create(db, { persist: () => persist(db), idFactory: prefix => prefix + String(++sequence).padStart(6, '0') });
+  const store = WM.create(db, Object.assign({ now: () => NOW, actorClass: 'SYSTEM', persist: () => persist(db),
+    idFactory: prefix => prefix + String(++sequence).padStart(6, '0') }, options || {}));
   return { store, saves };
 }
 function ok(response, label) { assert(response && response.ok && response.saved, `${label || 'mutation'} not durably saved: ${JSON.stringify(response)}`); return response.data; }
-function makeItem(workId, title, extra) { return Object.assign({ work_id: workId, title }, extra || {}); }
+function projectData(project_id = 'test-project', code = 'EITI', extra = {}) {
+  return Object.assign({ project_id, code, name: 'Synthetic project' }, extra);
+}
+function itemData(title, extra = {}) {
+  return Object.assign({ project_id: 'test-project', title, provenance_class: 'USER_NOTE' }, extra);
+}
+async function createProject(store, id, code, extra) { return ok(await store.createProject(projectData(id, code, extra))); }
+async function createItem(store, title, extra) { return ok(await store.createItem(itemData(title, extra))); }
 
 (async () => {
   SQL = await initSqlJs({ wasmBinary: WASM });
 
-  await T('schema', 'schema init is additive, idempotent, and contains the requested wm_* tables and item columns', async () => {
+  await T('schema-contract', 'schema is additive/idempotent and exposes exactly the corrected project, source, item, and change fields', async () => {
     const db = makeDb();
     db.run('CREATE TABLE unrelated_sentinel(id TEXT PRIMARY KEY, value TEXT)');
     db.run("INSERT INTO unrelated_sentinel VALUES('keep','unchanged')");
@@ -49,313 +56,420 @@ function makeItem(workId, title, extra) { return Object.assign({ work_id: workId
     const before = db.exec("SELECT type,name,sql FROM sqlite_master WHERE name LIKE 'wm_%' ORDER BY type,name")[0].values;
     WM.initSchema(db);
     assert.deepStrictEqual(db.exec("SELECT type,name,sql FROM sqlite_master WHERE name LIKE 'wm_%' ORDER BY type,name")[0].values, before);
-    const columns = db.exec('PRAGMA table_info(wm_items)')[0].values.map(row => row[1]);
-    for (const name of WM.ITEM_COLUMNS) assert(columns.includes(name), `wm_items.${name} missing`);
+    for (const [table, expected] of Object.entries(WM.TABLE_COLUMNS)) {
+      const actual = db.exec(`PRAGMA table_info(${table})`)[0].values.map(row => row[1]);
+      assert.deepStrictEqual(actual, expected, `${table} fields/order`);
+    }
+    assert.deepStrictEqual(WM.ITEM_COLUMNS, ['work_id','project_id','thread','type','status','priority','title','summary','body_md','current_question','status_note','next_action','provenance_class','tags_json','non_canon','created_at','updated_at','resolved_at','archived_at']);
     assert.strictEqual(count(db, "SELECT count(*) FROM unrelated_sentinel WHERE value='unchanged'"), 1);
     assert.strictEqual(count(db, "SELECT count(*) FROM sqlite_master WHERE name LIKE 'wiz_ref_%'"), 0);
+    const stale = makeDb();
+    stale.run('CREATE TABLE wm_projects(project_id TEXT PRIMARY KEY,name TEXT,description TEXT,created_at TEXT,updated_at TEXT)');
+    assert.throws(() => WM.initSchema(stale), error => error.code === 'WM_SCHEMA_MISMATCH');
+    assert.strictEqual(count(stale, "SELECT count(*) FROM sqlite_master WHERE name LIKE 'wm_%'"), 1);
   });
 
-  await T('startup', 'app SQLite startup initializes the WM schema/store without changing the legacy save path', async () => {
-    const a = INDEX.indexOf('async function wizInitSQLite()');
-    const b = INDEX.indexOf('// ── Инициализация при старте', a);
-    assert(a >= 0 && b > a, 'SQLite startup block missing');
-    assert(INDEX.includes('<script src="working-memory.js"></script>'), 'WM module not loaded by index.html');
-    const db = makeDb(), ctx = { console, Date, Math, JSON, Uint8Array, Promise, Object, Array, Set, Number, String, Error, TextEncoder, crypto: globalThis.crypto };
-    ctx.window = ctx; ctx.globalThis = ctx; ctx._wizDB = db; ctx.initSqlJs = async () => SQL;
-    ctx._wizIDBGet = async () => null; ctx._wizIDBSet = () => {};
-    ctx._wizSaveDBAsync = async () => ({ verified: true });
-    vm.createContext(ctx);
-    vm.runInContext(fs.readFileSync(path.join(ROOT, 'working-memory.js'), 'utf8'), ctx, { filename: 'working-memory.js' });
-    const start = INDEX.slice(a, b);
-    vm.runInContext(start, ctx, { filename: 'index.html#sqlite-startup' });
-    ctx._wizInitMemSchema();
-    assert(ctx.WmStore, 'WmStore not initialized');
-    for (const table of ['wm_projects','wm_sources','wm_items','wm_item_sources','wm_relations','wm_changes','wm_items_fts']) assert.strictEqual(count(db, 'SELECT count(*) FROM sqlite_master WHERE name=?', [table]), 1, table);
-    assert.strictEqual(count(db, "SELECT count(*) FROM sqlite_master WHERE name LIKE 'wiz_ref_%'"), 0, 'WM init touched wiz_ref namespace');
-  });
-
-  await T(1, 'project/source/item create and stable unique IDs', async () => {
+  await T('exact-enums', 'all original TYPE, STATUS, PRIORITY, and PROVENANCE_CLASS values are accepted; invented values are rejected', async () => {
     const db = makeDb(), { store } = makeStore(db);
-    const project = ok(await store.createProject({ project_id: 'project-a', name: 'A project' }), 'project');
-    assert.strictEqual(project.project_id, 'project-a');
-    const source = ok(await store.createSource({ source_id: 'source-a', title: 'A source', project_id: project.project_id }), 'source');
-    assert.strictEqual(source.project_id, project.project_id);
-    const first = ok(await store.createItem({ title: 'First item', project_id: project.project_id }), 'first item');
-    const second = ok(await store.createItem({ title: 'Second item' }), 'second item');
-    assert.match(first.work_id, /^wm_/); assert.match(second.work_id, /^wm_/); assert.notStrictEqual(first.work_id, second.work_id);
-    assert.strictEqual(store.getItem(first.work_id).work_id, first.work_id, 'generated ID was not stable after read-back');
-    assert.strictEqual(count(db, 'SELECT count(*) FROM wm_sources'), 1);
+    await createProject(store);
+    assert.deepStrictEqual(WM.ENUMS.type, ['NOTE','QUOTE','VALUE','QUESTION','HYPOTHESIS','DECISION','MODEL_PROPOSAL','DONOR_CANDIDATE','EXPERIMENT','FINDING','SYSTEM','TASK','SOURCE_POINTER']);
+    assert.deepStrictEqual(WM.ENUMS.status, ['CURRENT','OPEN','IN_PROGRESS','BLOCKED','UNKNOWN','RESOLVED','COMPLETED','REJECTED','SUPERSEDED']);
+    assert.deepStrictEqual(WM.ENUMS.priority, ['P0','P1','P2','P3','TAIL']);
+    assert.deepStrictEqual(WM.ENUMS.provenance_class, ['USER_NOTE','USER_DECISION','USER_QUOTE','MODEL_PROPOSAL','MODEL_SUMMARY','PROJECT_SOURCE','EXTERNAL_SOURCE','EXPERIMENT_RESULT']);
+    assert.notStrictEqual(WM.ENUMS.provenance_class.indexOf('MODEL_SUMMARY'), WM.ENUMS.provenance_class.indexOf('USER_DECISION'));
+    assert.notStrictEqual(WM.ENUMS.provenance_class.indexOf('MODEL_PROPOSAL'), WM.ENUMS.provenance_class.indexOf('USER_DECISION'));
+    for (const type of WM.ENUMS.type) await createItem(store, 'Type ' + type, { type });
+    for (const status of WM.ENUMS.status) {
+      const extra = { status };
+      if (['BLOCKED','RESOLVED','REJECTED'].includes(status)) extra.status_note = `${status} test reason`;
+      await createItem(store, 'Status ' + status, extra);
+    }
+    for (const priority of WM.ENUMS.priority) await createItem(store, 'Priority ' + priority, { priority });
+    for (const provenance_class of WM.ENUMS.provenance_class) await createItem(store, 'Provenance ' + provenance_class, { provenance_class });
+    for (const type of ['RISK','BLOCKER','INSIGHT','RESEARCH','CANON']) {
+      const response = await store.createItem(itemData('Invalid type ' + type, { type }));
+      assert(!response.ok && response.code === 'INVALID_ENUM', type);
+    }
+    for (const status of ['DONE','COMPLETE','DEFERRED']) {
+      const response = await store.createItem(itemData('Invalid status ' + status, { status }));
+      assert(!response.ok && response.code === 'INVALID_ENUM', status);
+    }
+    for (const priority of ['LOW','NORMAL','HIGH','URGENT']) {
+      const response = await store.createItem(itemData('Invalid priority ' + priority, { priority }));
+      assert(!response.ok && response.code === 'INVALID_ENUM', priority);
+    }
+    for (const provenance_class of ['USER_STATED','SOURCE_DERIVED','AGENT_DERIVED','MIXED','UNKNOWN']) {
+      const response = await store.createItem(itemData('Invalid provenance ' + provenance_class, { provenance_class }));
+      assert(!response.ok && response.code === 'INVALID_ENUM', provenance_class);
+    }
+    assert.strictEqual(count(db, 'SELECT count(*) FROM wm_items'), WM.ENUMS.type.length + WM.ENUMS.status.length + WM.ENUMS.priority.length + WM.ENUMS.provenance_class.length);
   });
 
-  await T(2, 'invalid type/status/priority/provenance and relation enums are rejected', async () => {
+  await T('work-id', 'automatic WRK IDs are immutable, transaction-serialized, deterministic, and never reused after archive', async () => {
     const db = makeDb(), { store } = makeStore(db);
-    const badType = await store.createItem(makeItem('bad-type', 'Bad', { type: 'CANON' }));
-    const badStatus = await store.createItem(makeItem('bad-status', 'Bad', { status: 'DONE' }));
-    const badPriority = await store.createItem(makeItem('bad-priority', 'Bad', { priority: 'P0' }));
-    const badProvenance = await store.createItem(makeItem('bad-provenance', 'Bad', { provenance_class: 'MADE_UP' }));
-    assert(!badType.ok && badType.code === 'INVALID_ENUM'); assert(!badStatus.ok && badStatus.code === 'INVALID_ENUM');
-    assert(!badPriority.ok && badPriority.code === 'INVALID_ENUM'); assert(!badProvenance.ok && badProvenance.code === 'INVALID_ENUM');
-    ok(await store.createItem(makeItem('valid-a', 'A'))); ok(await store.createItem(makeItem('valid-b', 'B')));
-    const relation = await store.addRelation({ from_work_id: 'valid-a', to_work_id: 'valid-b', relation_type: 'INFERRED' });
-    assert(!relation.ok && relation.code === 'INVALID_ENUM');
-    assert.strictEqual(count(db, 'SELECT count(*) FROM wm_items'), 2);
+    await createProject(store, 'project-eiti', 'EITI');
+    const first = await createItem(store, 'First', { project_id: 'project-eiti' });
+    const second = await createItem(store, 'Second', { project_id: 'project-eiti' });
+    assert.strictEqual(first.work_id, 'WRK-EITI-20261006-001');
+    assert.strictEqual(second.work_id, 'WRK-EITI-20261006-002');
+    assert.strictEqual(first.thread, '');
+    const manual = await store.createItem(itemData('Manual ID', { work_id: 'WRK-EITI-20261006-099' }));
+    assert(!manual.ok && manual.code === 'WORK_ID_IMMUTABLE');
+    const updated = await store.updateItem(first.work_id, { work_id: 'WRK-EITI-20261006-099' });
+    assert(!updated.ok && updated.code === 'VALIDATION');
+    assert.throws(() => db.run('UPDATE wm_items SET work_id=? WHERE work_id=?', ['WRK-EITI-20261006-099', first.work_id]));
+    ok(await store.archiveItem(first.work_id));
+    const third = await createItem(store, 'Third', { project_id: 'project-eiti' });
+    assert.strictEqual(third.work_id, 'WRK-EITI-20261006-003');
+    const concurrent = await Promise.all([store.createItem(itemData('Concurrent A', { project_id: 'project-eiti' })), store.createItem(itemData('Concurrent B', { project_id: 'project-eiti' }))]);
+    assert.deepStrictEqual(concurrent.map(r => r.data.work_id), ['WRK-EITI-20261006-004','WRK-EITI-20261006-005']);
+    assert.strictEqual(WM.MULTI_TAB_WRITES, 'NOT_SUPPORTED_IN_V0_1');
   });
 
-  await T(3, 'non_canon is always true and cannot be changed in SQL or through the API', async () => {
+  await T('project-contract', 'project code is required, normalized, unique, and suitable for IDs; project_id is required on items', async () => {
     const db = makeDb(), { store } = makeStore(db);
-    const denied = await store.createItem(makeItem('false-canon', 'Forbidden', { non_canon: false }));
+    const project = await createProject(store, 'project-a', 'eiti', { summary: 'Quick project brief' });
+    assert.strictEqual(project.code, 'EITI');
+    assert.strictEqual(project.summary, 'Quick project brief');
+    const duplicate = await store.createProject(projectData('project-b', 'EITI'));
+    assert(!duplicate.ok && duplicate.code === 'PROJECT_CODE_CONFLICT');
+    const badCode = await store.createProject(projectData('project-c', 'has spaces'));
+    assert(!badCode.ok && badCode.code === 'VALIDATION');
+    const absent = await store.createItem({ title: 'Missing project', provenance_class: 'USER_NOTE' });
+    assert(!absent.ok && absent.code === 'VALIDATION');
+    const unknown = await store.createItem(itemData('Unknown project', { project_id: 'not-created' }));
+    assert(!unknown.ok && unknown.code === 'NOT_FOUND');
+    const row = db.exec("SELECT project_id,code,name,summary,created_at,updated_at FROM wm_projects WHERE project_id='project-a'")[0].values[0];
+    assert.deepStrictEqual(row.slice(0,4), ['project-a','EITI','Synthetic project','Quick project brief']);
+  });
+
+  await T('thread-quick-capture', 'thread defaults to an unambiguous empty string and summary/body export as normalized null-or-text values', async () => {
+    const db = makeDb(), { store } = makeStore(db);
+    await createProject(store);
+    const quick = await createItem(store, 'Quick Capture', { summary: '', body_md: 'Captured body' });
+    assert.strictEqual(quick.thread, '');
+    assert.strictEqual(quick.summary, null);
+    assert.strictEqual(quick.body_md, 'Captured body');
+    const withSummary = await createItem(store, 'Quick Capture summary', { summary: 'One-line note', body_md: null });
+    const exported = JSON.parse(store.exportJSON());
+    assert.strictEqual(exported.items.find(row => row.work_id === quick.work_id).summary, null);
+    assert.strictEqual(exported.items.find(row => row.work_id === quick.work_id).body_md, 'Captured body');
+    assert.strictEqual(exported.items.find(row => row.work_id === withSummary.work_id).summary, 'One-line note');
+    assert.strictEqual(exported.items.find(row => row.work_id === withSummary.work_id).body_md, null);
+    assert(exported.items.every(row => typeof row.thread === 'string'));
+  });
+
+  await T('source-navigation', 'source surface, role, required locator, revision, and note implement the WHERE TO LOOK model', async () => {
+    const db = makeDb(), { store } = makeStore(db);
+    await createProject(store);
+    const source = ok(await store.createSource({ source_id: 'source-one', project_id: 'test-project', surface: 'GITHUB', role: 'PRIMARY', title: 'Source navigation', locator: 'https://example.test/repo', revision: 'abc123', note: 'Pinned review location' }));
+    assert.deepStrictEqual(WM.ENUMS.surface, ['GITHUB','NOTION','DRIVE','LOCAL','WEB','CHAT','OTHER']);
+    assert.deepStrictEqual(WM.ENUMS.role, ['PRIMARY','EVIDENCE','CONTEXT','NAVIGATION','REFERENCE']);
+    assert.strictEqual(source.locator, 'https://example.test/repo');
+    assert.strictEqual(source.role, 'PRIMARY');
+    assert.strictEqual(source.surface, 'GITHUB');
+    for (const surface of WM.ENUMS.surface) {
+      const accepted = await store.createSource({ title: 'Surface ' + surface, locator: 'fixture://' + surface.toLowerCase(), surface, role: 'REFERENCE' });
+      assert(accepted.ok, surface);
+    }
+    for (const role of WM.ENUMS.role) {
+      const accepted = await store.createSource({ title: 'Role ' + role, locator: 'fixture://' + role.toLowerCase(), surface: 'OTHER', role });
+      assert(accepted.ok, role);
+    }
+    const missing = await store.createSource({ title: 'No locator', surface: 'WEB', role: 'REFERENCE' });
+    assert(!missing.ok && missing.code === 'VALIDATION');
+    const badSurface = await store.createSource({ title: 'Bad surface', locator: 'https://example.test', surface: 'EMAIL', role: 'REFERENCE' });
+    assert(!badSurface.ok && badSurface.code === 'INVALID_ENUM');
+    const badRole = await store.createSource({ title: 'Bad role', locator: 'https://example.test', surface: 'WEB', role: 'OWNER' });
+    assert(!badRole.ok && badRole.code === 'INVALID_ENUM');
+    assert.strictEqual(count(db, 'SELECT count(*) FROM wm_sources WHERE locator IS NULL OR trim(locator)=\'\''), 0);
+    assert.deepStrictEqual(WM.TABLE_COLUMNS.wm_sources, ['source_id','project_id','surface','role','title','locator','revision','note','created_at','updated_at']);
+  });
+
+  await T('non-canon', 'non_canon=1 remains a hard invariant in API and SQL', async () => {
+    const db = makeDb(), { store } = makeStore(db);
+    await createProject(store);
+    const denied = await store.createItem(itemData('Forbidden', { non_canon: false }));
     assert(!denied.ok && denied.code === 'NON_CANON_INVARIANT');
-    const item = ok(await store.createItem(makeItem('always-non-canon', 'Working note')));
+    const item = await createItem(store, 'Always non-canon');
     assert.strictEqual(item.non_canon, 1);
-    assert.throws(() => db.run("UPDATE wm_items SET non_canon=0 WHERE work_id='always-non-canon'"));
-    assert.strictEqual(store.getItem(item.work_id).non_canon, 1);
+    assert.throws(() => db.run('UPDATE wm_items SET non_canon=0 WHERE work_id=?', [item.work_id]));
   });
 
-  await T(4, 'BLOCKED and RESOLVED require status_note; RESOLVED also receives resolved_at', async () => {
+  await T('lifecycle', 'UNRESOLVED is exactly OPEN/IN_PROGRESS/BLOCKED/UNKNOWN; RESOLVED and COMPLETED are distinct views', async () => {
     const db = makeDb(), { store } = makeStore(db);
-    const blocked = await store.createItem(makeItem('blocked-invalid', 'Blocked', { status: 'BLOCKED' }));
-    const resolved = await store.createItem(makeItem('resolved-invalid', 'Resolved', { status: 'RESOLVED' }));
+    await createProject(store);
+    const ids = {};
+    for (const status of WM.UNRESOLVED_STATUSES) {
+      const extra = { status };
+      if (['BLOCKED','RESOLVED'].includes(status)) extra.status_note = 'Waiting on dependency';
+      ids[status] = (await createItem(store, 'Unresolved ' + status, extra)).work_id;
+    }
+    for (const status of ['CURRENT','RESOLVED','COMPLETED','REJECTED','SUPERSEDED']) {
+      const extra = { status };
+      if (['RESOLVED','REJECTED'].includes(status)) extra.status_note = 'Lifecycle note/reason';
+      ids[status] = (await createItem(store, 'Terminal or current ' + status, extra)).work_id;
+    }
+    assert.deepStrictEqual(store.listUnresolved().map(row => row.status).sort(), ['BLOCKED','IN_PROGRESS','OPEN','UNKNOWN']);
+    assert(!store.listUnresolved().some(row => row.status === 'CURRENT'));
+    assert.deepStrictEqual(store.listResolved().map(row => row.status), ['RESOLVED']);
+    assert.deepStrictEqual(store.listCompleted().map(row => row.status), ['COMPLETED']);
+    assert.notDeepStrictEqual(store.listResolved().map(row => row.work_id), store.listCompleted().map(row => row.work_id));
+    assert.strictEqual(WM.UNRESOLVED_STATUSES.join(','), 'OPEN,IN_PROGRESS,BLOCKED,UNKNOWN');
+    assert(!store.listUnresolved().some(row => ['CURRENT','RESOLVED','COMPLETED','REJECTED','SUPERSEDED'].includes(row.status)));
+    const blocked = await store.createItem(itemData('Bad blocked', { status: 'BLOCKED' }));
+    const rejected = await store.createItem(itemData('Bad rejected', { status: 'REJECTED' }));
+    const badResolved = await store.createItem(itemData('Bad resolved', { status: 'RESOLVED' }));
     assert(!blocked.ok && blocked.code === 'STATUS_NOTE_REQUIRED');
-    assert(!resolved.ok && resolved.code === 'STATUS_NOTE_REQUIRED');
-    const b = ok(await store.createItem(makeItem('blocked-valid', 'Blocked', { status: 'BLOCKED', status_note: 'Waiting for access' })));
-    const r = ok(await store.createItem(makeItem('resolved-valid', 'Resolved', { status: 'RESOLVED', status_note: 'Verified complete' })));
-    assert(b.status_note.trim()); assert(r.status_note.trim()); assert(r.resolved_at && Number.isFinite(Date.parse(r.resolved_at)));
-    assert.throws(() => db.run("UPDATE wm_items SET status='RESOLVED', resolved_at=NULL WHERE work_id='blocked-valid'"));
+    assert(!rejected.ok && rejected.code === 'STATUS_NOTE_REQUIRED');
+    assert(!badResolved.ok && badResolved.code === 'STATUS_NOTE_REQUIRED');
+    const resolved = store.getItem(ids.RESOLVED);
+    assert(resolved.status_note && resolved.resolved_at);
   });
 
-  await T(5, 'SUPERSEDED preserves the old row and explicit relation without inference', async () => {
+  await T('supersede-archive', 'SUPERSEDED retains the old row; archive changes archived_at only and blocks hard delete', async () => {
     const db = makeDb(), { store } = makeStore(db);
-    ok(await store.createItem(makeItem('old-item', 'Prior approach')));
-    ok(await store.createItem(makeItem('new-item', 'Replacement')));
-    ok(await store.createItem(makeItem('third-item', 'Another item')));
-    ok(await store.addRelation({ from_work_id: 'new-item', to_work_id: 'old-item', relation_type: 'SUPERSEDES' }));
-    ok(await store.updateItem('old-item', { status: 'SUPERSEDED', status_note: 'Replaced by new-item' }));
-    ok(await store.addRelation({ from_work_id: 'third-item', to_work_id: 'new-item', relation_type: 'DEPENDS_ON' }));
-    assert.strictEqual(count(db, "SELECT count(*) FROM wm_items WHERE work_id='old-item'"), 1);
-    assert.strictEqual(store.getItem('old-item').status, 'SUPERSEDED');
-    assert.strictEqual(count(db, "SELECT count(*) FROM wm_relations WHERE from_work_id='third-item' AND to_work_id='old-item'"), 0, 'transitive graph edge was inferred');
+    await createProject(store);
+    const old = await createItem(store, 'Prior approach');
+    const newer = await createItem(store, 'Replacement');
+    ok(await store.addRelation({ from_work_id: newer.work_id, to_work_id: old.work_id, relation_type: 'SUPERSEDES' }));
+    ok(await store.updateItem(old.work_id, { status: 'SUPERSEDED', status_note: 'Replaced by a newer item' }));
+    assert.strictEqual(store.getItem(old.work_id).status, 'SUPERSEDED');
+    const before = store.getItem(newer.work_id);
+    const archived = ok(await store.archiveItem(newer.work_id));
+    assert(archived.archived_at);
+    assert.strictEqual(archived.status, 'OPEN');
+    assert.strictEqual(archived.updated_at, before.updated_at);
+    const change = store.listChanges(newer.work_id).at(-1);
+    assert.deepStrictEqual(JSON.parse(change.changed_fields_json), ['archived_at']);
+    assert.strictEqual(count(db, 'SELECT count(*) FROM wm_items WHERE work_id=?', [newer.work_id]), 1);
+    assert.throws(() => db.run('DELETE FROM wm_items WHERE work_id=?', [newer.work_id]));
+    assert(!store.listItems().some(row => row.work_id === newer.work_id));
   });
 
-  await T(6, 'archive sets archived_at and preserves the row; hard deletion is blocked', async () => {
-    const db = makeDb(), { store } = makeStore(db);
-    ok(await store.createItem(makeItem('archive-me', 'Keep row')));
-    const archived = ok(await store.archiveItem('archive-me'));
-    assert(archived.archived_at); assert.strictEqual(count(db, "SELECT count(*) FROM wm_items WHERE work_id='archive-me'"), 1);
-    assert.throws(() => db.run("DELETE FROM wm_items WHERE work_id='archive-me'"));
-    assert.strictEqual(store.listItems().length, 0);
-    assert.strictEqual(store.searchItems('Keep row').length, 0);
+  await T('change-history', 'change log is append-only and preserves actor_class plus changed_fields_json', async () => {
+    const db = makeDb(), { store } = makeStore(db, null, { actorClass: 'USER' });
+    await createProject(store);
+    const item = await createItem(store, 'Actor record');
+    const createChange = store.listChanges(item.work_id)[0];
+    assert.strictEqual(createChange.actor_class, 'USER');
+    assert(JSON.parse(createChange.changed_fields_json).includes('provenance_class'));
+    ok(await store.updateItem(item.work_id, { summary: 'Updated summary' }));
+    const updateChange = store.listChanges(item.work_id).at(-1);
+    assert.strictEqual(updateChange.actor_class, 'USER');
+    assert.deepStrictEqual(JSON.parse(updateChange.changed_fields_json), ['summary']);
+    const manual = ok(await store.appendChange({ work_id: item.work_id, change_type: 'MODEL_REVIEW', actor_class: 'MODEL', changed_fields_json: ['summary'], before_json: { summary: null }, after_json: { summary: 'Updated summary' } }));
+    assert.strictEqual(manual.actor_class, 'MODEL');
+    assert.deepStrictEqual(JSON.parse(manual.changed_fields_json), ['summary']);
+    assert.throws(() => db.run('UPDATE wm_changes SET change_type=\'EDITED\' WHERE change_id=?', [manual.change_id]));
+    assert.throws(() => db.run('DELETE FROM wm_changes WHERE change_id=?', [manual.change_id]));
+    const provenance = await createItem(store, 'Nonconflated provenance', { provenance_class: 'MODEL_SUMMARY' });
+    const proposal = await createItem(store, 'Proposal provenance', { provenance_class: 'MODEL_PROPOSAL' });
+    const decision = await createItem(store, 'User decision provenance', { provenance_class: 'USER_DECISION' });
+    assert.deepStrictEqual([provenance.provenance_class, proposal.provenance_class, decision.provenance_class], ['MODEL_SUMMARY','MODEL_PROPOSAL','USER_DECISION']);
   });
 
-  await T(7, 'item-source links persist and enforce at most one explicit primary source', async () => {
+  await T('search-ranking', 'search ranking is deterministic: exact WORK_ID, exact title, title contains, tag, summary, body', async () => {
     const db = makeDb(), { store } = makeStore(db);
-    ok(await store.createItem(makeItem('linked-item', 'Linked')));
-    ok(await store.createSource({ source_id: 's-a', title: 'Source A' }));
-    ok(await store.createSource({ source_id: 's-b', title: 'Source B' }));
-    ok(await store.addItemSource({ work_id: 'linked-item', source_id: 's-a', is_primary: true }));
-    ok(await store.addItemSource({ work_id: 'linked-item', source_id: 's-b', is_primary: true }));
-    assert.strictEqual(count(db, "SELECT count(*) FROM wm_item_sources WHERE work_id='linked-item'"), 2);
-    assert.strictEqual(count(db, "SELECT count(*) FROM wm_item_sources WHERE work_id='linked-item' AND is_primary=1"), 1);
-    assert.strictEqual(count(db, "SELECT is_primary FROM wm_item_sources WHERE work_id='linked-item' AND source_id='s-a'"), 0);
-  });
-
-  await T(8, 'explicit relation types, endpoint checks, and self-relation rejection', async () => {
-    const db = makeDb(), { store } = makeStore(db);
-    ok(await store.createItem(makeItem('rel-a', 'A'))); ok(await store.createItem(makeItem('rel-b', 'B')));
-    const self = await store.addRelation({ from_work_id: 'rel-a', to_work_id: 'rel-a', relation_type: 'RELATED_TO' });
-    assert(!self.ok && self.code === 'SELF_RELATION');
-    const missing = await store.addRelation({ from_work_id: 'rel-a', to_work_id: 'missing', relation_type: 'RELATED_TO' });
-    assert(!missing.ok && missing.code === 'NOT_FOUND');
-    ok(await store.addRelation({ relation_id: 'rel-explicit', from_work_id: 'rel-a', to_work_id: 'rel-b', relation_type: 'BLOCKED_BY' }));
-    assert.strictEqual(count(db, 'SELECT count(*) FROM wm_relations'), 1);
-    assert.strictEqual(count(db, "SELECT count(*) FROM wm_relations WHERE relation_type='BLOCKED_BY'"), 1);
-  });
-
-  await T(9, 'tags persist and deterministic search ranking is work ID, exact title, title contains, tag, summary, body', async () => {
-    const db = makeDb(), { store } = makeStore(db);
-    const records = [
-      makeItem('needle', 'ID match'), makeItem('exact-title', 'needle'), makeItem('title-contains', 'Needle extended'),
-      makeItem('tag-match', 'Tag record', { tags: ['needle'] }), makeItem('summary-match', 'Summary record', { summary: 'A needle in summary' }),
-      makeItem('body-match', 'Body record', { body_md: 'A needle in body' }),
-    ];
-    for (const item of records) ok(await store.createItem(item));
-    assert.deepStrictEqual(store.searchItems('needle').map(item => item.work_id), ['needle','exact-title','title-contains','tag-match','summary-match','body-match']);
-    assert.deepStrictEqual(JSON.parse(store.getItem('tag-match').tags_json), ['needle']);
+    await createProject(store);
+    const idMatch = await createItem(store, 'ID target');
+    const exactTitle = await createItem(store, 'needle');
+    const containsTitle = await createItem(store, 'Needle extended');
+    const tag = await createItem(store, 'Tag record', { tags: ['needle'] });
+    const summary = await createItem(store, 'Summary record', { summary: 'A needle in summary' });
+    const body = await createItem(store, 'Body record', { body_md: 'A needle in body' });
+    const idTitle = await createItem(store, idMatch.work_id);
+    const results = store.searchItems('needle').map(row => row.work_id);
+    assert.deepStrictEqual(results, [exactTitle.work_id, containsTitle.work_id, tag.work_id, summary.work_id, body.work_id]);
+    assert.deepStrictEqual(store.searchItems(idMatch.work_id).map(row => row.work_id), [idMatch.work_id, idTitle.work_id]);
     assert.strictEqual(store.searchItems('needle', 2).length, 2);
+    assert.strictEqual(JSON.parse(store.getItem(tag.work_id).tags_json)[0], 'needle');
   });
 
-  await T(10, 'search defaults to 20 and caps the requested result count at 100', async () => {
+  await T('search-limits', 'search defaults to 20 and caps the requested result count at 100', async () => {
     const db = makeDb(); WM.initSchema(db);
-    const at = '2026-10-06T00:00:00.000Z';
-    for (let i = 0; i < 105; i++) db.run(`INSERT INTO wm_items(work_id,type,status,priority,title,provenance_class,tags_json,non_canon,created_at,updated_at)
-      VALUES(?, 'NOTE','OPEN','NORMAL',?,'UNKNOWN','[]',1,?,?)`, ['batch-' + String(i).padStart(3,'0'), 'batch search ' + i, at, at]);
-    const { store } = makeStore(db);
-    assert.strictEqual(store.searchItems('batch').length, 20);
-    assert.strictEqual(store.searchItems('batch', 500).length, 100);
+    const raw = WM.create(db, { persist: async () => ({ verified: true }), now: () => NOW });
+    await createProject(raw);
+    for (let i = 0; i < 105; i++) await createItem(raw, 'batch search ' + i);
+    assert.strictEqual(raw.searchItems('batch').length, 20);
+    assert.strictEqual(raw.searchItems('batch', 500).length, 100);
   });
 
-  await T(11, 'search covers title, summary, body, tags, and exact work_id independently', async () => {
+  await T('source-links-relations', 'source links and explicit relations validate endpoints without inferred edges', async () => {
     const db = makeDb(), { store } = makeStore(db);
-    ok(await store.createItem(makeItem('exact-id-77', 'Unrelated title')));
-    ok(await store.createItem(makeItem('summary-search', 'Title', { summary: 'quartz summary' })));
-    ok(await store.createItem(makeItem('body-search', 'Other title', { body_md: 'quartz body' })));
-    ok(await store.createItem(makeItem('tag-search', 'Different', { tags: ['quartz'] })));
-    for (const query of ['exact-id-77','quartz']) assert(store.searchItems(query).length > 0, query);
-    assert.strictEqual(store.searchItems('quartz').map(row => row.work_id).join(','), 'tag-search,summary-search,body-search');
+    await createProject(store);
+    const itemA = await createItem(store, 'A');
+    const itemB = await createItem(store, 'B');
+    const sourceA = ok(await store.createSource({ title: 'Source A', project_id: 'test-project', surface: 'WEB', role: 'EVIDENCE', locator: 'https://example.test/a' }));
+    const sourceB = ok(await store.createSource({ title: 'Source B', project_id: 'test-project', surface: 'LOCAL', role: 'REFERENCE', locator: 'local://fixture/b' }));
+    ok(await store.addItemSource({ work_id: itemA.work_id, source_id: sourceA.source_id, is_primary: true }));
+    ok(await store.addItemSource({ work_id: itemA.work_id, source_id: sourceB.source_id, is_primary: true }));
+    assert.strictEqual(count(db, 'SELECT count(*) FROM wm_item_sources WHERE work_id=? AND is_primary=1', [itemA.work_id]), 1);
+    const self = await store.addRelation({ from_work_id: itemA.work_id, to_work_id: itemA.work_id, relation_type: 'RELATED_TO' });
+    const missing = await store.addRelation({ from_work_id: itemA.work_id, to_work_id: 'WRK-EITI-20261006-099', relation_type: 'RELATED_TO' });
+    assert(!self.ok && self.code === 'SELF_RELATION');
+    assert(!missing.ok && missing.code === 'NOT_FOUND');
+    ok(await store.addRelation({ from_work_id: itemB.work_id, to_work_id: itemA.work_id, relation_type: 'DEPENDS_ON' }));
+    assert.strictEqual(count(db, 'SELECT count(*) FROM wm_relations'), 1);
   });
 
-  await T(12, 'unresolved excludes resolved, superseded, and archived items; completed aliases resolved', async () => {
+  await T('non-project-thread-db', 'SQLite itself rejects missing project_id, null thread, and invalid enum/locator values', async () => {
     const db = makeDb(), { store } = makeStore(db);
-    ok(await store.createItem(makeItem('open-q', 'Open question', { status: 'OPEN' })));
-    ok(await store.createItem(makeItem('blocked-q', 'Blocked question', { status: 'BLOCKED', status_note: 'Waiting' })));
-    ok(await store.createItem(makeItem('resolved-q', 'Resolved question', { status: 'RESOLVED', status_note: 'Done' })));
-    ok(await store.createItem(makeItem('superseded-q', 'Superseded question', { status: 'SUPERSEDED' })));
-    ok(await store.createItem(makeItem('archived-q', 'Archived question'))); ok(await store.archiveItem('archived-q'));
-    assert.deepStrictEqual(store.listUnresolved().map(row => row.work_id).sort(), ['blocked-q','open-q']);
-    assert.deepStrictEqual(store.listResolved().map(row => row.work_id), ['resolved-q']);
-    assert.deepStrictEqual(store.listCompleted().map(row => row.work_id), ['resolved-q']);
+    await createProject(store);
+    assert.throws(() => db.run("INSERT INTO wm_items(work_id,project_id,thread,type,status,priority,title,provenance_class,tags_json,non_canon,created_at,updated_at) VALUES('WRK-EITI-20261006-901',NULL,'','NOTE','OPEN','P2','bad','USER_NOTE','[]',1,?,?)", [NOW,NOW]));
+    assert.throws(() => db.run("INSERT INTO wm_items(work_id,project_id,thread,type,status,priority,title,provenance_class,tags_json,non_canon,created_at,updated_at) VALUES('WRK-EITI-20261006-902','test-project',NULL,'NOTE','OPEN','P2','bad','USER_NOTE','[]',1,?,?)", [NOW,NOW]));
+    assert.throws(() => db.run("INSERT INTO wm_sources(source_id,surface,role,title,locator,created_at,updated_at) VALUES('no-locator','WEB','REFERENCE','Bad',NULL,?,?)", [NOW,NOW]));
   });
 
-  await T(13, 'change log appends mutation records and rejects update/delete', async () => {
-    const db = makeDb(), { store } = makeStore(db);
-    ok(await store.createProject({ project_id: 'log-p', name: 'Log project' }));
-    ok(await store.createItem(makeItem('log-i', 'Log item')));
-    ok(await store.updateItem('log-i', { summary: 'updated' }));
-    const appended = ok(await store.appendChange({ work_id: 'log-i', change_type: 'MANUAL_NOTE', before_json: null, after_json: { detail: 'recorded' } }));
-    assert(appended.change_id.startsWith('wmc_'));
-    assert(store.listChanges('log-i').length >= 3);
-    assert.throws(() => db.run("UPDATE wm_changes SET change_type='EDITED' WHERE change_id=?", [appended.change_id]));
-    assert.throws(() => db.run("DELETE FROM wm_changes WHERE change_id=?", [appended.change_id]));
+  await T('export-roundtrip', 'eiti-working-memory-export/1 round-trips corrected schemas; equivalent imports no-op without overwrite', async () => {
+    const sourceDb = makeDb(), source = makeStore(sourceDb).store;
+    await createProject(source, 'roundtrip-project', 'RT', { summary: 'Roundtrip project' });
+    const sourceRef = ok(await source.createSource({ source_id: 'roundtrip-source', project_id: 'roundtrip-project', surface: 'NOTION', role: 'PRIMARY', title: 'Source', locator: 'https://notion.example/page', revision: 'r7', note: 'Pinned source' }));
+    const question = await createItem(source, 'Question', { project_id: 'roundtrip-project', type: 'QUESTION', status: 'OPEN', priority: 'P1', provenance_class: 'USER_QUOTE', summary: 'Question summary', body_md: 'Question body', thread: 'thread-a', tags: ['alpha','beta'] });
+    await createItem(source, 'Resolved note', { project_id: 'roundtrip-project', status: 'RESOLVED', status_note: 'Verified', provenance_class: 'MODEL_SUMMARY' });
+    await createItem(source, 'Completed note', { project_id: 'roundtrip-project', status: 'COMPLETED', provenance_class: 'USER_DECISION' });
+    ok(await source.addItemSource({ work_id: question.work_id, source_id: sourceRef.source_id, is_primary: true }));
+    const completed = source.listCompleted()[0];
+    ok(await source.addRelation({ relation_id: 'roundtrip-rel', from_work_id: completed.work_id, to_work_id: question.work_id, relation_type: 'DERIVED_FROM' }));
+    ok(await source.appendChange({ work_id: question.work_id, change_type: 'FIXTURE', actor_class: 'USER', changed_fields_json: ['summary'], after_json: { source: 'synthetic' } }));
+    const exportText = source.exportJSON(), decoded = JSON.parse(exportText);
+    assert.strictEqual(decoded.format, 'eiti-working-memory-export/1');
+    for (const key of ['projects','sources','items','item_sources','relations','changes']) assert(Array.isArray(decoded[key]), key);
+    assert.deepStrictEqual(Object.keys(decoded.projects[0]).sort(), WM.TABLE_COLUMNS.wm_projects.slice().sort());
+    assert.deepStrictEqual(Object.keys(decoded.sources[0]).sort(), WM.TABLE_COLUMNS.wm_sources.slice().sort());
+    assert(decoded.changes.every(row => row.actor_class && Array.isArray(JSON.parse(row.changed_fields_json))));
+    const targetDb = makeDb(), target = makeStore(targetDb).store;
+    const imported = ok(await target.importJSON(exportText), 'import'); assert(imported.imported > 0);
+    assert.deepStrictEqual(JSON.parse(target.exportJSON()), decoded);
+    const before = target.exportJSON();
+    const repeated = await target.importJSON(exportText);
+    assert(repeated.ok && repeated.saved && repeated.noOp && repeated.data.unchanged > 0);
+    assert.strictEqual(target.exportJSON(), before);
+    const bad = JSON.parse(exportText); bad.items[0].work_id = 'WRK-WRONG-20261006-001';
+    const invalid = await makeStore(makeDb()).store.importJSON(bad);
+    assert(!invalid.ok && invalid.code === 'INVALID_WORK_ID');
   });
 
-  await T(14, 'duplicate create and failed transaction leave no partial rows', async () => {
-    const db = makeDb(), { store } = makeStore(db);
-    ok(await store.createItem(makeItem('unique-id', 'Original')));
-    const duplicate = await store.createItem(makeItem('unique-id', 'Second title'));
-    assert(!duplicate.ok && duplicate.code === 'ID_CONFLICT');
-    assert.strictEqual(count(db, "SELECT count(*) FROM wm_items WHERE work_id='unique-id'"), 1);
-    assert.strictEqual(store.getItem('unique-id').title, 'Original');
-  });
-
-  await T(15, 'SQLite transaction rolls back all newly staged import rows on a same-ID conflict', async () => {
+  await T('import-conflict', 'same-ID/different-content import fails closed with no partial changes', async () => {
     const donorDb = makeDb(), donor = makeStore(donorDb).store;
-    ok(await donor.createProject({ project_id: 'new-project', name: 'Would be staged first' }));
-    ok(await donor.createItem(makeItem('shared-item', 'Donor title')));
+    await createProject(donor, 'conflict-project', 'CF');
+    const item = await createItem(donor, 'Donor version', { project_id: 'conflict-project' });
     const payload = JSON.parse(donor.exportJSON());
     const targetDb = makeDb(), target = makeStore(targetDb).store;
-    ok(await target.createItem(makeItem('shared-item', 'Different title')));
+    const initial = await target.importJSON(payload);
+    ok(initial);
     const before = target.exportJSON();
-    const conflict = await target.importJSON(JSON.stringify(payload));
-    assert(!conflict.ok && conflict.code === 'IMPORT_CONFLICT');
-    assert.strictEqual(target.exportJSON(), before, 'partial import was not rolled back');
-    assert.strictEqual(count(targetDb, "SELECT count(*) FROM wm_projects WHERE project_id='new-project'"), 0);
+    const changed = JSON.parse(JSON.stringify(payload));
+    changed.items.find(row => row.work_id === item.work_id).title = 'Different content';
+    const outcome = await target.importJSON(changed);
+    assert(!outcome.ok && outcome.saved === false && outcome.code === 'IMPORT_CONFLICT');
+    assert.strictEqual(target.exportJSON(), before);
   });
 
-  await T(16, 'awaited durable save and independent SQLite-byte reload preserve item rows and stable IDs', async () => {
+  await T('export-validation', 'import rejects invalid/missing corrected fields and never silently overwrites', async () => {
+    const db = makeDb(), { store } = makeStore(db);
+    await createProject(store);
+    const item = await createItem(store, 'Export item');
+    const payload = JSON.parse(store.exportJSON());
+    const badSource = JSON.parse(JSON.stringify(payload));
+    badSource.sources.push({ source_id: 's', project_id: 'test-project', surface: 'WEB', role: 'REFERENCE', title: 'Bad source', locator: null, revision: null, note: null, created_at: NOW, updated_at: NOW });
+    const rejected = await makeStore(makeDb()).store.importJSON(badSource);
+    assert(!rejected.ok);
+    const missingActor = JSON.parse(JSON.stringify(payload));
+    delete missingActor.changes[0].actor_class;
+    const missing = await makeStore(makeDb()).store.importJSON(missingActor);
+    assert(!missing.ok && missing.code === 'INVALID_EXPORT');
+    const nullActor = JSON.parse(JSON.stringify(payload));
+    nullActor.changes[0].actor_class = null;
+    const actorLost = await makeStore(makeDb()).store.importJSON(nullActor);
+    assert(!actorLost.ok && actorLost.code === 'INVALID_EXPORT');
+    const missingChangeFields = JSON.parse(JSON.stringify(payload));
+    missingChangeFields.changes[0].changed_fields_json = null;
+    const fieldsLost = await makeStore(makeDb()).store.importJSON(missingChangeFields);
+    assert(!fieldsLost.ok && fieldsLost.code === 'INVALID_EXPORT');
+    const unsupported = JSON.parse(JSON.stringify(payload)); unsupported.format = 'eiti-working-memory-export/2';
+    const version = await store.importJSON(unsupported);
+    assert(!version.ok && version.code === 'INVALID_EXPORT');
+    assert(store.getItem(item.work_id));
+  });
+
+  await T('durability', 'awaited byte persistence and independent SQLite reload preserve corrected rows and IDs', async () => {
     const db = makeDb(); let saved = null, acknowledgements = 0;
     const { store } = makeStore(db, async currentDb => {
       const written = byteCopy(currentDb.export()); saved = byteCopy(written); acknowledgements++;
       const readBack = byteCopy(saved);
       return { verified: bytesEqual(written, readBack), bytes: readBack.length, method: 'independent-test-readback' };
     });
-    const item = ok(await store.createItem({ title: 'Durable row', tags: ['durable'] }));
-    assert(saved && acknowledgements === 1);
+    await createProject(store);
+    const item = await createItem(store, 'Durable row', { tags: ['durable'], provenance_class: 'MODEL_PROPOSAL' });
+    assert(saved && acknowledgements === 2);
     const reloaded = new SQL.Database(saved);
-    const afterReload = WM.create(reloaded, { persist: async () => ({ verified: true }) });
+    const afterReload = WM.create(reloaded, { persist: async () => ({ verified: true }), now: () => NOW });
     assert.strictEqual(afterReload.getItem(item.work_id).title, 'Durable row');
     assert.strictEqual(afterReload.getItem(item.work_id).non_canon, 1);
-    assert.deepStrictEqual(JSON.parse(afterReload.getItem(item.work_id).tags_json), ['durable']);
+    assert.strictEqual(afterReload.getItem(item.work_id).thread, '');
+    assert.strictEqual(afterReload.getItem(item.work_id).provenance_class, 'MODEL_PROPOSAL');
   });
 
-  await T(17, 'missing or failed persistence returns failure and restores the prior WM namespace', async () => {
-    const db = makeDb(); let calls = 0;
+  await T('persistence-rollback', 'failed or unavailable persistence restores WM state and reports failure', async () => {
+    const db = makeDb(); let calls = 0, failNext = false;
     const { store } = makeStore(db, async currentDb => {
-      calls++;
-      if (calls === 1) throw new Error('simulated IndexedDB failure');
+      calls++; if (failNext && calls === 1) throw new Error('simulated IndexedDB failure');
       return { verified: true, bytes: currentDb.export().length };
     });
-    const failed = await store.createItem(makeItem('not-durable', 'Must roll back'));
+    await createProject(store);
+    calls = 0; failNext = true;
+    const failed = await store.createItem(itemData('Must roll back'));
     assert(!failed.ok && !failed.saved && failed.rolledBack && failed.rollbackDurable);
-    assert.strictEqual(store.getItem('not-durable'), null);
-    assert.strictEqual(calls, 2, 'compensating durable save did not run');
-    const noPersistDb = makeDb(), noPersist = WM.create(noPersistDb);
-    const noSave = await noPersist.createItem(makeItem('no-adapter', 'Must fail closed'));
-    assert(!noSave.ok && !noSave.saved && noSave.code === 'PERSISTENCE_UNAVAILABLE');
-    assert.strictEqual(count(noPersistDb, 'SELECT count(*) FROM wm_items'), 0);
+    assert.strictEqual(store.searchItems('Must roll back').length, 0);
+    assert.strictEqual(calls, 2);
+    const noPersistDb = makeDb(), noPersist = WM.create(noPersistDb, { now: () => NOW });
+    const noProject = await noPersist.createProject(projectData());
+    assert(!noProject.ok && noProject.code === 'PERSISTENCE_UNAVAILABLE');
+    assert.strictEqual(count(noPersistDb, 'SELECT count(*) FROM wm_projects'), 0);
   });
 
-  await T(18, 'unverifiable persistence does not report saved; uncertain rollback poisons future writes', async () => {
-    const db = makeDb();
-    const { store } = makeStore(db, async () => ({ verified: false }));
-    const first = await store.createItem(makeItem('uncertain-item', 'Unverified'));
+  await T('persistence-uncertain', 'unverifiable rollback poisons future writes instead of claiming durability', async () => {
+    const db = makeDb(), { store } = makeStore(db, async () => ({ verified: false }));
+    const first = await store.createProject(projectData());
     assert(!first.ok && !first.saved && !first.rollbackDurable && first.persistenceState === 'UNKNOWN');
-    assert.strictEqual(store.getItem('uncertain-item'), null, 'in-memory state was not compensated');
-    const second = await store.createItem(makeItem('another-item', 'Blocked until reload'));
+    const second = await store.createProject(projectData('second','SEC'));
     assert(!second.ok && second.code === 'PERSISTENCE_UNCERTAIN');
   });
 
-  await T(19, 'single-tab write serialization is documented and concurrent same-instance commits both persist', async () => {
-    const db = makeDb(); let saves = 0;
-    const { store } = makeStore(db, async currentDb => { await Promise.resolve(); saves++; return { verified: currentDb.export().length > 0 }; });
-    const results = await Promise.all([store.createItem(makeItem('parallel-a', 'Parallel A')), store.createItem(makeItem('parallel-b', 'Parallel B'))]);
-    assert(results.every(entry => entry.ok && entry.saved)); assert.strictEqual(saves, 2);
-    assert.strictEqual(count(db, 'SELECT count(*) FROM wm_items'), 2);
+  await T('single-tab', 'same-instance concurrent writes serialize and MULTI_TAB_WRITES stays unsupported', async () => {
+    const db = makeDb(); let saves = 0; const { store } = makeStore(db, async currentDb => { await Promise.resolve(); saves++; return { verified: currentDb.export().length > 0 }; });
+    await createProject(store);
+    saves = 0;
+    const results = await Promise.all([store.createItem(itemData('Parallel A')), store.createItem(itemData('Parallel B'))]);
+    assert(results.every(entry => entry.ok && entry.saved));
+    assert.strictEqual(saves, 2);
+    assert.deepStrictEqual(results.map(entry => entry.data.work_id), ['WRK-EITI-20261006-001','WRK-EITI-20261006-002']);
     assert.strictEqual(WM.MULTI_TAB_WRITES, 'NOT_SUPPORTED_IN_V0_1');
   });
 
-  await T(20, 'versioned JSON export/import round-trips all six datasets; equivalent same-ID import is a no-op', async () => {
-    const sourceDb = makeDb(), source = makeStore(sourceDb).store;
-    ok(await source.createProject({ project_id: 'roundtrip-project', name: 'Roundtrip' }));
-    ok(await source.createSource({ source_id: 'roundtrip-source', title: 'Source', project_id: 'roundtrip-project', metadata_json: { kind: 'fixture' } }));
-    ok(await source.createItem(makeItem('roundtrip-a', 'Question', { project_id: 'roundtrip-project', type: 'QUESTION', tags: ['alpha','beta'] })));
-    ok(await source.createItem(makeItem('roundtrip-b', 'Answer', { status: 'RESOLVED', status_note: 'Checked' })));
-    ok(await source.addItemSource({ work_id: 'roundtrip-a', source_id: 'roundtrip-source', is_primary: true }));
-    ok(await source.addRelation({ relation_id: 'roundtrip-rel', from_work_id: 'roundtrip-b', to_work_id: 'roundtrip-a', relation_type: 'DERIVED_FROM' }));
-    ok(await source.appendChange({ work_id: 'roundtrip-a', change_type: 'FIXTURE', after_json: { source: 'synthetic' } }));
-    const exportText = source.exportJSON(), decoded = JSON.parse(exportText);
-    assert.strictEqual(decoded.format, 'eiti-working-memory-export/1');
-    for (const key of ['projects','sources','items','item_sources','relations','changes']) assert(Array.isArray(decoded[key]), key);
-    const targetDb = makeDb(), target = makeStore(targetDb).store;
-    const imported = ok(await target.importJSON(exportText), 'import'); assert.strictEqual(imported.imported > 0, true);
-    assert.deepStrictEqual(JSON.parse(target.exportJSON()), decoded);
-    const before = target.exportJSON();
-    const repeated = await target.importJSON(exportText);
-    assert(repeated.ok && repeated.saved && repeated.noOp && repeated.data.unchanged > 0);
-    assert.strictEqual(target.exportJSON(), before);
-  });
-
-  await T(21, 'same-ID/different-content import fails closed without overwriting or partial changes', async () => {
-    const donorDb = makeDb(), donor = makeStore(donorDb).store;
-    ok(await donor.createProject({ project_id: 'conflict-stage', name: 'Stage' }));
-    ok(await donor.createItem(makeItem('conflict-id', 'Donor version')));
-    const payload = JSON.parse(donor.exportJSON());
-    const targetDb = makeDb(), target = makeStore(targetDb).store;
-    ok(await target.createItem(makeItem('conflict-id', 'Local version')));
-    const original = target.getItem('conflict-id'), before = target.exportJSON();
-    const outcome = await target.importJSON(payload);
-    assert(!outcome.ok && outcome.saved === false && outcome.code === 'IMPORT_CONFLICT');
-    assert.strictEqual(target.getItem('conflict-id').title, original.title);
-    assert.strictEqual(target.exportJSON(), before);
-    assert.strictEqual(count(targetDb, "SELECT count(*) FROM wm_projects WHERE project_id='conflict-stage'"), 0);
-  });
-
-  await T(22, 'archive and relation updates maintain FTS index consistency; item update reindexes searchable text', async () => {
-    const db = makeDb(), { store } = makeStore(db);
-    ok(await store.createItem(makeItem('fts-update', 'Before text', { summary: 'old summary' })));
-    assert.strictEqual(count(db, "SELECT count(*) FROM wm_items_fts WHERE title MATCH 'Before'"), 1);
-    ok(await store.updateItem('fts-update', { title: 'After text', summary: 'new summary', tags: ['newtag'] }));
-    assert.strictEqual(count(db, "SELECT count(*) FROM wm_items_fts WHERE title MATCH 'Before'"), 0);
-    assert.strictEqual(count(db, "SELECT count(*) FROM wm_items_fts WHERE title MATCH 'After'"), 1);
-    assert.strictEqual(store.searchItems('newtag')[0].work_id, 'fts-update');
-  });
-
-  await T(23, 'schema and module integration preserve the requested forbidden namespaces', async () => {
+  await T('schema-startup', 'application SQLite startup initializes WM without altering legacy save path or forbidden namespaces', async () => {
+    const a = INDEX.indexOf('async function wizInitSQLite()');
+    const b = INDEX.indexOf('// ── Инициализация при старте', a);
+    assert(a >= 0 && b > a);
+    assert(INDEX.includes('<script src="working-memory.js"></script>'));
+    const db = makeDb();
+    const ctx = { console, Date, Math, JSON, Uint8Array, Promise, Object, Array, Set, Number, String, Error, TextEncoder, crypto: globalThis.crypto };
+    ctx.window = ctx; ctx.globalThis = ctx; ctx._wizDB = db; ctx.initSqlJs = async () => SQL;
+    ctx._wizIDBGet = async () => null; ctx._wizIDBSet = () => {};
+    ctx._wizSaveDBAsync = async () => ({ verified: true });
+    vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync(path.join(ROOT, 'working-memory.js'), 'utf8'), ctx, { filename: 'working-memory.js' });
+    vm.runInContext(INDEX.slice(a, b), ctx, { filename: 'index.html#sqlite-startup' });
+    ctx._wizInitMemSchema();
+    assert(ctx.WmStore);
+    for (const table of ['wm_projects','wm_sources','wm_items','wm_item_sources','wm_relations','wm_changes','wm_items_fts']) assert.strictEqual(count(db, 'SELECT count(*) FROM sqlite_master WHERE name=?', [table]), 1, table);
+    assert.strictEqual(count(db, "SELECT count(*) FROM sqlite_master WHERE name LIKE 'wiz_ref_%'"), 0);
     const source = fs.readFileSync(path.join(ROOT, 'working-memory.js'), 'utf8');
     assert(!/\b(?:INSERT|UPDATE|DELETE|ALTER|DROP)\s+(?:TABLE\s+)?(?:wiz_facts|wiz_ledger|ledger|wiz_ref_)/i.test(source));
     assert(!/case\s+['"]wm_[a-z_]+['"]\s*:/i.test(INDEX), 'WM agent tool was added');
     assert(!/<button\b[^>]*(?:working[- ]memory|wm_)/i.test(INDEX), 'WM UI was added');
-    assert(!INDEX.includes('wm_items_fts') || INDEX.includes('working-memory.js'), 'WM application wiring missing');
-    const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
-    assert(sw.includes("BASE_PATH + '/working-memory.js'"));
+    assert(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8').includes("BASE_PATH + '/working-memory.js'"));
   });
 
   console.log(`\n${results.filter(row => row[1] === 'PASS').length}/${results.length} tests passed.`);

@@ -14,24 +14,27 @@
   const EXPORT_FORMAT = 'eiti-working-memory-export/1';
   const MULTI_TAB_WRITES = 'NOT_SUPPORTED_IN_V0_1';
   const ENUMS = Object.freeze({
-    type: Object.freeze(['DECISION', 'QUESTION', 'TASK', 'NOTE', 'RISK', 'BLOCKER', 'INSIGHT', 'RESEARCH']),
-    status: Object.freeze(['OPEN', 'IN_PROGRESS', 'BLOCKED', 'RESOLVED', 'SUPERSEDED']),
-    priority: Object.freeze(['LOW', 'NORMAL', 'HIGH', 'URGENT']),
-    provenance_class: Object.freeze(['USER_STATED', 'SOURCE_DERIVED', 'AGENT_DERIVED', 'MIXED', 'UNKNOWN']),
+    type: Object.freeze(['NOTE', 'QUOTE', 'VALUE', 'QUESTION', 'HYPOTHESIS', 'DECISION', 'MODEL_PROPOSAL', 'DONOR_CANDIDATE', 'EXPERIMENT', 'FINDING', 'SYSTEM', 'TASK', 'SOURCE_POINTER']),
+    status: Object.freeze(['CURRENT', 'OPEN', 'IN_PROGRESS', 'BLOCKED', 'UNKNOWN', 'RESOLVED', 'COMPLETED', 'REJECTED', 'SUPERSEDED']),
+    priority: Object.freeze(['P0', 'P1', 'P2', 'P3', 'TAIL']),
+    provenance_class: Object.freeze(['USER_NOTE', 'USER_DECISION', 'USER_QUOTE', 'MODEL_PROPOSAL', 'MODEL_SUMMARY', 'PROJECT_SOURCE', 'EXTERNAL_SOURCE', 'EXPERIMENT_RESULT']),
+    surface: Object.freeze(['GITHUB', 'NOTION', 'DRIVE', 'LOCAL', 'WEB', 'CHAT', 'OTHER']),
+    role: Object.freeze(['PRIMARY', 'EVIDENCE', 'CONTEXT', 'NAVIGATION', 'REFERENCE']),
     relation_type: Object.freeze(['RELATED_TO', 'BLOCKED_BY', 'DEPENDS_ON', 'DERIVED_FROM', 'SUPERSEDES']),
   });
+  const UNRESOLVED_STATUSES = Object.freeze(['OPEN', 'IN_PROGRESS', 'BLOCKED', 'UNKNOWN']);
   const ITEM_COLUMNS = Object.freeze([
     'work_id', 'project_id', 'thread', 'type', 'status', 'priority', 'title', 'summary', 'body_md',
     'current_question', 'status_note', 'next_action', 'provenance_class', 'tags_json', 'non_canon',
     'created_at', 'updated_at', 'resolved_at', 'archived_at',
   ]);
   const TABLE_COLUMNS = Object.freeze({
-    wm_projects: Object.freeze(['project_id', 'name', 'description', 'created_at', 'updated_at']),
-    wm_sources: Object.freeze(['source_id', 'title', 'source_type', 'locator', 'project_id', 'provenance_class', 'metadata_json', 'created_at', 'updated_at']),
+    wm_projects: Object.freeze(['project_id', 'code', 'name', 'summary', 'created_at', 'updated_at']),
+    wm_sources: Object.freeze(['source_id', 'project_id', 'surface', 'role', 'title', 'locator', 'revision', 'note', 'created_at', 'updated_at']),
     wm_items: ITEM_COLUMNS,
     wm_item_sources: Object.freeze(['work_id', 'source_id', 'is_primary']),
     wm_relations: Object.freeze(['relation_id', 'from_work_id', 'to_work_id', 'relation_type', 'created_at']),
-    wm_changes: Object.freeze(['change_id', 'work_id', 'change_type', 'before_json', 'after_json', 'created_at']),
+    wm_changes: Object.freeze(['change_id', 'work_id', 'change_type', 'actor_class', 'changed_fields_json', 'before_json', 'after_json', 'created_at']),
   });
   const TABLE_KEYS = Object.freeze({
     wm_projects: ['project_id'], wm_sources: ['source_id'], wm_items: ['work_id'],
@@ -113,29 +116,37 @@
   }
   function initSchema(db) {
     if (!db) throw fail('SQLite database is required', 'DB_REQUIRED');
+    for (const [table, expected] of Object.entries(TABLE_COLUMNS)) {
+      if (!tableExists(db, table)) continue;
+      const actual = dbRows(db, 'PRAGMA table_info(' + table + ')').map(row => row.name);
+      if (JSON.stringify(actual) !== JSON.stringify(expected))
+        throw fail('Existing Working Memory table does not match corrected contract: ' + table, 'WM_SCHEMA_MISMATCH');
+    }
     db.run(`CREATE TABLE IF NOT EXISTS wm_projects (
-      project_id TEXT PRIMARY KEY, name TEXT NOT NULL CHECK(length(trim(name)) > 0), description TEXT,
+      project_id TEXT PRIMARY KEY, code TEXT NOT NULL UNIQUE CHECK(code GLOB '[A-Z]*' AND code NOT GLOB '*[^A-Z0-9-]*' AND substr(code,-1,1) <> '-'),
+      name TEXT NOT NULL CHECK(length(trim(name)) > 0), summary TEXT,
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL
     )`);
     db.run(`CREATE TABLE IF NOT EXISTS wm_sources (
-      source_id TEXT PRIMARY KEY, title TEXT NOT NULL CHECK(length(trim(title)) > 0), source_type TEXT,
-      locator TEXT, project_id TEXT, provenance_class TEXT NOT NULL DEFAULT 'UNKNOWN'
-        CHECK(provenance_class IN ('USER_STATED','SOURCE_DERIVED','AGENT_DERIVED','MIXED','UNKNOWN')),
-      metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      source_id TEXT PRIMARY KEY, project_id TEXT, surface TEXT NOT NULL CHECK(surface IN ('GITHUB','NOTION','DRIVE','LOCAL','WEB','CHAT','OTHER')),
+      role TEXT NOT NULL CHECK(role IN ('PRIMARY','EVIDENCE','CONTEXT','NAVIGATION','REFERENCE')),
+      title TEXT NOT NULL CHECK(length(trim(title)) > 0), locator TEXT NOT NULL CHECK(length(trim(locator)) > 0),
+      revision TEXT, note TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
       FOREIGN KEY(project_id) REFERENCES wm_projects(project_id)
     )`);
     db.run(`CREATE TABLE IF NOT EXISTS wm_items (
-      work_id TEXT PRIMARY KEY, project_id TEXT, thread TEXT,
-      type TEXT NOT NULL CHECK(type IN ('DECISION','QUESTION','TASK','NOTE','RISK','BLOCKER','INSIGHT','RESEARCH')),
-      status TEXT NOT NULL CHECK(status IN ('OPEN','IN_PROGRESS','BLOCKED','RESOLVED','SUPERSEDED')),
-      priority TEXT NOT NULL CHECK(priority IN ('LOW','NORMAL','HIGH','URGENT')),
+      work_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, thread TEXT NOT NULL DEFAULT '',
+      type TEXT NOT NULL CHECK(type IN ('NOTE','QUOTE','VALUE','QUESTION','HYPOTHESIS','DECISION','MODEL_PROPOSAL','DONOR_CANDIDATE','EXPERIMENT','FINDING','SYSTEM','TASK','SOURCE_POINTER')),
+      status TEXT NOT NULL CHECK(status IN ('CURRENT','OPEN','IN_PROGRESS','BLOCKED','UNKNOWN','RESOLVED','COMPLETED','REJECTED','SUPERSEDED')),
+      priority TEXT NOT NULL CHECK(priority IN ('P0','P1','P2','P3','TAIL')),
       title TEXT NOT NULL CHECK(length(trim(title)) > 0), summary TEXT, body_md TEXT,
       current_question TEXT, status_note TEXT, next_action TEXT,
-      provenance_class TEXT NOT NULL CHECK(provenance_class IN ('USER_STATED','SOURCE_DERIVED','AGENT_DERIVED','MIXED','UNKNOWN')),
+      provenance_class TEXT NOT NULL CHECK(provenance_class IN ('USER_NOTE','USER_DECISION','USER_QUOTE','MODEL_PROPOSAL','MODEL_SUMMARY','PROJECT_SOURCE','EXTERNAL_SOURCE','EXPERIMENT_RESULT')),
       tags_json TEXT NOT NULL DEFAULT '[]', non_canon INTEGER NOT NULL DEFAULT 1 CHECK(non_canon=1),
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL, resolved_at TEXT, archived_at TEXT,
       CHECK(status <> 'BLOCKED' OR length(trim(COALESCE(status_note,''))) > 0),
       CHECK(status <> 'RESOLVED' OR (length(trim(COALESCE(status_note,''))) > 0 AND resolved_at IS NOT NULL)),
+      CHECK(status <> 'REJECTED' OR length(trim(COALESCE(status_note,''))) > 0),
       FOREIGN KEY(project_id) REFERENCES wm_projects(project_id)
     )`);
     db.run(`CREATE TABLE IF NOT EXISTS wm_item_sources (
@@ -151,6 +162,7 @@
     )`);
     db.run(`CREATE TABLE IF NOT EXISTS wm_changes (
       change_id TEXT PRIMARY KEY, work_id TEXT, change_type TEXT NOT NULL,
+      actor_class TEXT NOT NULL CHECK(length(trim(actor_class)) > 0), changed_fields_json TEXT NOT NULL CHECK(json_valid(changed_fields_json)),
       before_json TEXT, after_json TEXT, created_at TEXT NOT NULL
     )`);
     db.run(`CREATE VIRTUAL TABLE IF NOT EXISTS wm_items_fts
@@ -173,25 +185,36 @@
     db.run(`CREATE TRIGGER IF NOT EXISTS wm_items_no_hard_delete BEFORE DELETE ON wm_items BEGIN
       SELECT RAISE(ABORT, 'Working Memory items are archived, not deleted');
     END`);
+    db.run(`CREATE TRIGGER IF NOT EXISTS wm_items_work_id_immutable BEFORE UPDATE OF work_id ON wm_items
+      WHEN new.work_id <> old.work_id BEGIN
+      SELECT RAISE(ABORT, 'Working Memory work_id is immutable');
+    END`);
     db.run(`CREATE TRIGGER IF NOT EXISTS wm_changes_no_update BEFORE UPDATE ON wm_changes BEGIN
       SELECT RAISE(ABORT, 'Working Memory change log is append-only');
     END`);
     db.run(`CREATE TRIGGER IF NOT EXISTS wm_changes_no_delete BEFORE DELETE ON wm_changes BEGIN
       SELECT RAISE(ABORT, 'Working Memory change log is append-only');
     END`);
-    // FTS5 is a derived index. Backfill deterministically for a pre-existing WM table.
     db.run(`INSERT INTO wm_items_fts(work_id,title,summary,body_md,tags_json)
       SELECT i.work_id,i.title,COALESCE(i.summary,''),COALESCE(i.body_md,''),i.tags_json
       FROM wm_items i WHERE NOT EXISTS (SELECT 1 FROM wm_items_fts f WHERE f.work_id=i.work_id)`);
+    for (const [table, expected] of Object.entries(TABLE_COLUMNS)) {
+      const actual = dbRows(db, 'PRAGMA table_info(' + table + ')').map(row => row.name);
+      if (JSON.stringify(actual) !== JSON.stringify(expected))
+        throw fail('Existing Working Memory table does not match corrected contract: ' + table, 'WM_SCHEMA_MISMATCH');
+    }
     return true;
   }
   function assertId(value, label) { return requiredText(value, label); }
   function projectRow(input, clock, idFactory) {
     if (!plainObject(input)) throw fail('Project must be an object', 'VALIDATION');
     const at = nowIso(clock);
+    const code = requiredText(input.code, 'code').toUpperCase();
+    if (!/^[A-Z][A-Z0-9-]*[A-Z0-9]$/.test(code) && !/^[A-Z]$/.test(code))
+      throw fail('code must be uppercase alphanumeric with optional internal hyphens', 'VALIDATION');
     return {
       project_id: input.project_id == null ? idFactory('wmp_') : assertId(input.project_id, 'project_id'),
-      name: requiredText(input.name, 'name'), description: nullableText(input.description, 'description'),
+      code, name: requiredText(input.name, 'name'), summary: nullableText(input.summary, 'summary'),
       created_at: input.created_at == null ? at : timestamp(input.created_at, 'created_at'),
       updated_at: input.updated_at == null ? at : timestamp(input.updated_at, 'updated_at'),
     };
@@ -202,41 +225,61 @@
     const projectId = input.project_id == null ? null : assertId(input.project_id, 'project_id');
     return {
       source_id: input.source_id == null ? idFactory('wms_') : assertId(input.source_id, 'source_id'),
-      title: requiredText(input.title, 'title'), source_type: nullableText(input.source_type, 'source_type'),
-      locator: nullableText(input.locator, 'locator'), project_id: projectId,
-      provenance_class: enumValue(input.provenance_class, 'provenance_class', 'UNKNOWN'),
-      metadata_json: normalizeMetadata(input.metadata_json),
+      project_id: projectId, surface: enumValue(input.surface, 'surface'), role: enumValue(input.role, 'role'),
+      title: requiredText(input.title, 'title'), locator: requiredText(input.locator, 'locator'),
+      revision: nullableText(input.revision, 'revision'), note: nullableText(input.note, 'note'),
       created_at: input.created_at == null ? at : timestamp(input.created_at, 'created_at'),
       updated_at: input.updated_at == null ? at : timestamp(input.updated_at, 'updated_at'),
     };
   }
-  function itemRow(input, clock, idFactory) {
+  function validateWorkId(value) {
+    const workId = assertId(value, 'work_id');
+    const match = /^WRK-([A-Z][A-Z0-9-]*[A-Z0-9]|[A-Z])-(\d{8})-(\d{3,})$/.exec(workId);
+    if (!match || Number(match[3]) < 1) throw fail('work_id must match WRK-<PROJECT_CODE>-<YYYYMMDD>-<NNN>', 'INVALID_WORK_ID');
+    const day = match[2];
+    const normalized = new Date(Date.UTC(Number(day.slice(0,4)), Number(day.slice(4,6)) - 1, Number(day.slice(6,8)))).toISOString().slice(0,10).replace(/-/g, '');
+    if (normalized !== day) throw fail('work_id contains an invalid calendar date', 'INVALID_WORK_ID');
+    return { work_id: workId, project_code: match[1], date: day, sequence: Number(match[3]) };
+  }
+  function nextWorkId(db, projectCode, at) {
+    const day = new Date(at).toISOString().slice(0,10).replace(/-/g, '');
+    const prefix = 'WRK-' + projectCode + '-' + day + '-';
+    const pattern = new RegExp('^' + prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(\\d{3,})$');
+    let largest = 0;
+    for (const row of dbRows(db, 'SELECT work_id FROM wm_items WHERE work_id LIKE ?', [prefix + '%'])) {
+      const match = pattern.exec(row.work_id);
+      if (match) largest = Math.max(largest, Number(match[1]));
+    }
+    return prefix + String(largest + 1).padStart(3, '0');
+  }
+  function itemRow(input, clock, idFactory, generatedWorkId) {
     if (!plainObject(input)) throw fail('Item must be an object', 'VALIDATION');
     if (own(input, 'non_canon') && input.non_canon !== true && input.non_canon !== 1)
       throw fail('non_canon is an invariant and must remain true', 'NON_CANON_INVARIANT');
     const at = nowIso(clock);
     const status = enumValue(input.status, 'status', 'OPEN');
     const resolved = input.resolved_at == null || input.resolved_at === '' ? null : timestamp(input.resolved_at, 'resolved_at');
+    const projectId = requiredText(input.project_id, 'project_id');
     const out = {
-      work_id: input.work_id == null ? idFactory('wm_') : assertId(input.work_id, 'work_id'),
-      project_id: input.project_id == null ? null : assertId(input.project_id, 'project_id'),
-      thread: nullableText(input.thread, 'thread'), type: enumValue(input.type, 'type', 'NOTE'), status,
-      priority: enumValue(input.priority, 'priority', 'NORMAL'), title: requiredText(input.title, 'title'),
+      work_id: generatedWorkId || validateWorkId(input.work_id).work_id,
+      project_id: projectId, thread: input.thread == null || input.thread === '' ? '' : requiredText(input.thread, 'thread'),
+      type: enumValue(input.type, 'type', 'NOTE'), status,
+      priority: enumValue(input.priority, 'priority', 'P2'), title: requiredText(input.title, 'title'),
       summary: nullableText(input.summary, 'summary'), body_md: nullableText(input.body_md, 'body_md'),
       current_question: nullableText(input.current_question, 'current_question'),
       status_note: nullableText(input.status_note, 'status_note'), next_action: nullableText(input.next_action, 'next_action'),
-      provenance_class: enumValue(input.provenance_class, 'provenance_class', 'UNKNOWN'),
+      provenance_class: enumValue(input.provenance_class, 'provenance_class'),
       tags_json: normalizeTags(own(input, 'tags_json') ? input.tags_json : input.tags), non_canon: 1,
       created_at: input.created_at == null ? at : timestamp(input.created_at, 'created_at'),
       updated_at: input.updated_at == null ? at : timestamp(input.updated_at, 'updated_at'),
-      resolved_at: resolved || (status === 'RESOLVED' ? at : null),
+      resolved_at: resolved || (status === 'RESOLVED' && generatedWorkId ? at : null),
       archived_at: input.archived_at == null || input.archived_at === '' ? null : timestamp(input.archived_at, 'archived_at'),
     };
     assertItemRules(out);
     return out;
   }
   function assertItemRules(item) {
-    if ((item.status === 'BLOCKED' || item.status === 'RESOLVED') && !(item.status_note && item.status_note.trim()))
+    if (['BLOCKED', 'RESOLVED', 'REJECTED'].includes(item.status) && !(item.status_note && item.status_note.trim()))
       throw fail(item.status + ' requires a non-empty status_note', 'STATUS_NOTE_REQUIRED');
     if (item.status === 'RESOLVED' && !item.resolved_at) throw fail('RESOLVED requires resolved_at', 'RESOLVED_AT_REQUIRED');
   }
@@ -253,13 +296,30 @@
   function getById(db, table, idColumn, id) {
     return one(db, 'SELECT * FROM ' + table + ' WHERE ' + idColumn + '=?', [id]);
   }
-  function changeRow(db, clock, idFactory, workId, type, before, after) {
+  function changedFields(before, after) {
+    if (before == null) return Object.keys(after || {}).sort();
+    const keys = Array.from(new Set(Object.keys(before || {}).concat(Object.keys(after || {})))).sort();
+    return keys.filter(key => JSON.stringify(before[key] == null ? null : before[key]) !== JSON.stringify(after[key] == null ? null : after[key]));
+  }
+  function normalizeChangedFields(value, label) {
+    let fields = value;
+    if (fields == null) fields = [];
+    if (typeof fields === 'string') {
+      try { fields = JSON.parse(fields); } catch (_) { throw fail(label + ' must contain a JSON array', 'VALIDATION'); }
+    }
+    if (!Array.isArray(fields) || fields.some(field => typeof field !== 'string' || !field.trim()))
+      throw fail(label + ' must be an array of non-empty field names', 'VALIDATION');
+    return JSON.stringify(Array.from(new Set(fields.map(field => field.trim()))).sort());
+  }
+  function changeRow(db, clock, idFactory, workId, type, before, after, actorClass, fields) {
     const row = {
       change_id: idFactory('wmc_'), work_id: workId || null, change_type: requiredText(type, 'change_type'),
+      actor_class: requiredText(actorClass, 'actor_class'),
+      changed_fields_json: normalizeChangedFields(fields === undefined ? changedFields(before, after) : fields, 'changed_fields_json'),
       before_json: before == null ? null : JSON.stringify(before),
       after_json: after == null ? null : JSON.stringify(after), created_at: nowIso(clock),
     };
-    db.run('INSERT INTO wm_changes(change_id,work_id,change_type,before_json,after_json,created_at) VALUES(?,?,?,?,?,?)',
+    db.run('INSERT INTO wm_changes(change_id,work_id,change_type,actor_class,changed_fields_json,before_json,after_json,created_at) VALUES(?,?,?,?,?,?,?,?)',
       TABLE_COLUMNS.wm_changes.map(key => row[key]));
     return row;
   }
@@ -285,7 +345,7 @@
     try { JSON.parse(value); } catch (_) { throw fail(label + ' must be valid JSON', 'VALIDATION'); }
     return value;
   }
-  function changeInputRow(input, clock, idFactory) {
+  function changeInputRow(input, clock, idFactory, defaultActorClass) {
     if (!plainObject(input)) throw fail('Change must be an object', 'VALIDATION');
     const jsonText = (field, alias) => {
       const value = own(input, field) ? input[field] : input[alias];
@@ -297,14 +357,25 @@
       return encoded;
     };
     return { change_id: input.change_id == null ? idFactory('wmc_') : assertId(input.change_id, 'change_id'),
-      work_id: input.work_id == null ? null : assertId(input.work_id, 'work_id'),
+      work_id: input.work_id == null ? null : validateWorkId(input.work_id).work_id,
       change_type: requiredText(input.change_type, 'change_type'),
+      actor_class: requiredText(own(input, 'actor_class') ? input.actor_class : defaultActorClass, 'actor_class'),
+      changed_fields_json: normalizeChangedFields(input.changed_fields_json, 'changed_fields_json'),
       before_json: jsonText('before_json', 'before'), after_json: jsonText('after_json', 'after'),
       created_at: input.created_at == null ? nowIso(clock) : timestamp(input.created_at, 'created_at') };
   }
   function dataSnapshot(db) {
     const output = { format: EXPORT_FORMAT };
-    for (const table of Object.keys(TABLE_COLUMNS)) output[table.replace(/^wm_/, '')] = dbRows(db, 'SELECT * FROM ' + table + ' ORDER BY ' + TABLE_KEYS[table].join(', '));
+    for (const table of Object.keys(TABLE_COLUMNS)) {
+      const rows = dbRows(db, 'SELECT * FROM ' + table + ' ORDER BY ' + TABLE_KEYS[table].join(', '));
+      if (table === 'wm_items') for (const row of rows) {
+        row.thread = row.thread == null ? '' : row.thread;
+        for (const key of ['summary', 'body_md']) if (row[key] === '') row[key] = null;
+      }
+      if (table === 'wm_changes') for (const row of rows)
+        row.changed_fields_json = normalizeChangedFields(row.changed_fields_json, 'changed_fields_json');
+      output[table.replace(/^wm_/, '')] = rows;
+    }
     return output;
   }
   function namespaceSnapshot(db) {
@@ -345,23 +416,53 @@
     if (keys.length !== columns.length || columns.some(key => !own(row, key)) || keys.some(key => !columns.includes(key)))
       throw fail(label + ' entry has missing or unknown fields', 'INVALID_EXPORT');
   }
-  function strictProject(row, clock, idFactory) { exactKeys(row, TABLE_COLUMNS.wm_projects, 'project'); return projectRow(row, clock, idFactory); }
-  function strictSource(row, clock, idFactory) { exactKeys(row, TABLE_COLUMNS.wm_sources, 'source'); return sourceRow(row, clock, idFactory); }
+  function strictProject(row, clock, idFactory) {
+    exactKeys(row, TABLE_COLUMNS.wm_projects, 'project');
+    assertId(row.project_id, 'project_id'); timestamp(row.created_at, 'created_at'); timestamp(row.updated_at, 'updated_at');
+    const normalized = projectRow(row, clock, idFactory);
+    if (normalized.code !== row.code) throw fail('Imported project code must be canonical uppercase', 'INVALID_EXPORT');
+    return normalized;
+  }
+  function strictSource(row, clock, idFactory) {
+    exactKeys(row, TABLE_COLUMNS.wm_sources, 'source');
+    assertId(row.source_id, 'source_id'); timestamp(row.created_at, 'created_at'); timestamp(row.updated_at, 'updated_at');
+    return sourceRow(row, clock, idFactory);
+  }
   function strictItem(row, clock, idFactory) {
     exactKeys(row, ITEM_COLUMNS, 'item');
+    timestamp(row.created_at, 'created_at'); timestamp(row.updated_at, 'updated_at');
+    const workId = validateWorkId(row.work_id);
     if (row.status === 'RESOLVED' && (row.resolved_at == null || row.resolved_at === ''))
       throw fail('Imported RESOLVED item must preserve resolved_at', 'RESOLVED_AT_REQUIRED');
     const normalized = itemRow(row, clock, idFactory);
-    // Imported data must preserve the invariant, never coerce a false value into a valid item.
     if (row.non_canon !== 1 && row.non_canon !== true) throw fail('Imported item violates non_canon invariant', 'NON_CANON_INVARIANT');
+    if (normalized.work_id !== workId.work_id) throw fail('Imported work_id changed during normalization', 'INVALID_WORK_ID');
     return normalized;
   }
-  function strictLink(row) { exactKeys(row, TABLE_COLUMNS.wm_item_sources, 'item_source'); return itemSourceRow(row); }
-  function strictRelation(row, clock, idFactory) { exactKeys(row, TABLE_COLUMNS.wm_relations, 'relation'); return relationRow(row, clock, idFactory); }
+  function strictLink(row) {
+    exactKeys(row, TABLE_COLUMNS.wm_item_sources, 'item_source');
+    if (row.is_primary !== 0 && row.is_primary !== 1 && row.is_primary !== true && row.is_primary !== false)
+      throw fail('Imported item_source is_primary must be boolean', 'INVALID_EXPORT');
+    return itemSourceRow(row);
+  }
+  function strictRelation(row, clock, idFactory) {
+    exactKeys(row, TABLE_COLUMNS.wm_relations, 'relation');
+    assertId(row.relation_id, 'relation_id'); timestamp(row.created_at, 'created_at');
+    return relationRow(row, clock, idFactory);
+  }
   function strictChange(row, clock, idFactory) {
     exactKeys(row, TABLE_COLUMNS.wm_changes, 'change');
+    assertId(row.change_id, 'change_id'); timestamp(row.created_at, 'created_at');
+    if (typeof row.actor_class !== 'string' || !row.actor_class.trim())
+      throw fail('Imported change must preserve a non-empty actor_class', 'INVALID_EXPORT');
+    if (typeof row.changed_fields_json !== 'string')
+      throw fail('Imported change must preserve changed_fields_json', 'INVALID_EXPORT');
+    let changed;
+    try { changed = JSON.parse(row.changed_fields_json); } catch (_) { throw fail('Imported changed_fields_json must be valid JSON', 'INVALID_EXPORT'); }
+    if (!Array.isArray(changed) || changed.some(field => typeof field !== 'string' || !field.trim()))
+      throw fail('Imported changed_fields_json must be an array of field names', 'INVALID_EXPORT');
     parseJsonOrThrow(row.before_json, 'before_json'); parseJsonOrThrow(row.after_json, 'after_json');
-    return changeInputRow(row, clock, idFactory);
+    return changeInputRow(row, clock, idFactory, 'SYSTEM');
   }
   function rowsEqual(table, left, right) {
     return JSON.stringify(TABLE_COLUMNS[table].map(key => left[key] == null ? null : left[key])) ===
@@ -383,6 +484,28 @@
       wm_relations: payload.relations.map(row => strictRelation(row, clock, idFactory)),
       wm_changes: payload.changes.map(row => strictChange(row, clock, idFactory)),
     };
+    const projectCodes = new Map();
+    for (const project of dbRows(db, 'SELECT project_id,code FROM wm_projects')) projectCodes.set(project.project_id, project.code);
+    const codesSeen = new Map();
+    for (const project of rows.wm_projects) {
+      const priorProject = getById(db, 'wm_projects', 'project_id', project.project_id);
+      if (priorProject && priorProject.code !== project.code) throw fail('Import cannot change project code for existing project_id', 'IMPORT_CONFLICT');
+      const owner = codesSeen.get(project.code);
+      if (owner && owner !== project.project_id) throw fail('Duplicate project code in import: ' + project.code, 'PROJECT_CODE_CONFLICT');
+      codesSeen.set(project.code, project.project_id);
+      projectCodes.set(project.project_id, project.code);
+    }
+    const allCodes = new Map();
+    for (const project of dbRows(db, 'SELECT project_id,code FROM wm_projects')) allCodes.set(project.code, project.project_id);
+    for (const project of rows.wm_projects) {
+      const owner = allCodes.get(project.code);
+      if (owner && owner !== project.project_id) throw fail('project code already belongs to another project: ' + project.code, 'PROJECT_CODE_CONFLICT');
+      allCodes.set(project.code, project.project_id);
+    }
+    for (const item of rows.wm_items) {
+      const parsed = validateWorkId(item.work_id), code = projectCodes.get(item.project_id) || (getById(db, 'wm_projects', 'project_id', item.project_id) || {}).code;
+      if (!code || parsed.project_code !== code) throw fail('work_id project code does not match project_id for ' + item.work_id, 'INVALID_WORK_ID');
+    }
     for (const table of Object.keys(rows)) {
       const keysSeen = new Set();
       for (const row of rows[table]) {
@@ -410,6 +533,7 @@
     initSchema(db);
     const clock = typeof options.now === 'function' ? options.now : () => new Date().toISOString();
     const idFactory = typeof options.idFactory === 'function' ? options.idFactory : generateId;
+    const actorClass = requiredText(options.actorClass == null ? 'SYSTEM' : options.actorClass, 'actorClass');
     const persist = typeof options.persist === 'function' ? options.persist :
       (root && typeof root._wizSaveDBAsync === 'function' ? () => root._wizSaveDBAsync() : null);
     let poisoned = false;
@@ -457,7 +581,8 @@
       return durableMutation(() => {
         const row = projectRow(input, clock, idFactory);
         if (getById(db, 'wm_projects', 'project_id', row.project_id)) throw fail('project_id already exists: ' + row.project_id, 'ID_CONFLICT');
-        insertRow(db, 'wm_projects', row); changeRow(db, clock, idFactory, null, 'CREATE_PROJECT', null, row);
+        if (one(db, 'SELECT project_id FROM wm_projects WHERE code=?', [row.code])) throw fail('code already exists: ' + row.code, 'PROJECT_CODE_CONFLICT');
+        insertRow(db, 'wm_projects', row); changeRow(db, clock, idFactory, null, 'CREATE_PROJECT', null, row, actorClass);
         return row;
       });
     }
@@ -465,15 +590,19 @@
       return durableMutation(() => {
         const row = sourceRow(input, clock, idFactory); assertProjectExists(db, row.project_id);
         if (getById(db, 'wm_sources', 'source_id', row.source_id)) throw fail('source_id already exists: ' + row.source_id, 'ID_CONFLICT');
-        insertRow(db, 'wm_sources', row); changeRow(db, clock, idFactory, null, 'CREATE_SOURCE', null, row);
+        insertRow(db, 'wm_sources', row); changeRow(db, clock, idFactory, null, 'CREATE_SOURCE', null, row, actorClass);
         return row;
       });
     }
     function createItem(input) {
       return durableMutation(() => {
-        const row = itemRow(input, clock, idFactory); assertProjectExists(db, row.project_id);
-        if (getById(db, 'wm_items', 'work_id', row.work_id)) throw fail('work_id already exists: ' + row.work_id, 'ID_CONFLICT');
-        insertRow(db, 'wm_items', row); changeRow(db, clock, idFactory, row.work_id, 'CREATE_ITEM', null, row);
+        if (!plainObject(input)) throw fail('Item must be an object', 'VALIDATION');
+        if (own(input, 'work_id')) throw fail('work_id is generated automatically and immutable', 'WORK_ID_IMMUTABLE');
+        const projectId = requiredText(input.project_id, 'project_id'); assertProjectExists(db, projectId);
+        const project = getById(db, 'wm_projects', 'project_id', projectId);
+        const row = itemRow(input, clock, idFactory, nextWorkId(db, project.code, nowIso(clock)));
+        if (getById(db, 'wm_items', 'work_id', row.work_id)) throw fail('generated work_id already exists: ' + row.work_id, 'ID_CONFLICT');
+        insertRow(db, 'wm_items', row); changeRow(db, clock, idFactory, row.work_id, 'CREATE_ITEM', null, row, actorClass);
         return row;
       });
     }
@@ -496,7 +625,7 @@
         if (rowsEqual('wm_items', before, after)) return { __workingMemoryNoop: true, data: before };
         const columns = ITEM_COLUMNS.filter(key => key !== 'work_id');
         db.run('UPDATE wm_items SET ' + columns.map(key => key + '=?').join(',') + ' WHERE work_id=?', columns.map(key => after[key]).concat([id]));
-        changeRow(db, clock, idFactory, id, 'UPDATE_ITEM', before, after);
+        changeRow(db, clock, idFactory, id, 'UPDATE_ITEM', before, after, actorClass);
         return after;
       });
     }
@@ -505,9 +634,9 @@
         const id = assertId(workId, 'work_id'), before = getById(db, 'wm_items', 'work_id', id);
         if (!before) throw fail('Unknown work_id: ' + id, 'NOT_FOUND');
         if (before.archived_at) return { __workingMemoryNoop: true, data: before };
-        const after = Object.assign({}, before, { archived_at: nowIso(clock), updated_at: nowIso(clock) });
-        db.run('UPDATE wm_items SET archived_at=?,updated_at=? WHERE work_id=?', [after.archived_at, after.updated_at, id]);
-        changeRow(db, clock, idFactory, id, 'ARCHIVE_ITEM', before, after);
+        const after = Object.assign({}, before, { archived_at: nowIso(clock) });
+        db.run('UPDATE wm_items SET archived_at=? WHERE work_id=?', [after.archived_at, id]);
+        changeRow(db, clock, idFactory, id, 'ARCHIVE_ITEM', before, after, actorClass, ['archived_at']);
         return after;
       });
     }
@@ -520,7 +649,7 @@
         if (before) db.run('UPDATE wm_item_sources SET is_primary=? WHERE work_id=? AND source_id=?', [link.is_primary, link.work_id, link.source_id]);
         else insertRow(db, 'wm_item_sources', link);
         const after = one(db, 'SELECT * FROM wm_item_sources WHERE work_id=? AND source_id=?', [link.work_id, link.source_id]);
-        changeRow(db, clock, idFactory, link.work_id, 'LINK_SOURCE', before, after);
+        changeRow(db, clock, idFactory, link.work_id, 'LINK_SOURCE', before, after, actorClass);
         return after;
       });
     }
@@ -528,13 +657,13 @@
       return durableMutation(() => {
         const row = relationRow(input, clock, idFactory); assertItemExists(db, row.from_work_id); assertItemExists(db, row.to_work_id);
         if (getById(db, 'wm_relations', 'relation_id', row.relation_id)) throw fail('relation_id already exists: ' + row.relation_id, 'ID_CONFLICT');
-        insertRow(db, 'wm_relations', row); changeRow(db, clock, idFactory, row.from_work_id, 'ADD_RELATION', null, row);
+        insertRow(db, 'wm_relations', row); changeRow(db, clock, idFactory, row.from_work_id, 'ADD_RELATION', null, row, actorClass);
         return row;
       });
     }
     function appendChange(input) {
       return durableMutation(() => {
-        const row = changeInputRow(input, clock, idFactory);
+        const row = changeInputRow(input, clock, idFactory, actorClass);
         if (row.work_id) assertItemExists(db, row.work_id);
         if (getById(db, 'wm_changes', 'change_id', row.change_id)) throw fail('change_id already exists: ' + row.change_id, 'ID_CONFLICT');
         insertRow(db, 'wm_changes', row);
@@ -581,7 +710,7 @@
     }
     function listUnresolved(filters) {
       filters = filters || {};
-      let sql = "SELECT * FROM wm_items WHERE archived_at IS NULL AND status NOT IN ('RESOLVED','SUPERSEDED')", params = [];
+      let sql = "SELECT * FROM wm_items WHERE archived_at IS NULL AND status IN ('OPEN','IN_PROGRESS','BLOCKED','UNKNOWN')", params = [];
       if (filters.project_id) { sql += ' AND project_id=?'; params.push(filters.project_id); }
       sql += ' ORDER BY updated_at DESC, work_id ASC';
       if (filters.limit != null) { sql += ' LIMIT ?'; params.push(Math.max(1, Math.min(100, Math.floor(Number(filters.limit) || 20)))); }
@@ -592,6 +721,14 @@
       let sql = "SELECT * FROM wm_items WHERE archived_at IS NULL AND status='RESOLVED'", params = [];
       if (filters.project_id) { sql += ' AND project_id=?'; params.push(filters.project_id); }
       sql += ' ORDER BY resolved_at DESC, work_id ASC';
+      if (filters.limit != null) { sql += ' LIMIT ?'; params.push(Math.max(1, Math.min(100, Math.floor(Number(filters.limit) || 20)))); }
+      return dbRows(db, sql, params);
+    }
+    function listCompleted(filters) {
+      filters = filters || {};
+      let sql = "SELECT * FROM wm_items WHERE archived_at IS NULL AND status='COMPLETED'", params = [];
+      if (filters.project_id) { sql += ' AND project_id=?'; params.push(filters.project_id); }
+      sql += ' ORDER BY updated_at DESC, work_id ASC';
       if (filters.limit != null) { sql += ' LIMIT ?'; params.push(Math.max(1, Math.min(100, Math.floor(Number(filters.limit) || 20)))); }
       return dbRows(db, sql, params);
     }
@@ -629,13 +766,13 @@
 
     return Object.freeze({
       createProject, createSource, createItem, updateItem, archiveItem, addItemSource, addRelation, appendChange,
-      getItem, listItems, searchItems, listUnresolved, listResolved, listCompleted: listResolved, listChanges,
+      getItem, listItems, searchItems, listUnresolved, listResolved, listCompleted, listChanges,
       exportData, exportJSON, importJSON,
     });
   }
 
   return Object.freeze({
-    EXPORT_FORMAT, MULTI_TAB_WRITES, ENUMS, ITEM_COLUMNS, TABLE_COLUMNS,
+    EXPORT_FORMAT, MULTI_TAB_WRITES, ENUMS, UNRESOLVED_STATUSES, ITEM_COLUMNS, TABLE_COLUMNS,
     initSchema, create,
   });
 });

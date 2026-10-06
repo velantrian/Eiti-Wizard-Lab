@@ -1,44 +1,47 @@
-# Working Memory MVP v0.1 — Gate A implementation record
+# Working Memory MVP v0.1 — corrected contract
 
-**Branch:** `feat/working-memory-mvp-v0.1`
-**Base SHA:** `c3e40b74fa9a2c2f029351ce33dd9ed655e1a31d`
-**HEAD:** recorded as the final commit SHA in the Draft PR and completion record.
-**Scope:** core data and persistence only; no UI, agent write tools, or user-data import.
+**Branch:** `feat/working-memory-mvp-v0.1` · **Base:** `c3e40b74fa9a2c2f029351ce33dd9ed655e1a31d` · **Reviewed starting HEAD:** `4983b81c6bc353e6760ace22edd792cf73524f4d`
+**Scope:** isolated data and persistence layer only. No UI, agent write tools, real user data, FalkorDB, Canon integration, or `wiz_ref` changes.
 
 ## Data contract
 
-Working Memory lives only in the additive `wm_*` namespace in the existing SQL.js database. The schema creates `wm_projects`, `wm_sources`, `wm_items`, `wm_item_sources`, `wm_relations`, `wm_changes`, and the derived FTS5 table `wm_items_fts`. It does not change Canon, the ledger, `wiz_ref_*`, Continuity Carrier, Experiment Registry, PR #28, or PR #30.
+Working Memory uses only the additive `wm_*` namespace in the existing SQL.js database. The tables are `wm_projects`, `wm_sources`, `wm_items`, `wm_item_sources`, `wm_relations`, `wm_changes`, and the derived FTS5 index `wm_items_fts`.
 
-`wm_items` includes every requested field: `work_id`, `project_id`, `thread`, `type`, `status`, `priority`, `title`, `summary`, `body_md`, `current_question`, `status_note`, `next_action`, `provenance_class`, `tags_json`, `non_canon`, `created_at`, `updated_at`, `resolved_at`, and `archived_at`. SQLite and the module both enforce `non_canon = 1`. A blocked item needs a nonblank `status_note`; a resolved item needs a nonblank `status_note` and `resolved_at`. Items are not hard-deleted: `SUPERSEDED` retains the row, and archive sets `archived_at`.
+A project contains `project_id`, unique `code`, `name`, `summary`, `created_at`, and `updated_at`. Codes are normalized to uppercase alphanumeric characters with optional internal hyphens so they can be embedded safely in a WORK_ID. The optional `default_thread` field is not implemented.
 
-The supporting columns are `wm_projects(project_id, name, description, created_at, updated_at)`, `wm_sources(source_id, title, source_type, locator, project_id, provenance_class, metadata_json, created_at, updated_at)`, `wm_item_sources(work_id, source_id, is_primary)`, `wm_relations(relation_id, from_work_id, to_work_id, relation_type, created_at)`, and `wm_changes(change_id, work_id, change_type, before_json, after_json, created_at)`. The derived FTS5 table indexes `work_id` (unindexed), `title`, `summary`, `body_md`, and `tags_json`.
+A source contains `source_id`, `project_id`, `surface`, `role`, `title`, `locator`, `revision`, `note`, `created_at`, and `updated_at`. `surface` is exactly `GITHUB`, `NOTION`, `DRIVE`, `LOCAL`, `WEB`, `CHAT`, or `OTHER`; `role` is exactly `PRIMARY`, `EVIDENCE`, `CONTEXT`, `NAVIGATION`, or `REFERENCE`. A registered source must have a non-empty locator. These fields answer **where to look**; source navigation is not replaced by item provenance.
 
-The Gate A request did not enumerate item, status, priority, or provenance enums, so this implementation uses and exports these explicit values:
+A work item includes `work_id`, required `project_id`, `thread`, `type`, `status`, `priority`, `title`, `summary`, `body_md`, `current_question`, `status_note`, `next_action`, `provenance_class`, `tags_json`, `non_canon`, `created_at`, `updated_at`, `resolved_at`, and `archived_at`. An absent thread is stored and exported as `""`, not null. Optional summary/body text remains compatible with Quick Capture and is normalized as null or text in exports. `non_canon = 1` is enforced by the API and SQLite.
 
-- `type`: `DECISION`, `QUESTION`, `TASK`, `NOTE`, `RISK`, `BLOCKER`, `INSIGHT`, `RESEARCH`
-- `status`: `OPEN`, `IN_PROGRESS`, `BLOCKED`, `RESOLVED`, `SUPERSEDED`
-- `priority`: `LOW`, `NORMAL`, `HIGH`, `URGENT`
-- `provenance_class`: `USER_STATED`, `SOURCE_DERIVED`, `AGENT_DERIVED`, `MIXED`, `UNKNOWN`
-- relation types: `RELATED_TO`, `BLOCKED_BY`, `DEPENDS_ON`, `DERIVED_FROM`, `SUPERSEDES`
+The enums are exactly:
 
-Relations require existing endpoints and reject self-relations. The module records only explicit edges; it does not infer graph relationships. Item-source links permit at most one primary source per item.
+- `type`: `NOTE`, `QUOTE`, `VALUE`, `QUESTION`, `HYPOTHESIS`, `DECISION`, `MODEL_PROPOSAL`, `DONOR_CANDIDATE`, `EXPERIMENT`, `FINDING`, `SYSTEM`, `TASK`, `SOURCE_POINTER`.
+- `status`: `CURRENT`, `OPEN`, `IN_PROGRESS`, `BLOCKED`, `UNKNOWN`, `RESOLVED`, `COMPLETED`, `REJECTED`, `SUPERSEDED`.
+- `priority`: `P0`, `P1`, `P2`, `P3`, `TAIL`.
+- `provenance_class`: `USER_NOTE`, `USER_DECISION`, `USER_QUOTE`, `MODEL_PROPOSAL`, `MODEL_SUMMARY`, `PROJECT_SOURCE`, `EXTERNAL_SOURCE`, `EXPERIMENT_RESULT`.
+
+`MODEL_SUMMARY` and `MODEL_PROPOSAL` remain distinct from `USER_DECISION`. Item provenance does not stand in for a source's surface or role.
+
+## IDs, lifecycle, and history
+
+New items receive an automatic ID of the form `WRK-<PROJECT_CODE>-<YYYYMMDD>-<NNN>`, with the date in UTC; for example `WRK-EITI-20261006-001`. Generation runs inside the serialized SQLite mutation transaction, finds the next unused daily sequence for that project's code, and cannot be overridden through item creation or update. Because items cannot be hard-deleted, a generated ID is not reused. Same-page writes are serialized; `MULTI_TAB_WRITES = NOT_SUPPORTED_IN_V0_1` remains explicit.
+
+The `UNRESOLVED` view contains exactly `OPEN`, `IN_PROGRESS`, `BLOCKED`, and `UNKNOWN`; `CURRENT` is excluded. The `RESOLVED` view contains only `RESOLVED`, and the `COMPLETED` view contains only `COMPLETED`. `COMPLETED` is not an alias for `RESOLVED`. `BLOCKED` requires `status_note`; `RESOLVED` requires `status_note` and `resolved_at`; `REJECTED` requires a reason in `status_note`. `SUPERSEDED` preserves the old item. Archiving sets `archived_at` without deleting the item or changing its status.
+
+The change log is append-only. Each row retains `actor_class` and normalized `changed_fields_json`, with before/after JSON where useful. The store-level actor defaults to `SYSTEM` and can be configured; callers may specify an actor for an explicit appended change. This is a compact audit log, not full event sourcing.
 
 ## Search and interchange
 
-Search is deterministic and applies the requested precedence: exact work ID, exact title, title contains, exact tag, summary contains, then body contains. Ties are ordered by title and then `work_id`; the default limit is 20 and the maximum is 100. FTS5 is maintained as a derived index, while ranking uses explicit comparisons rather than relevance scores.
+Search uses deterministic precedence: exact WORK_ID, exact title, title contains, tag, summary, then body. Ties sort by title and WORK_ID; there is no LLM ranking. The default result limit is 20 and the maximum is 100.
 
-Export produces one JSON document in format `eiti-working-memory-export/1` with `projects`, `sources`, `items`, `item_sources`, `relations`, and `changes`. Import inserts new IDs, treats equivalent same-ID records as no-ops, and rejects different same-ID records as `IMPORT_CONFLICT`; imports are atomic and never overwrite a conflict.
+JSON interchange remains `eiti-working-memory-export/1` and contains the six arrays `projects`, `sources`, `items`, `item_sources`, `relations`, and `changes`. Import validates the corrected schema and enum values, checks item IDs against project codes, and is atomic. Existing identical IDs are no-ops; conflicting same IDs fail closed with no silent overwrite. Summary/body and thread values are normalized consistently in exported records.
 
-## Persistence and limits
-
-All module mutations are queued within the current page, executed in a SQLite transaction, committed, then persisted by awaiting `_wizSaveDBAsync()`. That existing routine writes the SQLite byte snapshot into IndexedDB and verifies read-back. A mutation is only returned as saved after it receives `verified: true`. On persistence failure, the module restores the prior WM namespace and tries to durably save that rollback; if it cannot verify restoration, it blocks further writes in that store instance until reload.
-
-**`MULTI_TAB_WRITES = NOT_SUPPORTED_IN_V0_1`.** The app stores a whole SQLite snapshot in IndexedDB and has no cross-tab write coordinator. WM writes are serialized within one page only; simultaneous writes from multiple tabs are unsupported, and this gate does not add a coordination system. Use one app tab for WM writes.
-
-No agent write tools, visible UI, bulk user-data import, or changes to other memory paths are included. This is the data/persistence gate only.
+The existing durable-write design remains: mutations are serialized for the current page, applied in a SQLite transaction, followed by awaited IndexedDB persistence and read-back verification. On persistence failure, the WM namespace is restored; uncertain restoration blocks later writes until reload.
 
 ## Verification
 
-- `node tests/working-memory/db.test.cjs` — SQL.js/WASM acceptance suite for schema idempotency, required fields, enum and lifecycle validation, sources/projects/items, IDs, links, relations, tags/search ranking and limits, unresolved/resolved lists, append-only changes, rollback, durable byte reload, versioned export/import, and conflict handling.
-- `PUPPETEER_CORE=/path/to/puppeteer-core CHROME_PATH=/usr/bin/chromium node tests/working-memory/browser.test.mjs` — real browser and IndexedDB save/read-back/reload integration test.
-- Existing reference-memory tests remain an independent regression check; their namespace and semantics are unchanged.
+- `node tests/working-memory/db.test.cjs` — schema, all corrected enums, work IDs, uniqueness, required project/source fields, lifecycle views, append-only actor history, search precedence, corrected export/import, fail-closed conflicts, transaction rollback, durability/reload, and forbidden-namespace checks.
+- `PUPPETEER_CORE=/path/to/puppeteer-core CHROME_PATH=/usr/bin/chromium node tests/working-memory/browser.test.mjs` — real browser/IndexedDB durability and reload test using synthetic fixtures.
+- Existing reference-memory DB and browser suites remain regression checks; they exercise the unchanged `wiz_ref_*` namespace.
+
+Earlier draft Gate-A `wm_*` tables are not automatically migrated. Startup detects incompatible table columns and raises `WM_SCHEMA_MISMATCH` rather than silently running against the old contract. No old Working Memory records are rewritten or discarded by this change.

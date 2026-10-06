@@ -40,16 +40,16 @@ try {
   await page.waitForFunction(() => window._wizDB && window.WorkingMemory && window.WmStore, { timeout: 30000 });
 
   const writeResult = await page.evaluate(async () => {
-    const p = await window.WmStore.createProject({ project_id: 'wm-browser-project', name: 'Browser persistence fixture' });
-    const s = await window.WmStore.createSource({ source_id: 'wm-browser-source', title: 'Synthetic source', project_id: p.data.project_id });
+    const p = await window.WmStore.createProject({ project_id: 'wm-browser-project', code: 'BROWSER', name: 'Browser persistence fixture', summary: 'Synthetic durability fixture' });
+    const s = await window.WmStore.createSource({ source_id: 'wm-browser-source', title: 'Synthetic source', project_id: p.data.project_id, surface: 'LOCAL', role: 'EVIDENCE', locator: 'local://synthetic/browser-fixture', revision: 'test-v1', note: 'Only test navigation data.' });
     const i = await window.WmStore.createItem({
-      work_id: 'wm-browser-item', project_id: p.data.project_id, title: 'Durable browser record',
-      type: 'TASK', status: 'OPEN', priority: 'HIGH', summary: 'IndexedDB read-back fixture',
+      project_id: p.data.project_id, title: 'Durable browser record',
+      type: 'TASK', status: 'OPEN', priority: 'P1', provenance_class: 'USER_NOTE', summary: 'IndexedDB read-back fixture',
       body_md: 'Only synthetic test data.', tags: ['browser','durable'], non_canon: true,
     });
     const link = await window.WmStore.addItemSource({ work_id: i.data.work_id, source_id: s.data.source_id, is_primary: true });
-    const relation = await window.WmStore.addRelation({ from_work_id: i.data.work_id, to_work_id: i.data.work_id, relation_type: 'RELATED_TO' }).catch(error => ({ rejected: error.message }));
-    return { project: p, source: s, item: i, link, relation };
+    const relation = await window.WmStore.addRelation({ from_work_id: i.data.work_id, to_work_id: i.data.work_id, relation_type: 'RELATED_TO' });
+    return { project: p, source: s, item: i, link, relation, workId: i.data.work_id };
   });
   for (const key of ['project','source','item','link']) assert(writeResult[key].ok && writeResult[key].saved, `${key} was not durably saved: ${JSON.stringify(writeResult[key])}`);
   assert(writeResult.item.persistence.verified === true, 'WM mutation did not receive verified persistence acknowledgement');
@@ -73,18 +73,18 @@ try {
     const links = fresh.exec('SELECT count(*) FROM wm_item_sources WHERE work_id=?', [workId])[0].values[0][0];
     fresh.close();
     return { item: rows.length ? rows[0].values[0] : null, links, bytes: buffer.byteLength };
-  }, 'wm-browser-item');
+  }, writeResult.workId);
   assert.deepEqual(independentRead.item, ['Durable browser record', 1]);
   assert.equal(independentRead.links, 1);
   assert(independentRead.bytes > 0);
 
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => window._wizDB && window.WmStore, { timeout: 30000 });
-  const afterReload = await page.evaluate(() => ({
-    item: window.WmStore.getItem('wm-browser-item'),
+  const afterReload = await page.evaluate(workId => ({
+    item: window.WmStore.getItem(workId),
     projectCount: window._wizDB.exec("SELECT count(*) FROM wm_projects WHERE project_id='wm-browser-project'")[0].values[0][0],
-    changeCount: window._wizDB.exec("SELECT count(*) FROM wm_changes WHERE work_id='wm-browser-item'")[0].values[0][0],
-  }));
+    changeCount: window._wizDB.exec('SELECT count(*) FROM wm_changes WHERE work_id=?', [workId])[0].values[0][0],
+  }), writeResult.workId);
   assert.equal(afterReload.item.title, 'Durable browser record');
   assert.equal(afterReload.item.non_canon, 1);
   assert.equal(afterReload.projectCount, 1);

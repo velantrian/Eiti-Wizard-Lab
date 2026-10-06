@@ -4,7 +4,7 @@ STATUS: `RESEARCH_INDEX_ONLY`\
 CANON: `NO`\
 RUNTIME_AUTHORITY: `NO`\
 PRIMARY_EVIDENCE: `NO`\
-LAST_VERIFIED: `2026-10-06` (Notion and GitHub checks; Drive pages could not be rendered)
+LAST_VERIFIED: `2026-10-06` (Notion, GitHub, and read-only Drive content review)
 
 PURPOSE: Point a new agent to completed and open research lines, their bounded results, limits, and primary evidence. This is a navigation layer; it does not establish a result, authorize a run, or change project state.
 
@@ -26,15 +26,13 @@ Keep these distinctions intact: `RETRIEVAL ≠ TRUTH`; `CROSS_MODEL_REPRODUCED �
 ## B. Global registries and cross-source status
 
 **Notion — Experiment Registry** is the main discovery map: [N01](#f-external-source-records).\
-**Google Drive — companion Experiment Registry** is intended as the long-form registry/evidence companion: [D01](#f-external-source-records).
+**Google Drive — companion Experiment Registry** is the long-form registry/evidence companion: [D01](#f-external-source-records).
 
-**Drive status is per source, not global.** Owner-side connected Drive verification says content is accessible for D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`), D02 (`1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs`), D04 (`1Z-tjZGi_-2ETkWp3NHsmClZIZ_mC23KAOGvAScXLYGA`), and D05 (`1-ZreAQzB43qTe67h6OG3egZX1zooqCtmYA_8yfu1FrM`). This is **owner-verified availability**, not a claim that this task independently reviewed the documents.
+**Drive access and content review are source-specific.** Owner-side verification confirms content access for D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`), D02 (`1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs`), D04 (`1Z-tjZGi_-2ETkWp3NHsmClZIZ_mC23KAOGvAScXLYGA`), and D05 (`1-ZreAQzB43qTe67h6OG3egZX1zooqCtmYA_8yfu1FrM`). This task also exported and reviewed D01, D02, D04, D05, and the distinct D06 (`1ZwacnCQe-wREwE4syx1TM4eBkGj1H_t6mIrYYIA22-k`) through the read-only Google Workspace connector. `DRIVE_REGISTRY_VERIFIED=OWNER_VERIFIED_ACCESS_YES (D01)`; `DRIVE_DOCS_REVIEWED=5 (D01, D02, D04, D05, D06; local content review on 2026-10-06)`. These are text-level source reviews, not verification of missing raw experiment artifacts.
 
-The current authorized browser session was tried read-only on D01, D02, D04, and D05. In each, Google Docs displayed: “Не удалось открыть файл, поскольку в вашем браузере отключено использование JavaScript. Включите его и перезагрузите страницу.” The document titles were visible, but no document body text was available for comparison. This is a browser/tool limitation, not evidence that the documents are absent or that their claims match. Accordingly `DRIVE_REGISTRY_VERIFIED=OWNER_VERIFIED_ACCESS_YES (D01; local content review not completed)` and `DRIVE_DOCS_REVIEWED=0` (content-level reviews). All 23 cards retain `CONSISTENCY=UNKNOWN`; claim-level reasons and exact Notion/Drive/GitHub references are recorded in §C.1. Do not infer `MATCH`, `STALE_*`, or `SOURCE_ONLY_*` from availability alone.
+D01's Drive `modifiedTime` is `2026-10-05T10:34:28.190Z`, before PR #27 (`2026-10-05T13:19:29Z`) and PR #28 (`2026-10-05T14:15:54Z`) were created. Those absent entries are temporal staleness, not evidence of absence. D03's current locator `1ZwacnCQe-wREwE4sy1TM4eBkGj1H_t6mIrYYIA22-k` returned NOT FOUND/404 in both owner-side and current Drive lookup; its identity/provenance remains unresolved, not absent or deleted. The similar but different D06 ID is independently reviewed and must not replace D03.
 
-D03’s current locator `1ZwacnCQe-wREwE4sy1TM4eBkGj1H_t6mIrYYIA22-k` was reported by the owner as NOT FOUND/404 through connected Drive. Its identity/provenance is unresolved; this is not a finding that the source is absent or deleted. The similar but different ID is recorded separately as D06 and must not replace D03.
-
-Notion page timestamps vary. `LAST_VERIFIED` below means the page/branch was checked on 2026-10-06; use the source’s own date for the age of its claims. For source-record details, see [External source records](#f-external-source-records).
+Notion timestamps vary. `LAST_VERIFIED` below means the page/branch was checked on 2026-10-06; use the source's own date for claim age. The per-card claim comparisons and exact references are in [T3.2 source reconciliation](#c1-t32-source-reconciliation); source-record details are in [External source records](#f-external-source-records).
 
 ## C. Experiment line index
 
@@ -50,10 +48,10 @@ WHAT_WAS_OBSERVED: Registry reports temporal/currentness findings across model-l
 WHAT_IT_SUPPORTS: Reopening the bounded temporal question only if a new, distinct question or evidence justifies it.\
 WHAT_IT_DOES_NOT_PROVE: A root cause, universal cognition law, complete memory mechanism, or production readiness.\
 OPEN_FINDING: META-RETRIEVAL-01; exact primary artifact paths and current external repository state remain unverified here.\
-PRIMARY_EVIDENCE: Frozen source SHA `3ed3a53ee9b8445a5f2ebf16046f782a3095555e` is reported by the Registry; artifact path not verified.\
+PRIMARY_EVIDENCE: Crystal E0 bounded result remains Registry-reported; exact primary Crystal E0 artifact path is unresolved. GH17 is a Continuum cross-project note, not the Crystal run artifact.\
 GITHUB_REF: [GH17](#f-external-source-records).  NOTION_REF: [N01](#f-external-source-records), [N12](#f-external-source-records).  DRIVE_REF: [D01](#f-external-source-records); any dedicated report is unverified.\
-NOTION_STATUS: Bounded temporal question closed; meta-retrieval open.  DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
-NOTES: `CROSS_MODEL_REPRODUCED != ROOT_CAUSE_PROVEN`.
+NOTION_STATUS: Bounded temporal question closed; meta-retrieval open. DRIVE_STATUS: D01 reviewed; Registry claim aligns, but the cited GitHub commit is not Crystal E0 primary evidence. CONSISTENCY: `PARTIAL_MISMATCH`. LAST_VERIFIED: `2026-10-06`.\
+NOTES: `CROSS_MODEL_REPRODUCED != ROOT_CAUSE_PROVEN`; do not treat GH17 as Crystal primary evidence.
 
 ### 2. TCE / Snapshot / Observer / Continuity
 
@@ -67,9 +65,9 @@ WHAT_WAS_OBSERVED: 04A preserved the unselected options; 04B resumed the thread 
 WHAT_IT_SUPPORTS: Separate measurement of continuation sufficiency, capture fidelity, and status/authority fidelity.\
 WHAT_IT_DOES_NOT_PROVE: Observer superiority, a model effect separated from role/context, a universal compression mechanism, EDCA, learning, or state-transition correctness.\
 OPEN_FINDING: A bounded state-safe capture/carry-forward design; separate GO is required before any proposed follow-up.\
-PRIMARY_EVIDENCE: Dedicated Notion experiment report N06 contains frozen-source and output hashes; direct Drive companion D02 is not readable here. Raw bytes were not independently recovered in this task.\
-GITHUB_REF: `UNKNOWN` in Eiti-Wizard-Lab for these TCE runs. NOTION_REF: [N06](#f-external-source-records). DRIVE_REF: [D02](#f-external-source-records), plus [D01](#f-external-source-records); both unverified.\
-NOTION_STATUS: Bounded runs complete with the limitations above. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+PRIMARY_EVIDENCE: Dedicated Drive D02 TCE report and Notion N06 record reviewed; raw bytes remain linked/referenced, not recovered in this index.\
+GITHUB_REF: `UNKNOWN` in Eiti-Wizard-Lab for these TCE runs. NOTION_REF: [N06](#f-external-source-records). DRIVE_REF: [D02](#f-external-source-records), [D01](#f-external-source-records); content reviewed, raw run bytes not recovered.\
+NOTION_STATUS: Bounded runs complete with the limitations above. DRIVE_STATUS: D01 and D02 reviewed; TCE claims align with N06. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: `CONTINUATION != FAITHFUL REPRODUCTION`; `GOOD RESUME != GOOD CAPTURE`; `NOT_CHOSEN != REJECTED`; `TCE != LEARNING`.
 
 ### 3. Beacon experiments
@@ -86,7 +84,7 @@ WHAT_IT_DOES_NOT_PROVE: Robust Beacon benefit, necessity of Beacon, or a final m
 OPEN_FINDING: JST-CAUSAL-01 and JST-RETRACT-02 remain candidate next experiments; exact protocols need review.\
 PRIMARY_EVIDENCE: N06 describes the live condition; raw artifacts are referenced there, not copied here.\
 GITHUB_REF: `UNKNOWN` in Eiti-Wizard-Lab. NOTION_REF: [N01](#f-external-source-records), [N06](#f-external-source-records). DRIVE_REF: [D02](#f-external-source-records), unreadable here; [D01](#f-external-source-records) is the global registry.\
-NOTION_STATUS: No robust causal benefit; TAIL-02/T15 disputed; follow-ups candidate. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+NOTION_STATUS: No robust causal benefit; TAIL-02/T15 disputed; follow-ups candidate. DRIVE_STATUS: D01 and D02 reviewed; Condition B/no matched A and TAIL-02 limits align. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: Do not repeat Condition B as a causal test without a matched control and a distinct question.
 
 ### 4. GSJ — Ground-Sensitive Judgment
@@ -103,7 +101,7 @@ WHAT_IT_DOES_NOT_PROVE: Formal-pilot performance, general reasoning ability, or 
 OPEN_FINDING: Exact frozen v0.5.1 artifacts/hashes and owner authorization.\
 PRIMARY_EVIDENCE: N07 is an older journal; current summary is N01. Exact v0.5.1 primary artifact path was not verified.\
 GITHUB_REF: `UNKNOWN` in Eiti-Wizard-Lab. NOTION_REF: [N01](#f-external-source-records), [N07](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records); linked companion not verified.\
-NOTION_STATUS: Preflight PASS; formal pilot not authorized. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+NOTION_STATUS: Preflight PASS; formal pilot not authorized. DRIVE_STATUS: D01 reviewed; 36/36 preflight is distinct from an unauthorized formal pilot. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: `PREFLIGHT PASS ≠ FREEZE ≠ RUN AUTHORIZATION`.
 
 ### 5. E0-B Typing Reliability
@@ -120,7 +118,7 @@ WHAT_IT_DOES_NOT_PROVE: Strict-blind human gold, model performance, or that expo
 OPEN_FINDING: U0b durable boundary/provenance artifact and human-label gate.\
 PRIMARY_EVIDENCE: Open PR #7 head `b14fbd76995c36c69526103a3598f4c753d5bb31`, `experiments/memory-governance-e0b/RESULT.md`, `SOURCE_INTEGRITY_REPORT.md`, and recovery manifest; status remains on an unmerged branch.\
 GITHUB_REF: [GH03](#f-external-source-records). NOTION_REF: [N04](#f-external-source-records), [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records); dedicated companion not verified.\
-NOTION_STATUS: U0 30/30 frozen; boundary/provenance open; A0/A1/B not run. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+NOTION_STATUS: U0 30/30 frozen; boundary/provenance open; A0/A1/B not run. DRIVE_STATUS: D01 reviewed; U0=30/30, boundaries open, A0/A1/B not run; PR #7 covers Phase 1B limits. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: `MODEL-EXPOSED ≠ USELESS`, but model-exposed ≠ strict-blind gold.
 
 ### 6. CONT-E0T
@@ -135,10 +133,10 @@ WHAT_WAS_OBSERVED: The recorded result reports over-abstention and incomplete re
 WHAT_IT_SUPPORTS: Preserve the historical recorded result and its underdetermined status.\
 WHAT_IT_DOES_NOT_PROVE: History is useless/necessary, trajectory superiority, event-sourcing necessity, or an independently reproduced result.\
 OPEN_FINDING: Original raw artifacts were not recovered and the package was not sealed; no reconstruction or rerun is authorized by the status note.\
-PRIMARY_EVIDENCE: Frozen source SHA `6847eb759d747955b8618021d2414f5ffa840584`; exact raw run artifacts unavailable per the Continuum status record.\
-GITHUB_REF: [GH19](#f-external-source-records). NOTION_REF: [N08](#f-external-source-records), [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records); direct report not verified.\
-NOTION_STATUS: Result recorded, raw evidence not recovered, package not sealed. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
-NOTES: Do not reconstruct missing outputs from summaries; `RESULT RECORDED ≠ RAW ARTIFACTS RECOVERED`.
+PRIMARY_EVIDENCE: D01/N08 report a later historical result; GH19 is the earlier frozen preregistration only. Exact raw run artifacts remain `NOT_RECOVERED`.\
+GITHUB_REF: [GH19](#f-external-source-records) — preregistration/frozen-source evidence only; not evidence that the later reported run occurred or did not occur. NOTION_REF: [N08](#f-external-source-records), [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records); reviewed.\
+NOTION_STATUS: Result recorded, raw evidence not recovered, package not sealed. DRIVE_STATUS: D01 reviewed; later result recorded, while GH19 is earlier preregistration only; raw evidence unrecovered. CONSISTENCY: `PARTIAL_MISMATCH`. LAST_VERIFIED: `2026-10-06`.\
+NOTES: Preserve the later Registry-reported result; do not use GH19 as run evidence or infer the run never occurred. `RESULT RECORDED != RAW ARTIFACTS RECOVERED`.
 
 ### 7. Graphiti FM-13 → FM-17-pre
 
@@ -152,9 +150,9 @@ WHAT_WAS_OBSERVED: The checkpoint reports independent verification of T27/T28/T2
 WHAT_IT_SUPPORTS: Proceed only within the allowed offline ablation scope if separately authorized.\
 WHAT_IT_DOES_NOT_PROVE: Structural memory value, Honest Empty, multi-hop capability, or production suitability.\
 OPEN_FINDING: Real annotation and A0–A3 remain unrun; exact result artifacts/path must be read at the target commit.\
-PRIMARY_EVIDENCE: N05 points to GitHub commit `080e1959fe6a3d996f2690059fcdc687dd5c832e` and `docs/research/fm17_pre/` on the experiment branch; not independently opened in this task.\
-GITHUB_REF: [GH18](#f-external-source-records). NOTION_REF: [N05](#f-external-source-records), [N01](#f-external-source-records). DRIVE_REF: [D04](#f-external-source-records), not content-verified here; [D01](#f-external-source-records) is the global registry.\
-NOTION_STATUS: Preflight pass with minor findings; ablation readiness only. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+PRIMARY_EVIDENCE: D04 and D01 reviewed; GH18 points to the exact FM-17-pre freeze-anchor/checkpoint at commit `080e1959fe6a3d996f2690059fcdc687dd5c832e`.\
+GITHUB_REF: [GH18](#f-external-source-records). NOTION_REF: [N05](#f-external-source-records), [N01](#f-external-source-records). DRIVE_REF: [D04](#f-external-source-records), [D01](#f-external-source-records); content reviewed.\
+NOTION_STATUS: Preflight pass with minor findings; ablation readiness only. DRIVE_STATUS: D01 and D04 reviewed; integrity readiness only, no outcome-producing ablation. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: Preflight readiness is not an experiment outcome.
 
 ### 8. SIGNET-TRACE / SOURCE-RECOVERY
@@ -171,7 +169,7 @@ WHAT_IT_DOES_NOT_PROVE: A successful E2E trace, protocol validation/falsificatio
 OPEN_FINDING: Re-entry requires an attributable raw/exported conversation with chronology and an explicit completeness boundary.\
 PRIMARY_EVIDENCE: Source-recovery record says `PRIMARY_RAW_SOURCE=NOT_RECOVERED`; detailed run record is on the Crystal research branch.\
 GITHUB_REF: [GH20](#f-external-source-records). NOTION_REF: [N06](#f-external-source-records), [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records); linked Drive protocol not verified.\
-NOTION_STATUS: Blocked at Step 0 by source gap. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+NOTION_STATUS: Blocked at Step 0 by source gap. DRIVE_STATUS: D01 reviewed; source gap blocks Step 0 and no end-to-end result exists. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: Do not re-label derived-document analysis as the E2E trace result.
 
 ### 9. E0-A Ownership & Governance Conformance Probe
@@ -188,7 +186,7 @@ WHAT_IT_DOES_NOT_PROVE: Production safety, broader cognition, or merged/main beh
 OPEN_FINDING: PR #6 remains open; check its exact head and tests before treating it as current main evidence.\
 PRIMARY_EVIDENCE: PR #6 head `c36c5bc1fb9ddd5a54a8499cf9439e35ba3ca19c`, `experiments/memory-governance-e0a/RESULTS.md`, `logs/test_run.txt`, and `tests/test_e0a.py`.\
 GITHUB_REF: [GH02](#f-external-source-records). NOTION_REF: [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records); dedicated companion not verified.\
-NOTION_STATUS: E0-A is a current consolidated line; exact Registry summary details should be rechecked. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+NOTION_STATUS: E0-A is a current consolidated line; exact Registry summary details should be rechecked. DRIVE_STATUS: D01 reviewed; five bounded E0-A checks PASS on open PR #6. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: This E0-A result is on a branch; do not report it as merged.
 
 ### 10. Memory Admission Controller v0.1
@@ -205,7 +203,7 @@ WHAT_IT_DOES_NOT_PROVE: Authenticated host authority, scale readiness, all crash
 OPEN_FINDING: Independent final audit and the documented residual limitations; no evidence of a merge.\
 PRIMARY_EVIDENCE: PR #10 checkpoint `docs/checkpoints/MEMORY_ADMISSION_CONTROLLER_v0.1.md` and `tests/admission/` at the recorded test commit.\
 GITHUB_REF: [GH04](#f-external-source-records). NOTION_REF: [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records).\
-NOTION_STATUS: Present under Eiti admission line; details require Registry verification. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+NOTION_STATUS: Present under Eiti admission line; details require Registry verification. DRIVE_STATUS: D01 reviewed; bounded checkpoint results align with PR #10 test record. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: `IMPLEMENTED ≠ ACTIVATED`; `TESTED ≠ PRODUCTION_AUTHORIZED`.
 
 ### 11. Eiti-Wizard-Lab continuity stages M1 / M2 / M2.1 / M2.1.1 / M2.2a / M3
@@ -222,7 +220,7 @@ WHAT_IT_DOES_NOT_PROVE: USER ADMIT, Canon apply, authenticated writer, provider 
 OPEN_FINDING: Checkpoint says stop before M2.2b; resolve the documented baseline issue and obtain the appropriate review before any next stage.\
 PRIMARY_EVIDENCE: M1/M2/M3 exact PRs and paths are GH05–GH07; M2.1/M2.1.1/M2.2a are GH08–GH11. Main SHA `826e27abb9e1f114a11773adc2a79e1bc60927d0`; carrier SHA `e9e5ea3cd3fcdb19902c071f1b24b2705a6fef31`.\
 GITHUB_REF: [GH01](#f-external-source-records), [GH05](#f-external-source-records)–[GH11](#f-external-source-records). NOTION_REF: [N02](#f-external-source-records), [N03](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records), plus any linked report UNKNOWN.\
-NOTION_STATUS: M1/M2/M2.1/M2.1.1/M2.2a bounded checkpoints complete; branch distinction and stop retained. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+NOTION_STATUS: M1/M2/M2.1/M2.1.1/M2.2a bounded checkpoints complete; branch distinction and stop retained. DRIVE_STATUS: D01 reviewed; main/carrier branch distinction aligns with live PR refs. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: Do not conflate the merged main line with the later carrier branch. `IMPLEMENTED ≠ ACTIVATED`; `EXPERIMENTAL ≠ OFFICIAL_MEMORY`.
 
 ### 12. Ruslan Experimental Continuity Memory v0.1
@@ -230,7 +228,7 @@ NOTES: Do not conflate the merged main line with the later carrier branch. `IMPL
 EXPERIMENT_ID / NAME: `experiments/ruslan-experimental-memory/` v0.1.\
 PROJECT: Eiti-Wizard-Lab experimental memory.\
 QUESTION: Can a fresh session recover the bounded stop point and next action from the experimental project memory?\
-STATUS: Exists only on OPEN/DRAFT PR #28 at head `ec1a3b665cc0da29a7e10773a142aca45bda31b2`; not in main.\
+STATUS: D01 snapshot predates PR #28; current exact work exists on OPEN/DRAFT PR #28 at head `ec1a3b665cc0da29a7e10773a142aca45bda31b2`; not in main.\
 EXECUTION_VERDICT: The PR contains test/result artifacts; a recorded cross-session PASS is linked below. No GitHub checks were listed; the memory contents were not copied into this index.\
 SCIENTIFIC_INTERPRETATION: A bounded result on the recorded project source; not proof of general memory continuity or official/Canon status.\
 WHAT_WAS_OBSERVED: Result artifacts and lifecycle/clean-resume tests exist on the draft branch.\
@@ -239,7 +237,7 @@ WHAT_IT_DOES_NOT_PROVE: A merged feature, complete research continuity, broad re
 OPEN_FINDING: Owner review of the v0.1 result; scope and provenance should be checked before reuse.\
 PRIMARY_EVIDENCE: PR #28 paths `README.md`, `RUSLAN_EXPERIMENTAL_MEMORY.md`, `CROSS_SESSION_TEST_PLAN.md`, `tests/lifecycle.test.mjs`, and `tests/clean-resume.test.mjs` at the exact PR head. Sensitive memory content is intentionally not reproduced here.\
 GITHUB_REF: [GH13](#f-external-source-records). NOTION_REF: [N02](#f-external-source-records), [N10](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records); no Drive content verified.\
-NOTION_STATUS: Workspace design proposal remains non-Canon; exact scope match to PR #28 is unresolved. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+NOTION_STATUS: Workspace design proposal remains non-Canon; exact scope match to PR #28 is unresolved. DRIVE_STATUS: D01 snapshot predates PR #28; absence is temporal, not evidence of absence. CONSISTENCY: `STALE_DRIVE`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: This answers “where did we stop and what should the next session continue?”; it is not the evidence index.
 
 ### 13. Cross-session AI Resume Test
@@ -256,7 +254,7 @@ WHAT_IT_DOES_NOT_PROVE: General memory reliability, production readiness, Canon 
 OPEN_FINDING: Owner review; establish whether this result satisfies the separately proposed workspace test before treating the two as the same experiment.\
 PRIMARY_EVIDENCE: `experiments/ruslan-experimental-memory/tests/results/cross-session-v01/result.md` and `checkpoints/2026-10-05-cross-session-pass-v01.md` at PR #28 head.\
 GITHUB_REF: [GH13](#f-external-source-records). NOTION_REF: [N10](#f-external-source-records), [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records).\
-NOTION_STATUS: Working Research Workspace page describes its first resume test as a candidate/next step; PR #28 records a separate-scope PASS. Do not silently reconcile. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+NOTION_STATUS: N10 proposes a first test; PR #28 records a separate-scope PASS. Keep scopes distinct. Drive snapshot predates PR #28. DRIVE_STATUS: D01 snapshot predates PR #28; preserve the exact separate 10/10 result scope. CONSISTENCY: `STALE_DRIVE`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: `PASS` is recorded in an open draft branch; no independent reproduction is claimed.
 
 ### 14. Owner Authority / Personal Authority sandbox
@@ -264,7 +262,7 @@ NOTES: `PASS` is recorded in an open draft branch; no independent reproduction i
 EXPERIMENT_ID / NAME: Owner Authority Sandbox v0.1.\
 PROJECT: Eiti-Wizard-Lab authority-boundary experiment.\
 QUESTION: Can a synthetic passport/request decision path distinguish proposed context from owner-granted authority?\
-STATUS: OPEN/DRAFT PR #27 on the separate continuity branch; not merged.\
+STATUS: D01 snapshot predates PR #27; current exact sandbox exists on OPEN/DRAFT PR #27 at head `2d6877fc937f3b09c93d68c9b950170b358495d8`; not merged.\
 EXECUTION_VERDICT: Test files exist (`pdp.test.mjs`, `replay.test.mjs`), but no PR checks or test result were listed; execution verdict is `UNKNOWN`.\
 SCIENTIFIC_INTERPRETATION: At most a synthetic prototype; it is explicitly non-authoritative.\
 WHAT_WAS_OBSERVED: PR file list contains synthetic fixtures, PDP code, harness, and test files.\
@@ -273,7 +271,7 @@ WHAT_IT_DOES_NOT_PROVE: Real owner authority, permission to alter official memor
 OPEN_FINDING: Review the exact branch and obtain test evidence before making claims.\
 PRIMARY_EVIDENCE: PR #27 head `2d6877fc937f3b09c93d68c9b950170b358495d8`, `experiments/owner-authority-sandbox/`; synthetic fixtures are labeled as such.\
 GITHUB_REF: [GH12](#f-external-source-records). NOTION_REF: [N01](#f-external-source-records), [N10](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records).\
-NOTION_STATUS: Authority boundaries are research proposals; no Canon/runtime authorization. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+NOTION_STATUS: Authority boundaries are research proposals; no Canon/runtime authorization. DRIVE_STATUS: D01 snapshot predates PR #27; absence is temporal, not evidence of absence. CONSISTENCY: `STALE_DRIVE`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: `OWNER_AUTHORITY_SANDBOX ≠ OWNER_AUTHORITY`; do not merge with the memory or evidence-index layer.
 
 ### 15. Working Research Workspace / Digital Identity Routing
@@ -288,9 +286,9 @@ WHAT_WAS_OBSERVED: The Notion page and PR describe candidate fields, storage rou
 WHAT_IT_SUPPORTS: Using stable IDs, source references, bounded statuses, and an explicit owner-review/admission boundary as design questions.\
 WHAT_IT_DOES_NOT_PROVE: A working retrieval system, correct automatic routing, successful resume, or any authority to promote content to Canon.\
 OPEN_FINDING: Design/test the isolated v0.1 workspace and review the first cross-session test; clarify whether PR #28’s recorded PASS meets this proposal’s criteria.\
-PRIMARY_EVIDENCE: PR #30’s single proposal file `docs/research/working-research-workspace/WORKING_RESEARCH_WORKSPACE.md` at head `9c2410d0a026748ccb2f13cfef41d12040776ea6`; no test artifact.\
-GITHUB_REF: [GH14](#f-external-source-records). NOTION_REF: [N10](#f-external-source-records). DRIVE_REF: [D05](#f-external-source-records), architecture link from N10; not content-verified here.\
-NOTION_STATUS: Research/architecture proposal; first test is candidate/next step. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+PRIMARY_EVIDENCE: D05 proposal text reviewed; PR #30 head `9c2410d0a026748ccb2f13cfef41d12040776ea6` is the matching proposal document, not a test result.\
+GITHUB_REF: [GH14](#f-external-source-records). NOTION_REF: [N10](#f-external-source-records). DRIVE_REF: [D05](#f-external-source-records), [D01](#f-external-source-records); content reviewed.\
+NOTION_STATUS: Research/architecture proposal; first test is candidate/next step. DRIVE_STATUS: D05 and D01 reviewed; proposal-only/non-Canon/non-runtime status aligns with N10/PR #30. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: `AUTO-ROUTING ≠ AUTO-ADMISSION`; `WORKSPACE ≠ CANON`.
 
 ### 16. HLC Human ↔ LLM behavioral trace line
@@ -305,9 +303,9 @@ WHAT_WAS_OBSERVED: The dedicated review describes visible response differences a
 WHAT_IT_SUPPORTS: A carefully controlled, predeclared follow-up measuring revision, source/actor status, uncertainty, and what remains unknown.\
 WHAT_IT_DOES_NOT_PROVE: General human/LLM differences, a stable human trait, internal mechanisms, or medical/real-world competence.\
 OPEN_FINDING: Freeze primary stimuli/transcripts and criteria; keep HLC-001B separate from Pilot-A; do not call extensions HLC-001B.\
-PRIMARY_EVIDENCE: N11 is a secondary review and says the standalone Pilot-A transcript is not frozen; the Registry lists HLC-001B as preregistered/not run.\
+PRIMARY_EVIDENCE: D01 HLC status passages reviewed; N11 remains a secondary review, not a frozen primary transcript.\
 GITHUB_REF: `UNKNOWN` in Eiti-Wizard-Lab. NOTION_REF: [N01](#f-external-source-records), [N09](#f-external-source-records), [N11](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records); other linked Research Program references are `UNKNOWN` because they were not reviewed.\
-NOTION_STATUS: Pilot-A exploratory/non-blind; HLC-001B not run; Pilot-B exploratory/post-exposure/non-blind; HLC-MODALITY-01 candidate/not run. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+NOTION_STATUS: Pilot-A exploratory/non-blind; HLC-001B not run; Pilot-B exploratory/post-exposure/non-blind; HLC-MODALITY-01 candidate/not run. DRIVE_STATUS: D01 reviewed; HLC exploratory and not-run boundaries align with N01/N09/N11. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: `OBSERVED PRODUCT BEHAVIOR ≠ BASE-MODEL PROPERTY`; `SELF-REPORT ≠ COMPLETE MECHANISM`.
 
 ### 17. Human Cognition → Computational Reconstruction Map
@@ -322,142 +320,142 @@ WHAT_WAS_OBSERVED: It summarizes established/partial/unknown areas and bounded E
 WHAT_IT_SUPPORTS: Research orientation and cautious hypothesis formation.\
 WHAT_IT_DOES_NOT_PROVE: That a computational analogy reproduces a biological mechanism or subjective experience.\
 OPEN_FINDING: Consciousness, subjectivity, identity, understanding, and durable learning remain open in the synthesis.\
-PRIMARY_EVIDENCE: This map is a synthesis; follow its linked owning pages and experimental artifacts for primary evidence.\
+PRIMARY_EVIDENCE: D06 is the separate 2026-10-05 Human Cognition synthesis; it was read directly. D03 remains a distinct unresolved locator.\
 GITHUB_REF: `UNKNOWN` in Eiti-Wizard-Lab. NOTION_REF: [N09](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records), [D06](#f-external-source-records) (separate Human Cognition source; not D03).\
-NOTION_STATUS: Current synthesis, not Canon. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+NOTION_STATUS: Current synthesis, not Canon. DRIVE_STATUS: D01 and distinct D06 reviewed; D03 remains unresolved and is not substituted. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: `FUNCTIONAL REPRODUCTION ≠ BIOLOGICAL REPRODUCTION ≠ CONSCIOUSNESS REPRODUCTION`.
 
 ### 18. PAL-CONTAM-01
 
 EXPERIMENT_ID / NAME: PAL-CONTAM-01.\
-PROJECT: Candidate identifier present; exact owning project is `UNKNOWN` in the reviewed Registry excerpt.\
-QUESTION: `UNKNOWN` — retrieve the dedicated protocol before interpretation.\
-STATUS: Candidate/preregistered, not run, not authorized.\
+PROJECT: Personal-adapter research / interaction-induced adaptation bias.\
+QUESTION: If an adapter is trained only on user-authored messages, can it still learn prior model framing when the user’s wording follows model exposure?\
+STATUS: Candidate experiment; NOT RUN; NOT AUTHORIZED; not an architecture decision or runtime change.\
 EXECUTION_VERDICT: `NOT_RUN`.\
 SCIENTIFIC_INTERPRETATION: No empirical result is available.\
-WHAT_WAS_OBSERVED: The Registry lists the candidate; its detailed design was not reviewed.\
-WHAT_IT_SUPPORTS: Navigation to a source for later verification only; no empirical inference.\
+WHAT_WAS_OBSERVED: D01 and D02 identify the paired independent-versus-model-exposed design; both state that no run result exists.\
+WHAT_IT_SUPPORTS: A bounded candidate design distinguishing who authored text from whether prior model exposure shaped it.\
 WHAT_IT_DOES_NOT_PROVE: That such bias occurs, its size, or any adapter effect.\
-OPEN_FINDING: Locate and review the dedicated protocol, then verify scope and status; do not run without separate authorization.\
-PRIMARY_EVIDENCE: Registry candidate listing only; no dedicated protocol or run artifact was verified.\
-GITHUB_REF: `UNKNOWN`. NOTION_REF: [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records).\
-NOTION_STATUS: Candidate/not run/not authorized. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+OPEN_FINDING: No empirical result; review the candidate protocol before any separately authorized run.\
+PRIMARY_EVIDENCE: D01 registry section 17.1 and the dedicated D02 PAL-CONTAM-01 report; both content-reviewed.\
+GITHUB_REF: `UNKNOWN` in Eiti-Wizard-Lab. NOTION_REF: [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records), [D02](#f-external-source-records); content reviewed.\
+NOTION_STATUS: Candidate/not run/not authorized. DRIVE_STATUS: D01 and D02 reviewed; PAL-CONTAM-01 is candidate, not run, and not authorized. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: Candidate ≠ roadmap commitment; do not run without separate GO.
 
 ### 19. FORK-01
 
 EXPERIMENT_ID / NAME: FORK-01.\
-PROJECT: Research candidate; exact owning project is `UNKNOWN` in the reviewed Registry excerpt.\
-QUESTION: `UNKNOWN` — retrieve the linked protocol before interpretation.\
-STATUS: Present in the Registry; execution state beyond candidate discovery is `UNKNOWN`.\
-EXECUTION_VERDICT: `UNKNOWN`.\
-SCIENTIFIC_INTERPRETATION: No result can be inferred from the identifier alone.\
-WHAT_WAS_OBSERVED: Registry search confirms the identifier; no primary result was reviewed.\
-WHAT_IT_SUPPORTS: Navigation to a source for later verification only.\
-WHAT_IT_DOES_NOT_PROVE: Any completed run or scientific claim.\
-OPEN_FINDING: Identify the owning protocol and explicit current status.\
-PRIMARY_EVIDENCE: `UNKNOWN`; Registry is a discovery pointer only.\
-GITHUB_REF: `UNKNOWN`. NOTION_REF: [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records).\
-NOTION_STATUS: Identifier present; detailed status not verified. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
-NOTES: Do not infer that it is run, failed, or authorized.
+PROJECT: Soul / Self / Subject / Continuity research; operational branching and lineage, not a subjectivity test.\
+QUESTION: When one frozen agent state is instantiated into two parallel descendants, which continuity dimensions remain shared versus branch-specific, and which operational identity policies yield different preregistered predictions?\
+STATUS: PREREGISTRATION DRAFT; NOT STARTED; NO RUN AUTHORIZATION; NOT SUBJECTIVITY TEST.\
+EXECUTION_VERDICT: `NOT_RUN` — the dedicated source says no run is authorized and no evidence has been created.\
+SCIENTIFIC_INTERPRETATION: May test operational lineage behavior; cannot establish numerical subjective identity or consciousness.\
+WHAT_WAS_OBSERVED: The dedicated source specifies a frozen common ancestor and compares operational lineage policies; no completed result is recorded.\
+WHAT_IT_SUPPORTS: A bounded preregistration for operational identity/lineage predictions only.\
+WHAT_IT_DOES_NOT_PROVE: That the same phenomenal subject continues in either, both, or neither branch.\
+OPEN_FINDING: Any future test still requires exact frozen state, branch isolation, provenance, and separate authorization.\
+PRIMARY_EVIDENCE: Dedicated Notion N13 preregistration and D01 section 17.2; no run artifact exists in the reviewed sources.\
+GITHUB_REF: `UNKNOWN` in Eiti-Wizard-Lab. NOTION_REF: [N13](#f-external-source-records), [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records); content reviewed.\
+NOTION_STATUS: FORK-01 preregistration draft; not started; no run authorization; not a subjectivity test. DRIVE_STATUS: D01 and dedicated Notion N13 page reviewed; draft/not-started/not-authorized boundary aligns. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
+NOTES: `FORK RESULT != SAME SUBJECT PROOF != CONSCIOUSNESS PROOF != SOUL TEST`.
 
 ### 20. INTENT-CONTINUITY-EXTRACTION-01
 
 EXPERIMENT_ID / NAME: INTENT-CONTINUITY-EXTRACTION-01.\
-PROJECT: Research candidate; exact owning project is `UNKNOWN` in the reviewed Registry excerpt.\
-QUESTION: `UNKNOWN` — retrieve the linked protocol before interpretation.\
-STATUS: Candidate identifier present; exact protocol/run state is not independently verified.\
-EXECUTION_VERDICT: `UNKNOWN`.\
-SCIENTIFIC_INTERPRETATION: No result can be inferred from the identifier alone.\
-WHAT_WAS_OBSERVED: Registry search confirms the identifier; no primary result was reviewed.\
-WHAT_IT_SUPPORTS: Navigation to a source for later verification only.\
-WHAT_IT_DOES_NOT_PROVE: Any completed run or continuity claim.\
-OPEN_FINDING: Locate the dedicated source and verify scope and status.\
-PRIMARY_EVIDENCE: `UNKNOWN`; Registry is a discovery pointer only.\
-GITHUB_REF: `UNKNOWN`. NOTION_REF: [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records).\
-NOTION_STATUS: Identifier present; exact status unresolved. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
-NOTES: `CONTINUITY ≠ EXPERIENCE`.
+PROJECT: Intent Continuity / goal lifecycle, extraction, persistence, and resumption research.\
+QUESTION: How should a long-term cognitive system preserve and resume a person’s original/current goals, goal changes, subgoals, reasons, statuses, open commitments, and correct resumption after pause, compaction, handoff, or model change?\
+STATUS: RESEARCH; NOT CANON; NOT RUNTIME; NO NEW ORGAN; NO ADMISSION; NO EXPERIMENT AUTHORIZATION. Candidate specification only.\
+EXECUTION_VERDICT: `NOT_RUN` — INTENT-CONTINUITY-EXTRACTION-01 is not preregistered or authorized.\
+SCIENTIFIC_INTERPRETATION: A research mechanism map and candidate annotation/fixture protocol, not an architecture contract or result.\
+WHAT_WAS_OBSERVED: The dedicated map distinguishes lifecycle/integration, extraction/transition typing, and persistence/governance gaps; D01 labels the named protocol candidate-specification-only.\
+WHAT_IT_SUPPORTS: A candidate annotation/fixture specification for where extraction or persistence loses intent/status/provenance.\
+WHAT_IT_DOES_NOT_PROVE: That a full lifecycle has never been studied, or that a new organ/schema/runtime change is required.\
+OPEN_FINDING: Prepare the annotation and fixture specification only; no implementation, schema freeze, owner assignment, Canon promotion, or run authorization.\
+PRIMARY_EVIDENCE: Dedicated Notion N14 Intent Continuity map and D01 section 17.3; both describe research/candidate status, not a completed experiment.\
+GITHUB_REF: `UNKNOWN` in Eiti-Wizard-Lab. NOTION_REF: [N14](#f-external-source-records), [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records); content reviewed.\
+NOTION_STATUS: Research, not Canon/runtime; no experiment authorization; candidate specification only. DRIVE_STATUS: D01 and dedicated Notion N14 page reviewed; candidate-spec/research-only boundary aligns. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
+NOTES: `RESEARCH != CANON`; `CANDIDATE SPECIFICATION != PREREGISTRATION OR AUTHORIZATION`.
 
 ### 21. JST-CAUSAL-01
 
 EXPERIMENT_ID / NAME: JST-CAUSAL-01.\
-PROJECT: Research candidate; exact owning project is `UNKNOWN` in the reviewed Registry excerpt.\
-QUESTION: `UNKNOWN` — consult the candidate protocol.\
+PROJECT: Eiti-Wizard-Lab continuity / JST residual research.\
+QUESTION: Does durable mutation add causal value over the strongest practical retrieval baseline, beyond retrieval-mediated adaptation?\
 STATUS: Candidate next experiment, not a completed result.\
 EXECUTION_VERDICT: `NOT_RUN` (Registry labels it candidate, not completed).\
 SCIENTIFIC_INTERPRETATION: No causal finding is available.\
-WHAT_WAS_OBSERVED: The Registry lists it alongside JST-RETRACT-02 as a candidate.\
+WHAT_WAS_OBSERVED: D01 says first map JST requirements against existing E0-A/E0-B/Admission/M1/M2/M2.1/M3 artifacts, then run a bounded causal contrast.\
 WHAT_IT_SUPPORTS: A future bounded causal question only after protocol review.\
 WHAT_IT_DOES_NOT_PROVE: Any cause or effect.\
 OPEN_FINDING: Dedicated protocol, scope, and owner authorization.\
-PRIMARY_EVIDENCE: `UNKNOWN`; candidate listing only.\
+PRIMARY_EVIDENCE: D01 section 20.12; no completed GitHub experiment or run artifact is identified.\
 GITHUB_REF: `UNKNOWN`. NOTION_REF: [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records).\
-NOTION_STATUS: Candidate/not completed. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+NOTION_STATUS: Candidate/not completed. DRIVE_STATUS: D01 reviewed; candidate next experiment, not a completed result. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: Candidate ≠ authorization.
 
 ### 22. JST-RETRACT-02
 
 EXPERIMENT_ID / NAME: JST-RETRACT-02.\
-PROJECT: Research candidate; exact owning project is `UNKNOWN` in the reviewed Registry excerpt.\
-QUESTION: `UNKNOWN` — consult the candidate protocol.\
+PROJECT: Eiti-Wizard-Lab continuity / JST residual research.\
+QUESTION: Can selective downstream rollback occur after ground retraction while preserving independent support?\
 STATUS: Candidate next experiment, not a completed result.\
 EXECUTION_VERDICT: `NOT_RUN` (Registry labels it candidate, not completed).\
 SCIENTIFIC_INTERPRETATION: No retraction finding is available.\
-WHAT_WAS_OBSERVED: The Registry lists it alongside JST-CAUSAL-01 as a candidate.\
+WHAT_WAS_OBSERVED: D01 says first map JST requirements against existing artifacts, then run a bounded selective-retraction contrast.\
 WHAT_IT_SUPPORTS: A future bounded retraction question only after protocol review.\
 WHAT_IT_DOES_NOT_PROVE: Any retraction effect or failure mode.\
 OPEN_FINDING: Dedicated protocol, scope, and owner authorization.\
-PRIMARY_EVIDENCE: `UNKNOWN`; candidate listing only.\
+PRIMARY_EVIDENCE: D01 section 20.12; no completed GitHub experiment or run artifact is identified.\
 GITHUB_REF: `UNKNOWN`. NOTION_REF: [N01](#f-external-source-records). DRIVE_REF: [D01](#f-external-source-records).\
-NOTION_STATUS: Candidate/not completed. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+NOTION_STATUS: Candidate/not completed. DRIVE_STATUS: D01 reviewed; candidate next experiment, not a completed result. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: Candidate ≠ authorization.
 
 ### 23. TCE-BEACON-SHIFT-01
 
 EXPERIMENT_ID / NAME: TCE-BEACON-SHIFT-01 — Beacon relevance/over-anchoring candidate.\
 PROJECT: TCE / Beacon line.\
-QUESTION: Can the same persistent Beacon remain available without dragging an old intent into unrelated topics or overriding an explicit current-user change?\
-STATUS: Candidate, not started, not authorized.\
+QUESTION: Can the same persistent Beacon remain available without forcing unrelated or explicitly changed user topics back toward the old intent?\
+STATUS: Candidate next test; NOT STARTED; NOT AUTHORIZED YET; do not run automatically.\
 EXECUTION_VERDICT: `NOT_RUN`.\
 SCIENTIFIC_INTERPRETATION: No result is available; the current Beacon Condition B is not a causal test.\
 WHAT_WAS_OBSERVED: The detailed TCE report proposes adjacent, unrelated, and explicit-override probes; none is authorized by that proposal.\
 WHAT_IT_SUPPORTS: A future relevance-gating test only after a separate GO.\
 WHAT_IT_DOES_NOT_PROVE: Beacon benefit, a final architecture, or a failure in every unrelated context.\
 OPEN_FINDING: Freeze a distinct matched test and obtain separate authorization.\
-PRIMARY_EVIDENCE: Candidate design in N06; no run artifact.\
-GITHUB_REF: `UNKNOWN`. NOTION_REF: [N06](#f-external-source-records), [N01](#f-external-source-records). DRIVE_REF: [D02](#f-external-source-records), unreadable.\
-NOTION_STATUS: Candidate/not started/not authorized. DRIVE_STATUS: `UNKNOWN`. CONSISTENCY: `UNKNOWN`. LAST_VERIFIED: `2026-10-06`.\
+PRIMARY_EVIDENCE: Dedicated D02 section 16 and D01 registry; both content-reviewed; no run artifact.\
+GITHUB_REF: `UNKNOWN` in Eiti-Wizard-Lab. NOTION_REF: [N06](#f-external-source-records), [N01](#f-external-source-records). DRIVE_REF: [D02](#f-external-source-records), [D01](#f-external-source-records); content reviewed.\
+NOTION_STATUS: Candidate/not started/not authorized. DRIVE_STATUS: D01 and D02 reviewed; candidate not started/not authorized and do-not-run-automatically boundary aligns. CONSISTENCY: `MATCH`. LAST_VERIFIED: `2026-10-06`.\
 NOTES: Do not run automatically.
 
-## C.1. T3.1 cross-source reconciliation record (2026-10-06)
+## C.1. T3.2 source reconciliation
 
-**Rule:** each row names the current Notion-derived claim, the relevant Drive ID and owner/local-review state, and the exact GitHub source when present. D01/D02/D04/D05 availability is owner-verified, but their bodies did not render locally. Therefore every overall card classification remains `UNKNOWN`; GitHub-only support or pointer tensions do not create a Drive match. `GITHUB_REF=UNKNOWN` means the current card/index has no exact GitHub source for that claim.
+**Rule:** `MATCH` means the reviewed source claims agree within their stated scope. `PARTIAL_MISMATCH` marks a provenance/source-pointer gap, not an inferred experimental contradiction. `STALE_DRIVE` means the D01 snapshot predates the later GitHub record; its omission is not evidence of absence. D03 remains an unresolved locator and does not force unrelated cards to `UNKNOWN`.
 
-1. **R01 — Crystal E0 / Project Aurora — `CONSISTENCY=UNKNOWN`.** Notion N01 `3edac84d-0547-81ad-9634-db49b600ad08` and N12 `3edac84d-0547-81d9-9165-ebbf2ad0222f` summarize temporal/currentness findings and report SHA `3ed3a53ee9b8445a5f2ebf16046f782a3095555e` as the frozen Crystal E0 source. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; local text not reviewed (JavaScript-disabled error). GitHub GH17 resolves to `docs/research/CONTINUUM_CURRENT_STATE_VS_TRAJECTORY_CROSS_PROJECT_EVIDENCE.md`, a Continuum/CONT-E0T cross-project note, not an identified Crystal E0 run artifact. Flag the source pointer for owner/source-map resolution; do not guess a replacement or conclude a Drive mismatch.
-2. **R02 — TCE / Snapshot / Observer / Continuity — `CONSISTENCY=UNKNOWN`.** Compared N06 `3e1ac84d-0547-8182-a48e-ed965721de93` and N01 `3edac84d-0547-81ad-9634-db49b600ad08`: bounded 04A/04B/Observer/SLOT outcomes and limitations. Drive D02 `1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs` and D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; body text not reviewed. Exact GitHub run source=UNKNOWN; 04B continuation and unestablished Observer benefit cannot be compared with Drive text.
-3. **R03 — Beacon experiments — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` and N06 `3e1ac84d-0547-8182-a48e-ed965721de93` say Condition B had five calls, no matched Condition A, no robust causal benefit, and disputed TAIL-02/T15 effect. Drive D02 `1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs` and D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; body text not reviewed. Exact GitHub run source=UNKNOWN; no Drive/GitHub consistency claim is supported.
-4. **R04 — GSJ semantic preflight — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` and N07 `3dbac84d-0547-8199-800d-c1132b75738b` describe 36/36 reported preflight agreement, not a formal pilot, with authorization open. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source for current v0.5.1 artifacts=UNKNOWN; no comparison with D01 content.
-5. **R05 — E0-B Typing Reliability — `CONSISTENCY=UNKNOWN`.** N04 `3e3ac84d-0547-8103-9762-eec24dadd4eb` and N01 `3edac84d-0547-81ad-9634-db49b600ad08` say U0 count/intent frozen 30/30, Phase 1B captured, labels pending, and blind run/A0/A1/B not run. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH03, PR #7 head `b14fbd76995c36c69526103a3598f4c753d5bb31`, files `experiments/memory-governance-e0b/RESULT.md` and `SOURCE_INTEGRITY_REPORT.md`, report 42 verbatim atoms, human confirmation pending, ground truth pending, blind run not run. This supports those Phase 1B limits but does not independently verify the separate 30/30 U0 claim or Drive content.
-6. **R06 — CONT-E0T — `CONSISTENCY=UNKNOWN`.** N08 `3bcac84d-0547-81eb-b7b3-cbd281bdcdc6` and N01 `3edac84d-0547-81ad-9634-db49b600ad08` report a historical run/result, raw evidence not recovered, and an unsealed reproduction package. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH19 commit `6847eb759d747955b8618021d2414f5ffa840584`, `docs/research/CONT_E0T_FINAL_PREREGISTRATION.md`, says separate owner GO required, authorization NOT_AUTHORIZED, and no reader/scoring/outputs; its cross-project summary records `CONT_E0T_EXECUTED=NO` and `CONT_E0T_RESULT=NOT_ESTABLISHED`. This is an unresolved chronology/status tension, not a final adjudication; remain UNKNOWN pending source/owner reconciliation.
-7. **R07 — Graphiti FM-13 → FM-17-pre — `CONSISTENCY=UNKNOWN`.** N05 `3d8ac84d-0547-8188-9133-c5e27c14f8f1` and N01 `3edac84d-0547-81ad-9634-db49b600ad08` describe an integrity/preflight gate with minor findings and no annotation/ablation outcome. Drive D04 `1Z-tjZGi_-2ETkWp3NHsmClZIZ_mC23KAOGvAScXLYGA` and D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH18 commit `080e1959fe6a3d996f2690059fcdc687dd5c832e`, `docs/research/fm17_pre/` including README and `EXTERNAL_FREEZE_ANCHOR.md`, documents the v1.3.1 external-root gate and says ablation not executed. Readiness/integrity evidence is not an outcome or Drive comparison.
-8. **R08 — SIGNET-TRACE / SOURCE-RECOVERY — `CONSISTENCY=UNKNOWN`.** N06 `3e1ac84d-0547-8182-a48e-ed965721de93` and N01 `3edac84d-0547-81ad-9634-db49b600ad08` state blocked at Step 0 by source gap and no end-to-end result. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH20 at `943281bda8e96bfb6b3613ab14941131e41d93eb`, `docs/research/SIGNET_TRACE_01.md`, withdraws “TRACE_COMPLETE” as official and records blocked at Step 0 / no result. GitHub supports bounded status; D01 remains unreviewed.
-9. **R09 — E0-A Ownership & Governance — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` summarizes five bounded checks as PASS on an open, unmerged branch. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH02 PR #6 head `c36c5bc1fb9ddd5a54a8499cf9439e35ba3ca19c`, `RESULTS.md` and `logs/test_run.txt`, lists PASS for tests 1, 2, 5, 11, and 12; PR #6 remains open. This corroborates the bounded reported result, not a Drive comparison or merged behavior.
-10. **R10 — Memory Admission Controller v0.1 — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` reports checkpointed suites at code commit `e286c50` and an unmerged lab implementation. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH04 PR #10 is OPEN/DRAFT at head `105b880e5439f2022ca052747bdf10bfee97262c`; `docs/checkpoints/MEMORY_ADMISSION_CONTROLLER_v0.1.md` pins code commit `e286c50aed03a7cd1956d36fc5b216f2f15ea81d` and labels the work lab-only, synthetic, non-Canon/non-runtime, with final audit pending. This is not live CI and cannot establish a Drive match.
-11. **R11 — Eiti continuity M1/M2/M2.1/M2.1.1/M2.2a/M3 — `CONSISTENCY=UNKNOWN`.** N02 `3ecac84d-0547-81b3-a8d2-e0aea1d44ba5`, N03 `3ecac84d-0547-81a7-9b7a-d6a916bf0709`, and N01 `3edac84d-0547-81ad-9634-db49b600ad08` distinguish main from the continuity-carrier branch. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH01 is `main@826e27abb9e1f114a11773adc2a79e1bc60927d0`; GH05/#13, GH06/#15, GH07/#16 are main merges; GH08–GH11/#14/#18/#20/#25 are merged to `lab/continuity-carrier-m1`, not main. Live metadata supports the branch map, not Drive consistency.
-12. **R12 — Ruslan Experimental Continuity Memory v0.1 — `CONSISTENCY=UNKNOWN`.** N02 `3ecac84d-0547-81b3-a8d2-e0aea1d44ba5` and N10 `3f0ac84d-0547-81fb-aec2-de6544dcfd95` describe an experimental memory and owner-review boundary. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH13 PR #28 head `ec1a3b665cc0da29a7e10773a142aca45bda31b2`, README, marks it experimental, non-authoritative, non-Canon, and separate from official memory; PR #28 remains OPEN/DRAFT. Scope/status only; no Drive comparison.
-13. **R13 — Cross-session AI Resume Test — `CONSISTENCY=UNKNOWN`.** N10 `3f0ac84d-0547-81fb-aec2-de6544dcfd95` treats its proposed first test as a candidate; N01 `3edac84d-0547-81ad-9634-db49b600ad08` records a separate PR #28 result. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH13 PR #28 head `ec1a3b665cc0da29a7e10773a142aca45bda31b2`, `tests/results/cross-session-v01/result.md`, reports PASS, 10/10 correct, listed errors zero, NEXT=OWNER REVIEW. Keep the distinct test scopes separate; no Drive match.
-14. **R14 — Owner Authority sandbox — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` and N10 `3f0ac84d-0547-81fb-aec2-de6544dcfd95` describe a synthetic boundary proposal without a verified run result. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH12 PR #27 head `2d6877fc937f3b09c93d68c9b950170b358495d8`, README, says synthetic-only, non-authoritative, no real grants/PEP/production authorization; test files exist but no result is cited in the reviewed material.
-15. **R15 — Working Research Workspace / Digital Identity Routing — `CONSISTENCY=UNKNOWN`.** N10 `3f0ac84d-0547-81fb-aec2-de6544dcfd95` describes a proposal/candidate test, not a result. Drive D05 `1-ZreAQzB43qTe67h6OG3egZX1zooqCtmYA_8yfu1FrM` and D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. GitHub GH14 PR #30 head `9c2410d0a026748ccb2f13cfef41d12040776ea6`, `WORKING_RESEARCH_WORKSPACE.md`, is an architecture proposal; PR #30 OPEN/DRAFT, no run result recorded. Proposal-only scope, not Drive consistency.
-16. **R16 — HLC Human ↔ LLM behavioral trace — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08`, N09 `3f0ac84d-0547-815e-95c6-d5dad0e842cf`, and N11 `3efac84d-0547-81c7-a04a-f81b001ed319` describe exploratory/non-blind limited traces and distinguish HLC-001B/not-run from Pilot-A/B. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source=UNKNOWN; no cross-source status assigned.
-17. **R17 — Human Cognition → Computational Reconstruction Map — `CONSISTENCY=UNKNOWN`.** Notion N09 `3f0ac84d-0547-815e-95c6-d5dad0e842cf` describes a dated synthesis. D03 `1ZwacnCQe-wREwE4sy1TM4eBkGj1H_t6mIrYYIA22-k` is unresolved/404 and is not substituted. Similar but distinct D06 ID `1ZwacnCQe-wREwE4syx1TM4eBkGj1H_t6mIrYYIA22-k` is owner-identified by the title “🧠 Human Cognition → Computational Reconstruction Map — Science · Velantrim · Open Questions · 2026-10-05”; its content accessibility/review is unknown. D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos` is owner-accessible but locally unreadable. Exact GitHub source=UNKNOWN; no content match claimed.
-18. **R18 — PAL-CONTAM-01 — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` lists a candidate/preregistration, not run or authorized, with no dedicated protocol reviewed. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source=UNKNOWN; do not infer result or absence.
-19. **R19 — FORK-01 — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` supports identifier discovery only; project, question, execution state, and primary evidence remain unknown. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source=UNKNOWN; no status promotion.
-20. **R20 — INTENT-CONTINUITY-EXTRACTION-01 — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` lists a candidate identifier but does not verify protocol/run. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source=UNKNOWN; no inference from identifier alone.
-21. **R21 — JST-CAUSAL-01 — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` lists a candidate, not a completed causal result or authorization. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source=UNKNOWN; do not treat candidate as run or authorized.
-22. **R22 — JST-RETRACT-02 — `CONSISTENCY=UNKNOWN`.** N01 `3edac84d-0547-81ad-9634-db49b600ad08` lists a candidate, not a retraction result or authorization. Drive D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source=UNKNOWN; no failure mode inferred.
-23. **R23 — TCE-BEACON-SHIFT-01 — `CONSISTENCY=UNKNOWN`.** N06 `3e1ac84d-0547-8182-a48e-ed965721de93` and N01 `3edac84d-0547-81ad-9634-db49b600ad08` describe an unstarted, unauthorized relevance/over-anchoring candidate. Drive D02 `1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs` and D01 `1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`: owner access YES; text not reviewed. Exact GitHub source=UNKNOWN; do not run automatically or claim an effect.
+1. **R01 — Crystal E0 / Project Aurora — `CONSISTENCY=PARTIAL_MISMATCH`.** D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §6) and N01 (`3edac84d-0547-81ad-9634-db49b600ad08`) agree that the bounded Crystal temporal question is closed and META-RETRIEVAL-01 remains open. GH17 is commit `3ed3a53ee9b8445a5f2ebf16046f782a3095555e`, whose merge adds `docs/research/CONTINUUM_CURRENT_STATE_VS_TRAJECTORY_CROSS_PROJECT_EVIDENCE.md` with CONT-E0T/Continuum evidence; that is not a verified Crystal E0 primary run artifact. Keep the result Registry-reported and mark the primary Crystal artifact path unresolved.
+2. **R02 — TCE / Snapshot / Observer / Continuity — `CONSISTENCY=MATCH`.** N06 (`3e1ac84d-0547-8182-a48e-ed965721de93`), D02 (`1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs`, §§3–6, 11) and D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §11) align: 04A preserves non-selection but has status mixing; 04B resumes then the model selects a direction; the post-hoc Observer loses the unselected options; allowing NOT_PRESENT alone does not remove status mixing. Observer benefit remains unestablished; raw bytes were not copied or recovered. No exact Eiti-Wizard-Lab GitHub run ref exists.
+3. **R03 — Beacon experiments — `CONSISTENCY=MATCH`.** N01/N06 and D02 (`1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs`, §§7–11) plus D01 (§11) agree: Condition B has five calls but no matched Condition A, so causality/Beacon effect is unknown; TAIL-02 completed/froze 36/36 calls with a disputed localized T15 effect. No exact Eiti-Wizard-Lab GitHub run ref exists.
+4. **R04 — GSJ semantic preflight — `CONSISTENCY=MATCH`.** N01 (`3edac84d-0547-81ad-9634-db49b600ad08`) and D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §12) agree on 36/36 decision/ground preflight alignment and the open integrity/freeze/owner-GO gates; N07 (`3dbac84d-0547-8199-800d-c1132b75738b`) is the older v0.4.2 journal, not the current formal pilot. No exact GitHub source for v0.5.1 primary artifacts was identified. Preflight is not a formal pilot or authorization.
+5. **R05 — E0-B Typing Reliability — `CONSISTENCY=MATCH`.** N04 (`3e3ac84d-0547-8103-9762-eec24dadd4eb`), N01, D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §12) and GH03 (PR #7 head `b14fbd76995c36c69526103a3598f4c753d5bb31`, `experiments/memory-governance-e0b/RESULT.md`, `SOURCE_INTEGRITY_REPORT.md`) align on a frozen U0 count/intent of 30/30, open textual-boundary/provenance work, Phase 1B capture with labels/ground truth pending, and blind/A0/A1/B runs not done. PR #7’s 42 verbatim atoms are Phase 1B corpus evidence, not strict-blind ground truth.
+6. **R06 — CONT-E0T — `CONSISTENCY=PARTIAL_MISMATCH`.** N08 (`3bcac84d-0547-81eb-b7b3-cbd281bdcdc6`), N01 and reviewed D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §13) report a historical completed/result-recorded run, raw evidence not recovered, and an unsealed package. GH19 is `Velantrim-Continuum@6847eb759d747955b8618021d2414f5ffa840584`, `docs/research/CONT_E0T_FINAL_PREREGISTRATION.md`; it is the earlier freeze (`READY_FOR_OWNER_GO=YES`, `EXPERIMENT_AUTHORIZATION=NOT_AUTHORIZED`, `NO READER / NO SCORING / NO OUTPUTS`), not run evidence. Keep the later reported result, preserve `RAW_RUN_EVIDENCE=NOT_RECOVERED`, and do not infer the later run never occurred.
+7. **R07 — Graphiti FM-13 → FM-17-pre — `CONSISTENCY=MATCH`.** N05 (`3d8ac84d-0547-8188-9133-c5e27c14f8f1`), D01 and reviewed D04 (`1Z-tjZGi_-2ETkWp3NHsmClZIZ_mC23KAOGvAScXLYGA`) align on FM-17-pre protocol/integrity readiness, not an outcome-producing run. GH18 commit `080e1959fe6a3d996f2690059fcdc687dd5c832e`, `docs/research/fm17_pre/EXTERNAL_FREEZE_ANCHOR.md`, requires an externally supplied frozen root and stops before A0–A3; D04 reports real annotation/ablation not executed. No structural-value result is established.
+8. **R08 — SIGNET-TRACE / SOURCE-RECOVERY — `CONSISTENCY=MATCH`.** N06 (`3e1ac84d-0547-8182-a48e-ed965721de93`), N01, and D01 (§14) agree that the work is blocked at Step 0 by a source gap, without an end-to-end result. GH20 at branch `research/signet-trace-01-protocol-v0-1-20260927`, head `943281bda8e96bfb6b3613ab14941131e41d93eb`, `docs/research/SIGNET_TRACE_01.md`, explicitly withdraws “TRACE_COMPLETE” as official and records no result. The bounded status is a match; the raw source remains unresolved.
+9. **R09 — E0-A Ownership & Governance — `CONSISTENCY=MATCH`.** N01 and D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §20) report the five bounded governance checks as PASS. GH02 is open PR #6 head `c36c5bc1fb9ddd5a54a8499cf9439e35ba3ca19c`, `experiments/memory-governance-e0a/RESULTS.md` and `logs/test_run.txt`; it records the same five checks. This is bounded branch evidence, not merged or production behavior.
+10. **R10 — Memory Admission Controller v0.1 — `CONSISTENCY=MATCH`.** N01, D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §20.4), and GH04 at open/draft PR #10 head `105b880e5439f2022ca052747bdf10bfee97262c`, `docs/checkpoints/MEMORY_ADMISSION_CONTROLLER_v0.1.md`, agree on reported suites: 38/38 admission DB, 13/13 admission browser, 36/36 existing Reference Memory DB, 10/10 Reference Memory browser, private scan PASS/0 hits, at code commit `e286c50aed03a7cd1956d36fc5b216f2f15ea81d`. The checkpoint is lab-only, no live CI, final audit pending, and not runtime authorization.
+11. **R11 — Eiti continuity stages M1/M2/M2.1/M2.1.1/M2.2a/M3 — `CONSISTENCY=MATCH`.** N02 (`3ecac84d-0547-81b3-a8d2-e0aea1d44ba5`), N03 (`3ecac84d-0547-81a7-9b7a-d6a916bf0709`), N01, and D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §§20.5–20.13) preserve the main/branch distinction. GH01 main is `826e27abb9e1f114a11773adc2a79e1bc60927d0`; PRs #13/#15/#16 are on main, while #14/#18/#20/#25 are merged into the separate `lab/continuity-carrier-m1` chain, not main. Live PR metadata confirms the branch map.
+12. **R12 — Ruslan Experimental Continuity Memory v0.1 — `CONSISTENCY=STALE_DRIVE`.** N02/N10 describe the experimental-memory and owner-review boundaries; D01’s `modifiedTime=2026-10-05T10:34:28.190Z` predates PR #28 creation at `2026-10-05T14:15:54Z`. GH13 is OPEN/DRAFT at head `ec1a3b665cc0da29a7e10773a142aca45bda31b2`; its README labels the work experimental, separate from official memory. D01’s omission is stale, not proof the work did not exist.
+13. **R13 — Cross-session AI Resume Test — `CONSISTENCY=STALE_DRIVE`.** N10 calls its proposed first test a candidate, while N01 records a separate PR #28 result. D01’s `modifiedTime=2026-10-05T10:34:28.190Z` predates PR #28. GH13 at the exact head records `CROSS_SESSION_AI_RESUME_TEST=PASS`, 10/10 correct, zero listed errors, `NEXT=OWNER REVIEW`. Preserve the separate-scope distinction; D01’s missing line is temporal, not absence.
+14. **R14 — Owner Authority sandbox — `CONSISTENCY=STALE_DRIVE`.** N01/N10 describe a synthetic boundary proposal; D01’s `modifiedTime=2026-10-05T10:34:28.190Z` predates PR #27 creation at `2026-10-05T13:19:29Z`. GH12 is OPEN/DRAFT at head `2d6877fc937f3b09c93d68c9b950170b358495d8`; `experiments/owner-authority-sandbox/README.md` explicitly uses synthetic fixtures and says no real grants, production authorization, or Canon Apply. D01’s omission is temporal, not evidence of absence.
+15. **R15 — Working Research Workspace / Digital Identity Routing — `CONSISTENCY=MATCH`.** N10, reviewed D05 (`1-ZreAQzB43qTe67h6OG3egZX1zooqCtmYA_8yfu1FrM`), and PR #30/GH14 at head `9c2410d0a026748ccb2f13cfef41d12040776ea6` agree this is a research/architecture proposal: not Canon, not runtime authorization, not implemented, and not an automatic memory writer. The first test is a candidate; no run result is recorded.
+16. **R16 — HLC Human ↔ LLM behavioral trace — `CONSISTENCY=MATCH`.** N01/N09/N11 and D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §21) align: Pilot-A is N=1 exploratory/non-blind, HLC-001B is not run, Pilot-B is post-exposure/non-blind, and HLC-MODALITY-01 is a candidate. No GitHub experiment ref exists; no universal human–LLM claim is supported.
+17. **R17 — Human Cognition → Computational Reconstruction Map — `CONSISTENCY=MATCH`.** N09, D01 and the separate D06 (`1ZwacnCQe-wREwE4syx1TM4eBkGj1H_t6mIrYYIA22-k`) agree on a 2026-10-05 research synthesis/orientation, not Canon or runtime authority, and on `FUNCTIONAL REPRODUCTION ≠ BIOLOGICAL REPRODUCTION ≠ CONSCIOUSNESS REPRODUCTION`. D06 content was reviewed directly and is not D03. D03 (`1ZwacnCQe-wREwE4sy1TM4eBkGj1H_t6mIrYYIA22-k`) remains unresolved/404.
+18. **R18 — PAL-CONTAM-01 — `CONSISTENCY=MATCH`.** N01, D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §17.1) and reviewed D02 (`1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs`, dedicated PAL-CONTAM-01 section) identify the same interaction-induced adaptation-bias question: user-authored text may still reflect prior model exposure. The paired design is a candidate; both Drive sources say no run result exists and no authorization is granted. No GitHub run ref exists.
+19. **R19 — FORK-01 — `CONSISTENCY=MATCH`.** D01 (§17.2) and dedicated Notion N13 (`3eaac84d-0547-8167-b8f6-e288fdf4f004`) agree: `PREREGISTRATION DRAFT`, `NOT STARTED`, `NO RUN AUTHORIZATION`, `NOT SUBJECTIVITY TEST`. The page asks which continuity dimensions remain shared versus branch-specific when one frozen state produces two descendants, and which operational identity policies make different preregistered predictions. No result or GitHub run ref exists.
+20. **R20 — INTENT-CONTINUITY-EXTRACTION-01 — `CONSISTENCY=MATCH`.** D01 (§17.3) and dedicated Notion N14 (`3ecac84d-0547-81f5-ad18-c166d757d884`) agree this is Intent Continuity research on goal lifecycle/extraction/persistence/resumption; the map is research-only, not Canon/runtime, has no new organ/admission/experiment authorization, and labels the protocol candidate-specification-only (not preregistered). No run result or GitHub experiment ref exists.
+21. **R21 — JST-CAUSAL-01 — `CONSISTENCY=MATCH`.** N01 and D01 (`1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos`, §20.12) call it a candidate next experiment, not a completed result. Its stated contrast is durable mutation versus retrieval-mediated adaptation, after mapping requirements to existing E0-A/E0-B/Admission/M1/M2/M2.1/M3 artifacts and using a strong practical retrieval baseline. No GitHub run ref exists.
+22. **R22 — JST-RETRACT-02 — `CONSISTENCY=MATCH`.** N01 and D01 (§20.12) call it a candidate next experiment, not a completed result. Its stated question is selective downstream rollback after ground retraction; the requirement-mapping step precedes implementation/run. No GitHub run ref exists.
+23. **R23 — TCE-BEACON-SHIFT-01 — `CONSISTENCY=MATCH`.** N06/N01, D01 (§17) and reviewed D02 (`1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs`, §16) agree it is a candidate next test, not started and not authorized. The question is avoiding old-intent over-anchoring on unrelated or explicitly changed user topics; D02 says do not run automatically. No GitHub run ref exists.
 
-**T3.1 counters:** `MATCH=0`; `PARTIAL_MISMATCH=0`; `STALE_NOTION=0`; `STALE_DRIVE=0`; `SOURCE_ONLY_NOTION=0`; `SOURCE_ONLY_DRIVE=0`; `UNKNOWN=23`. Every row names the specific claim and exact relevant source IDs; the cards remain unknown because Drive bodies could not be read in this session. GitHub-only confirmations or pointer tensions are not substitutes for the missing Drive-side comparison.
+**T3.2 counters:** `MATCH=18`; `PARTIAL_MISMATCH=2`; `STALE_NOTION=0`; `STALE_DRIVE=3`; `SOURCE_ONLY_NOTION=0`; `SOURCE_ONLY_DRIVE=0`; `UNKNOWN=0`. These are claim-level comparisons of source text, not claims that raw run artifacts were recovered or experiments independently reproduced.
 
 ## D. Eiti-Wizard-Lab implementation and status map
 
@@ -565,43 +563,55 @@ SOURCE_TITLE=🔎 Crystal + Titan — GitHub ↔ Notion Audit · 2026-10-02\
 SOURCE_ID=3edac84d-0547-81d9-9165-ebbf2ad0222f ([open](https://app.notion.com/p/3edac84d054781d99165ebbf2ad0222f))\
 SOURCE_ROLE=CROSS_SOURCE_AUDIT_CONTEXT_NOT_CURRENT_CRYSTAL_LIVE_STATE
 
+**N13**\
+SOURCE_SYSTEM=NOTION\
+SOURCE_TITLE=🧪 FORK-01 — Branching / Lineage / Operational Identity · Preregistration Draft\
+SOURCE_ID=3eaac84d-0547-8167-b8f6-e288fdf4f004 ([open](https://app.notion.com/p/3eaac84d05478167b8f6e288fdf4f004))\
+SOURCE_ROLE=DEDICATED_FORK_01_PREREGISTRATION; CONTENT_FETCHED=YES (2026-10-06); PAGE_LAST_EDITED=2026-09-29
+
+**N14**\
+SOURCE_SYSTEM=NOTION\
+SOURCE_TITLE=🔬 Intent Continuity — Mechanism Map v1.1 · Historical Review & Research Comments · 2026-10-01\
+SOURCE_ID=3ecac84d-0547-81f5-ad18-c166d757d884 ([open](https://app.notion.com/p/3ecac84d054781f5ad18c166d757d884))\
+SOURCE_ROLE=DEDICATED_INTENT_CONTINUITY_RESEARCH_MAP; CONTENT_FETCHED=YES (2026-10-06); PAGE_LAST_EDITED=2026-10-03
+
 ### Google Drive records
 
 **D01**\
 SOURCE_SYSTEM=GOOGLE_DRIVE\
 SOURCE_TITLE=Velantrim Experiment Registry — Evidence, Results & Findings\
 SOURCE_ID=1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos ([open](https://docs.google.com/document/d/1EgYHDDdY10l97Y8f9SOqgeHfywPnnZTncLlyrLyIbos/edit))\
-SOURCE_ROLE=GLOBAL_REGISTRY_COMPANION; OWNER_VERIFIED_CONTENT_ACCESS=YES; LOCAL_CONTENT_REVIEW=NO (Google Docs JavaScript-disabled viewer error)
+SOURCE_ROLE=GLOBAL_REGISTRY_COMPANION; OWNER_VERIFIED_CONTENT_ACCESS=YES; OWNER_CONTENT_REVIEW=YES; LOCAL_CONTENT_REVIEW=YES (read-only Google Workspace export, 2026-10-06); DRIVE_MODIFIED=2026-10-05T10:34:28.190Z
 
 **D02**\
 SOURCE_SYSTEM=GOOGLE_DRIVE\
 SOURCE_TITLE=TCE Snapshot / Observer Experiments — 04A · 04B · Observer-01 · SLOT-01\
 SOURCE_ID=1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs ([open](https://docs.google.com/document/d/1mLgFC4_HcvIPVDLxrhYFBcn0u5EULZBprKJCBcsgHEs/edit))\
-SOURCE_ROLE=DEDICATED_EXPERIMENT_REPORT; OWNER_VERIFIED_CONTENT_ACCESS=YES; LOCAL_CONTENT_REVIEW=NO (Google Docs JavaScript-disabled viewer error)
+SOURCE_ROLE=DEDICATED_EXPERIMENT_REPORT; OWNER_VERIFIED_CONTENT_ACCESS=YES; OWNER_CONTENT_REVIEW=YES; LOCAL_CONTENT_REVIEW=YES (read-only Google Workspace export, 2026-10-06)
 
 **D03**\
 SOURCE_SYSTEM=GOOGLE_DRIVE\
 SOURCE_TITLE=Eiti-Wizard-Lab consolidated evidence companion (Registry-linked title; document title not confirmed)\
 SOURCE_ID=1ZwacnCQe-wREwE4sy1TM4eBkGj1H_t6mIrYYIA22-k ([current locator](https://docs.google.com/document/d/1ZwacnCQe-wREwE4sy1TM4eBkGj1H_t6mIrYYIA22-k/edit))\
-SOURCE_ROLE=REGISTRY-LINKED_EITI_EVIDENCE_POINTER; OWNER_VERIFIED_LOOKUP=NOT_FOUND/404; LOCATOR=UNRESOLVED/INACCESSIBLE; NOT EVIDENCE OF ABSENCE OR DELETION; DO NOT SUBSTITUTE D06
+SOURCE_ROLE=REGISTRY-LINKED_EITI_EVIDENCE_POINTER; OWNER_VERIFIED_LOOKUP=NOT_FOUND/404; CURRENT_DRIVE_LOOKUP=NOT_FOUND/404; IDENTITY/PROVENANCE=UNRESOLVED; NOT EVIDENCE OF ABSENCE OR DELETION; DO NOT SUBSTITUTE D06
 
 **D04**\
 SOURCE_SYSTEM=GOOGLE_DRIVE\
 SOURCE_TITLE=Graphiti Fractal — Retrieval Relevance Research Track — Current\
 SOURCE_ID=1Z-tjZGi_-2ETkWp3NHsmClZIZ_mC23KAOGvAScXLYGA ([open](https://docs.google.com/document/d/1Z-tjZGi_-2ETkWp3NHsmClZIZ_mC23KAOGvAScXLYGA/edit))\
-SOURCE_ROLE=DEDICATED_RESEARCH_REPORT; OWNER_VERIFIED_CONTENT_ACCESS=YES; LOCAL_CONTENT_REVIEW=NO (Google Docs JavaScript-disabled viewer error)
+SOURCE_ROLE=DEDICATED_RESEARCH_REPORT; OWNER_VERIFIED_CONTENT_ACCESS=YES; OWNER_CONTENT_REVIEW=YES; LOCAL_CONTENT_REVIEW=YES (read-only Google Workspace export, 2026-10-06)
 
 **D05**\
 SOURCE_SYSTEM=GOOGLE_DRIVE\
 SOURCE_TITLE=🧠 Eiti Working Memory & Research Workspace — Digital Identity Routing Policy · 2026-10-05\
 SOURCE_ID=1-ZreAQzB43qTe67h6OG3egZX1zooqCtmYA_8yfu1FrM ([open](https://docs.google.com/document/d/1-ZreAQzB43qTe67h6OG3egZX1zooqCtmYA_8yfu1FrM/edit))\
-SOURCE_ROLE=WORKSPACE_ARCHITECTURE_LINK; OWNER_VERIFIED_CONTENT_ACCESS=YES; LOCAL_CONTENT_REVIEW=NO (Google Docs JavaScript-disabled viewer error)
+SOURCE_ROLE=WORKSPACE_ARCHITECTURE_PROPOSAL; OWNER_VERIFIED_CONTENT_ACCESS=YES; OWNER_CONTENT_REVIEW=YES; LOCAL_CONTENT_REVIEW=YES (read-only Google Workspace export, 2026-10-06)
 
 **D06**\
 SOURCE_SYSTEM=GOOGLE_DRIVE\
 SOURCE_TITLE=🧠 Human Cognition → Computational Reconstruction Map — Science · Velantrim · Open Questions · 2026-10-05\
 SOURCE_ID=1ZwacnCQe-wREwE4syx1TM4eBkGj1H_t6mIrYYIA22-k\
-SOURCE_ROLE=SEPARATE_HUMAN_COGNITION_SOURCE_FOR_CARD_17; OWNER_VERIFIED_TITLE_AND_ID_ONLY; NOT_D03; CONTENT_ACCESSIBILITY_AND_LOCAL_CONTENT_REVIEW=UNKNOWN
+SOURCE_ROLE=SEPARATE_HUMAN_COGNITION_SOURCE_FOR_CARD_17; OWNER_VERIFIED_CONTENT_ACCESS=YES; OWNER_CONTENT_REVIEW=YES; LOCAL_CONTENT_REVIEW=YES (read-only Google Workspace export, 2026-10-06); NOT_D03
 
 ### GitHub records
 
@@ -675,13 +685,13 @@ SOURCE_ROLE=EXPERIMENTAL_BRANCH_STAGE_AND_CHECK_POINTER
 SOURCE_SYSTEM=GITHUB\
 SOURCE_TITLE=PR #27 — Owner Authority Sandbox v0.1\
 SOURCE_ID=PR#27 head 2d6877fc937f3b09c93d68c9b950170b358495d8; `experiments/owner-authority-sandbox/` ([PR](https://github.com/velantrian/Eiti-Wizard-Lab/pull/27))\
-SOURCE_ROLE=OPEN_DRAFT_SYNTHETIC_EXPERIMENT
+SOURCE_ROLE=OPEN_DRAFT_SYNTHETIC_EXPERIMENT; PR_CREATED=2026-10-05T13:19:29Z; PR_STATE=OPEN/DRAFT
 
 **GH13**\
 SOURCE_SYSTEM=GITHUB\
 SOURCE_TITLE=PR #28 — Ruslan Experimental Continuity Memory v0.1\
 SOURCE_ID=PR#28 head ec1a3b665cc0da29a7e10773a142aca45bda31b2; `experiments/ruslan-experimental-memory/` and `tests/results/cross-session-v01/` ([PR](https://github.com/velantrian/Eiti-Wizard-Lab/pull/28))\
-SOURCE_ROLE=OPEN_DRAFT_MEMORY_AND_RECORDED_CROSS_SESSION_RESULT
+SOURCE_ROLE=OPEN_DRAFT_MEMORY_AND_RECORDED_CROSS_SESSION_RESULT; PR_CREATED=2026-10-05T14:15:54Z; PR_STATE=OPEN/DRAFT
 
 **GH14**\
 SOURCE_SYSTEM=GITHUB\
@@ -703,7 +713,7 @@ SOURCE_ROLE=OPEN_DRAFT_DONOR_CATALOG_NOT_EXPERIMENT_RESULT
 
 **GH17**\
 SOURCE_SYSTEM=GITHUB\
-SOURCE_TITLE=Registry-reported Crystal E0 source pointer — exact commit is a Continuum cross-project research note\
+SOURCE_TITLE=Continuum cross-project research note incorrectly pointed to as Crystal E0 primary evidence\
 SOURCE_ID=commit 3ed3a53ee9b8445a5f2ebf16046f782a3095555e ([commit](https://github.com/velantrian/velantrim-exocortex-crystal/commit/3ed3a53ee9b8445a5f2ebf16046f782a3095555e))\
 SOURCE_ROLE=COMMIT_REVIEWED; changed file `docs/research/CONTINUUM_CURRENT_STATE_VS_TRAJECTORY_CROSS_PROJECT_EVIDENCE.md` points to CONT-E0T preregistration; not verified as Crystal E0 primary evidence
 
@@ -711,13 +721,13 @@ SOURCE_ROLE=COMMIT_REVIEWED; changed file `docs/research/CONTINUUM_CURRENT_STATE
 SOURCE_SYSTEM=GITHUB\
 SOURCE_TITLE=Graphiti Fractal Lab reviewed checkpoint\
 SOURCE_ID=commit 080e1959fe6a3d996f2690059fcdc687dd5c832e; N05 reports `docs/research/fm17_pre/` on `experiment/falkordblite-deterministic-memory` ([commit](https://github.com/velantrian/Graphiti_fractal_lab/commit/080e1959fe6a3d996f2690059fcdc687dd5c832e))\
-SOURCE_ROLE=EXTERNAL_RESEARCH_CHECKPOINT_POINTER_REPORTED_BY_NOTION_NOT_INDEPENDENTLY_OPENED
+SOURCE_ROLE=EXACT_COMMIT_FILE_REVIEWED; EXTERNAL_FREEZE_ANCHOR_ONLY; NO_ABLATION_OUTCOME; D04_REPORTS_ANNOTATION_AND_A0_A3_UNEXECUTED
 
 **GH19**\
 SOURCE_SYSTEM=GITHUB\
 SOURCE_TITLE=Velantrim Continuum CONT-E0T frozen source\
 SOURCE_ID=commit 6847eb759d747955b8618021d2414f5ffa840584 ([commit](https://github.com/velantrian/Velantrim-Continuum/commit/6847eb759d747955b8618021d2414f5ffa840584))\
-SOURCE_ROLE=FROZEN_SOURCE_POINTER_RAW_RUN_NOT_RECOVERED
+SOURCE_ROLE=EARLIER_FINAL_PREREGISTRATION_FREEZE_ONLY; NOT_RUN_EVIDENCE; LATER_REPORTED_RESULT_PRESERVED; RAW_RUN_NOT_RECOVERED
 
 **GH20**\
 SOURCE_SYSTEM=GITHUB\

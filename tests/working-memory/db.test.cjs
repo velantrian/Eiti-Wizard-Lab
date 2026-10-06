@@ -60,6 +60,8 @@ async function createItem(store, title, extra) { return ok(await store.createIte
       const actual = db.exec(`PRAGMA table_info(${table})`)[0].values.map(row => row[1]);
       assert.deepStrictEqual(actual, expected, `${table} fields/order`);
     }
+    const sourceProjectColumn = db.exec('PRAGMA table_info(wm_sources)')[0].values.find(row => row[1] === 'project_id');
+    assert.strictEqual(sourceProjectColumn[3], 1, 'wm_sources.project_id is NOT NULL');
     assert.deepStrictEqual(WM.ITEM_COLUMNS, ['work_id','project_id','thread','type','status','priority','title','summary','body_md','current_question','status_note','next_action','provenance_class','tags_json','non_canon','created_at','updated_at','resolved_at','archived_at']);
     assert.strictEqual(count(db, "SELECT count(*) FROM unrelated_sentinel WHERE value='unchanged'"), 1);
     assert.strictEqual(count(db, "SELECT count(*) FROM sqlite_master WHERE name LIKE 'wiz_ref_%'"), 0);
@@ -143,6 +145,24 @@ async function createItem(store, title, extra) { return ok(await store.createIte
     assert.deepStrictEqual(row.slice(0,4), ['project-a','EITI','Synthetic project','Quick project brief']);
   });
 
+  await T('project-immutability', 'project_id cannot be retargeted through the API or SQLite and EITI export/import remains valid', async () => {
+    const db = makeDb(), { store } = makeStore(db);
+    await createProject(store, 'project-eiti', 'EITI');
+    await createProject(store, 'project-crystal', 'CRYSTAL');
+    const item = await createItem(store, 'EITI-owned item', { project_id: 'project-eiti' });
+    assert.strictEqual(item.work_id, 'WRK-EITI-20261006-001');
+    const rejected = await store.updateItem(item.work_id, { project_id: 'project-crystal' });
+    assert(!rejected.ok && !rejected.saved && rejected.code === 'PROJECT_ID_IMMUTABLE');
+    assert.strictEqual(store.getItem(item.work_id).project_id, 'project-eiti');
+    assert.throws(() => db.run('UPDATE wm_items SET project_id=? WHERE work_id=?', ['project-crystal', item.work_id]));
+    assert.strictEqual(store.getItem(item.work_id).project_id, 'project-eiti');
+    const exported = JSON.parse(store.exportJSON());
+    const target = makeStore(makeDb()).store;
+    ok(await target.importJSON(exported), 'EITI project import');
+    assert.strictEqual(target.getItem(item.work_id).project_id, 'project-eiti');
+    assert.deepStrictEqual(JSON.parse(target.exportJSON()), exported);
+  });
+
   await T('thread-quick-capture', 'thread defaults to an unambiguous empty string and summary/body export as normalized null-or-text values', async () => {
     const db = makeDb(), { store } = makeStore(db);
     await createProject(store);
@@ -169,18 +189,22 @@ async function createItem(store, title, extra) { return ok(await store.createIte
     assert.strictEqual(source.role, 'PRIMARY');
     assert.strictEqual(source.surface, 'GITHUB');
     for (const surface of WM.ENUMS.surface) {
-      const accepted = await store.createSource({ title: 'Surface ' + surface, locator: 'fixture://' + surface.toLowerCase(), surface, role: 'REFERENCE' });
+      const accepted = await store.createSource({ project_id: 'test-project', title: 'Surface ' + surface, locator: 'fixture://' + surface.toLowerCase(), surface, role: 'REFERENCE' });
       assert(accepted.ok, surface);
     }
     for (const role of WM.ENUMS.role) {
-      const accepted = await store.createSource({ title: 'Role ' + role, locator: 'fixture://' + role.toLowerCase(), surface: 'OTHER', role });
+      const accepted = await store.createSource({ project_id: 'test-project', title: 'Role ' + role, locator: 'fixture://' + role.toLowerCase(), surface: 'OTHER', role });
       assert(accepted.ok, role);
     }
-    const missing = await store.createSource({ title: 'No locator', surface: 'WEB', role: 'REFERENCE' });
+    const missingProject = await store.createSource({ title: 'No project', locator: 'fixture://no-project', surface: 'WEB', role: 'REFERENCE' });
+    assert(!missingProject.ok && missingProject.code === 'VALIDATION');
+    const unknownProject = await store.createSource({ project_id: 'not-created', title: 'Unknown project', locator: 'fixture://unknown-project', surface: 'WEB', role: 'REFERENCE' });
+    assert(!unknownProject.ok && unknownProject.code === 'NOT_FOUND');
+    const missing = await store.createSource({ project_id: 'test-project', title: 'No locator', surface: 'WEB', role: 'REFERENCE' });
     assert(!missing.ok && missing.code === 'VALIDATION');
-    const badSurface = await store.createSource({ title: 'Bad surface', locator: 'https://example.test', surface: 'EMAIL', role: 'REFERENCE' });
+    const badSurface = await store.createSource({ project_id: 'test-project', title: 'Bad surface', locator: 'https://example.test', surface: 'EMAIL', role: 'REFERENCE' });
     assert(!badSurface.ok && badSurface.code === 'INVALID_ENUM');
-    const badRole = await store.createSource({ title: 'Bad role', locator: 'https://example.test', surface: 'WEB', role: 'OWNER' });
+    const badRole = await store.createSource({ project_id: 'test-project', title: 'Bad role', locator: 'https://example.test', surface: 'WEB', role: 'OWNER' });
     assert(!badRole.ok && badRole.code === 'INVALID_ENUM');
     assert.strictEqual(count(db, 'SELECT count(*) FROM wm_sources WHERE locator IS NULL OR trim(locator)=\'\''), 0);
     assert.deepStrictEqual(WM.TABLE_COLUMNS.wm_sources, ['source_id','project_id','surface','role','title','locator','revision','note','created_at','updated_at']);
@@ -319,6 +343,7 @@ async function createItem(store, title, extra) { return ok(await store.createIte
     assert.throws(() => db.run("INSERT INTO wm_items(work_id,project_id,thread,type,status,priority,title,provenance_class,tags_json,non_canon,created_at,updated_at) VALUES('WRK-EITI-20261006-901',NULL,'','NOTE','OPEN','P2','bad','USER_NOTE','[]',1,?,?)", [NOW,NOW]));
     assert.throws(() => db.run("INSERT INTO wm_items(work_id,project_id,thread,type,status,priority,title,provenance_class,tags_json,non_canon,created_at,updated_at) VALUES('WRK-EITI-20261006-902','test-project',NULL,'NOTE','OPEN','P2','bad','USER_NOTE','[]',1,?,?)", [NOW,NOW]));
     assert.throws(() => db.run("INSERT INTO wm_sources(source_id,surface,role,title,locator,created_at,updated_at) VALUES('no-locator','WEB','REFERENCE','Bad',NULL,?,?)", [NOW,NOW]));
+    assert.throws(() => db.run("INSERT INTO wm_sources(source_id,project_id,surface,role,title,locator,created_at,updated_at) VALUES('null-source-project',NULL,'WEB','REFERENCE','Bad','fixture://bad',?,?)", [NOW,NOW]));
   });
 
   await T('export-roundtrip', 'eiti-working-memory-export/1 round-trips corrected schemas; equivalent imports no-op without overwrite', async () => {
@@ -375,6 +400,20 @@ async function createItem(store, title, extra) { return ok(await store.createIte
     badSource.sources.push({ source_id: 's', project_id: 'test-project', surface: 'WEB', role: 'REFERENCE', title: 'Bad source', locator: null, revision: null, note: null, created_at: NOW, updated_at: NOW });
     const rejected = await makeStore(makeDb()).store.importJSON(badSource);
     assert(!rejected.ok);
+    const sourceWithoutProject = JSON.parse(JSON.stringify(payload));
+    const validSource = { source_id: 'missing-project-source', project_id: 'test-project', surface: 'WEB', role: 'REFERENCE', title: 'Source ownership test', locator: 'fixture://source-ownership', revision: null, note: null, created_at: NOW, updated_at: NOW };
+    sourceWithoutProject.sources.push(Object.assign({}, validSource));
+    delete sourceWithoutProject.sources[0].project_id;
+    const missingProject = await makeStore(makeDb()).store.importJSON(sourceWithoutProject);
+    assert(!missingProject.ok && missingProject.code === 'INVALID_EXPORT');
+    const sourceWithNullProject = JSON.parse(JSON.stringify(payload));
+    sourceWithNullProject.sources.push(Object.assign({}, validSource, { source_id: 'null-project-source', project_id: null }));
+    const nullProject = await makeStore(makeDb()).store.importJSON(sourceWithNullProject);
+    assert(!nullProject.ok);
+    const sourceWithUnknownProject = JSON.parse(JSON.stringify(payload));
+    sourceWithUnknownProject.sources.push(Object.assign({}, validSource, { source_id: 'unknown-project-source', project_id: 'unknown-project' }));
+    const unknownProject = await makeStore(makeDb()).store.importJSON(sourceWithUnknownProject);
+    assert(!unknownProject.ok && unknownProject.code === 'INVALID_EXPORT');
     const missingActor = JSON.parse(JSON.stringify(payload));
     delete missingActor.changes[0].actor_class;
     const missing = await makeStore(makeDb()).store.importJSON(missingActor);

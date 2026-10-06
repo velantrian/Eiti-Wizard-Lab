@@ -128,7 +128,7 @@
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL
     )`);
     db.run(`CREATE TABLE IF NOT EXISTS wm_sources (
-      source_id TEXT PRIMARY KEY, project_id TEXT, surface TEXT NOT NULL CHECK(surface IN ('GITHUB','NOTION','DRIVE','LOCAL','WEB','CHAT','OTHER')),
+      source_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, surface TEXT NOT NULL CHECK(surface IN ('GITHUB','NOTION','DRIVE','LOCAL','WEB','CHAT','OTHER')),
       role TEXT NOT NULL CHECK(role IN ('PRIMARY','EVIDENCE','CONTEXT','NAVIGATION','REFERENCE')),
       title TEXT NOT NULL CHECK(length(trim(title)) > 0), locator TEXT NOT NULL CHECK(length(trim(locator)) > 0),
       revision TEXT, note TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
@@ -189,6 +189,10 @@
       WHEN new.work_id <> old.work_id BEGIN
       SELECT RAISE(ABORT, 'Working Memory work_id is immutable');
     END`);
+    db.run(`CREATE TRIGGER IF NOT EXISTS wm_items_project_id_immutable BEFORE UPDATE OF project_id ON wm_items
+      WHEN new.project_id <> old.project_id BEGIN
+      SELECT RAISE(ABORT, 'Working Memory project_id is immutable');
+    END`);
     db.run(`CREATE TRIGGER IF NOT EXISTS wm_changes_no_update BEFORE UPDATE ON wm_changes BEGIN
       SELECT RAISE(ABORT, 'Working Memory change log is append-only');
     END`);
@@ -203,6 +207,9 @@
       if (JSON.stringify(actual) !== JSON.stringify(expected))
         throw fail('Existing Working Memory table does not match corrected contract: ' + table, 'WM_SCHEMA_MISMATCH');
     }
+    const sourceProjectColumn = dbRows(db, 'PRAGMA table_info(wm_sources)').find(row => row.name === 'project_id');
+    if (!sourceProjectColumn || sourceProjectColumn.notnull !== 1)
+      throw fail('Existing Working Memory source table must require project_id', 'WM_SCHEMA_MISMATCH');
     return true;
   }
   function assertId(value, label) { return requiredText(value, label); }
@@ -222,7 +229,7 @@
   function sourceRow(input, clock, idFactory) {
     if (!plainObject(input)) throw fail('Source must be an object', 'VALIDATION');
     const at = nowIso(clock);
-    const projectId = input.project_id == null ? null : assertId(input.project_id, 'project_id');
+    const projectId = assertId(input.project_id, 'project_id');
     return {
       source_id: input.source_id == null ? idFactory('wms_') : assertId(input.source_id, 'source_id'),
       project_id: projectId, surface: enumValue(input.surface, 'surface'), role: enumValue(input.role, 'role'),
@@ -502,6 +509,10 @@
       if (owner && owner !== project.project_id) throw fail('project code already belongs to another project: ' + project.code, 'PROJECT_CODE_CONFLICT');
       allCodes.set(project.code, project.project_id);
     }
+    for (const source of rows.wm_sources) {
+      if (!projectCodes.has(source.project_id))
+        throw fail('Source project_id does not reference an existing project: ' + source.project_id, 'INVALID_EXPORT');
+    }
     for (const item of rows.wm_items) {
       const parsed = validateWorkId(item.work_id), code = projectCodes.get(item.project_id) || (getById(db, 'wm_projects', 'project_id', item.project_id) || {}).code;
       if (!code || parsed.project_code !== code) throw fail('work_id project code does not match project_id for ' + item.work_id, 'INVALID_WORK_ID');
@@ -610,9 +621,10 @@
       return durableMutation(() => {
         const id = assertId(workId, 'work_id');
         if (!plainObject(patch)) throw fail('Item patch must be an object', 'VALIDATION');
+        if (own(patch, 'project_id')) throw fail('project_id is immutable after Work Item creation', 'PROJECT_ID_IMMUTABLE');
         for (const key of ['work_id', 'created_at', 'non_canon', 'archived_at']) if (own(patch, key))
           throw fail(key + ' is immutable through updateItem', key === 'non_canon' ? 'NON_CANON_INVARIANT' : 'VALIDATION');
-        const mutableFields = new Set(['project_id','thread','type','status','priority','title','summary','body_md',
+        const mutableFields = new Set(['thread','type','status','priority','title','summary','body_md',
           'current_question','status_note','next_action','provenance_class','tags_json','tags','resolved_at']);
         for (const key of Object.keys(patch)) if (!mutableFields.has(key)) throw fail('Unknown item field: ' + key, 'VALIDATION');
         const before = getById(db, 'wm_items', 'work_id', id);

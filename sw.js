@@ -1,6 +1,19 @@
 // sw.js — Eiti Wizard Service Worker v1.8.10
-const CACHE_NAME = 'eiti-wizard-lab-v1.8.10-wm0'; // bump on every change to a cached static asset
+const CACHE_NAME = 'eiti-wizard-lab-v1.8.10-wm1'; // bump on every change to a cached static asset
 const BASE_PATH = '/Eiti-Wizard-Lab';
+// Research Index (navigation only, not runtime authority): served network-first so online clients get a fresh copy.
+const RESEARCH_INDEX_PATH = BASE_PATH + '/docs/research/EXPERIMENT_EVIDENCE_INDEX.md';
+// Network budget for the research index. Must stay SHORTER than the page-side budget in index.html (wizResearchIndexLoader)
+// so a stalled connection reaches the cached fallback before the page gives up.
+const RESEARCH_FETCH_TIMEOUT_MS = 4000;
+// ONE definition of "a valid Research Index": the strict document contract of research-router.js (authority contract, unique
+// cards, required fields, no unsupported card content, ...). The SAME function gates what may enter the last-known-good cache
+// and what a cached fallback may serve; the router applies it again before serving any card. If the router script cannot be
+// loaded nothing is admitted and no cached copy is trusted (fail closed). research-router.js is precached, and as an imported
+// script it is part of the service-worker update check.
+try { importScripts(BASE_PATH + '/research-router.js'); } catch (_) { /* validator unavailable: fail closed below */ }
+const isValidResearchIndex = text => typeof ResearchRouter !== 'undefined' && typeof ResearchRouter.validateResearchIndex === 'function' &&
+  typeof text === 'string' && ResearchRouter.validateResearchIndex(text).ok === true;
 
 const STATIC_ASSETS = [
   BASE_PATH + '/',
@@ -8,6 +21,8 @@ const STATIC_ASSETS = [
   BASE_PATH + '/manifest.json',
   BASE_PATH + '/wiz-ref-memory.js',
   BASE_PATH + '/working-memory.js',
+  BASE_PATH + '/wm-agent-read.js',
+  BASE_PATH + '/research-router.js',
   BASE_PATH + '/icon-48x48.png',
   BASE_PATH + '/icon-72x72.png',
   BASE_PATH + '/icon-96x96.png',
@@ -24,7 +39,13 @@ const STATIC_ASSETS = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(STATIC_ASSETS);
+      // cache:'reload' bypasses the HTTP cache: plain addAll() can precache stale scripts (e.g. max-age on static hosts)
+      // right after a CACHE_NAME bump. Any failed asset still fails the install, like addAll.
+      return Promise.all(STATIC_ASSETS.map(asset =>
+        fetch(new Request(asset, { cache: 'reload' })).then(response => {
+          if (!response || !response.ok) throw new TypeError('precache failed: ' + asset);
+          return cache.put(asset, response);
+        })));
     })
   );
   self.skipWaiting();
@@ -80,6 +101,53 @@ self.addEventListener('fetch', event => {
         });
       })
     );
+    return;
+  }
+
+  // Research Index — online-first (exact path only): a fresh, STRICTLY valid network copy always beats the cache.
+  //  - 200 that passes the strict index validation -> served and cached (the write is held open with event.waitUntil)
+  //  - 200 that does NOT pass it (captive portal / proxy page / a malformed or parse-breaking edit) -> NEVER cached, never overwrites
+  //    the last known-good copy; a cached copy that itself passes the strict validation is served instead (flagged sw-stale-cache),
+  //    else the body is passed through so the router (same validator) fails closed with its precise parse_status
+  //  - transport failure or timeout (RESEARCH_FETCH_TIMEOUT_MS) -> a strictly valid cached copy flagged sw-offline-cache, else 504
+  //  - 5xx -> a strictly valid cached copy flagged sw-stale-cache, else the 5xx response
+  //  - 404/410 (authoritative removal) and other 4xx -> passed through; the cached copy is evicted on 404/410
+  // A cached copy is validated before it is served: a malformed old cache is never treated as known-good.
+  // Not precached; not runtime authority.
+  if (url.pathname === RESEARCH_INDEX_PATH) {
+    const flagged = (cached, value) => {
+      const headers = new Headers(cached.headers);
+      headers.set('X-Eiti-Served-From', value);
+      return new Response(cached.body, { status: cached.status, statusText: cached.statusText, headers });
+    };
+    const cachedIndex = async value => {
+      const cached = await caches.open(CACHE_NAME).then(cache => cache.match(request));
+      if (!cached) return null;
+      const text = await cached.clone().text();
+      return isValidResearchIndex(text) ? flagged(cached, value) : null;
+    };
+    event.respondWith((async () => {
+      let response, text = null;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), RESEARCH_FETCH_TIMEOUT_MS);   // covers headers AND body of a 200
+      try {
+        response = await fetch(request, { cache: 'no-store', signal: controller.signal });
+        if (response.status === 200) text = await response.text();
+      } catch (_) {
+        return (await cachedIndex('sw-offline-cache').catch(() => null)) || new Response('', { status: 504, statusText: 'Offline' });
+      } finally { clearTimeout(timer); }
+      if (response.status === 200) {
+        const headers = new Headers({ 'Content-Type': response.headers.get('Content-Type') || 'text/markdown; charset=utf-8' });
+        if (isValidResearchIndex(text)) {
+          event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(request, new Response(text, { status: 200, headers }))).catch(() => {}));
+          return new Response(text, { status: 200, headers });
+        }
+        return (await cachedIndex('sw-stale-cache').catch(() => null)) || new Response(text, { status: 200, headers });
+      }
+      if (response.status >= 500) return (await cachedIndex('sw-stale-cache').catch(() => null)) || response;
+      if (response.status === 404 || response.status === 410) event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.delete(request)).catch(() => {}));
+      return response;
+    })());
     return;
   }
 

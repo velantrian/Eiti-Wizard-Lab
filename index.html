@@ -43,15 +43,21 @@
   <!-- working-memory-agent-read-bridge-v0.1 (B1): read-only wm_* tools + research router (pointer only) -->
   <script src="research-router.js"></script>
   <script src="wm-agent-read.js"></script>
-  <!-- B1-DEVICE-01: TEST-ONLY entry point. Inert unless the URL carries ?b1device=1, so the normal UI is unchanged.
-       `h` is the first 12 hex chars of the SHA-256 of the harness file: a new build is a new URL, so the service worker's
-       cache-first static rule can never serve a stale harness. (tests/working-memory/b1-device-harness.test.cjs keeps it in sync.) -->
+  <!-- B1-DEVICE-01: TEST-ONLY entry point. Inert unless the URL is EXACTLY <canonical page path>?b1device=1 (no other query; no fragment except the app's own panel route like #chat),
+       so the normal UI is unchanged. The page tells the harness which build it expects (data-expected-build and ?h=, the build id of
+       the harness file); the harness verifies its own code against it and refuses to run on any mismatch (STALE_HARNESS).
+       A new build is a new URL, so the service worker's cache-first static rule cannot serve a stale harness under the new URL.
+       (tests/working-memory/b1-device-harness.test.cjs keeps this id in sync with the harness.) -->
   <script>
     (function () {
       try {
-        if (new URLSearchParams(location.search).get('b1device') !== '1') return;
+        var p = location.pathname;
+        if ((p !== '/Eiti-Wizard-Lab/index.html' && p !== '/Eiti-Wizard-Lab/') || location.search !== '?b1device=1') return;
+        if (location.href.indexOf('#') !== -1 && !/^#(?:projects|chat|agent|settings|notes|memory|history|files|eiti-files|diary|board)$/.test(location.hash)) return;
+        var EXPECTED_HARNESS_BUILD = '90599ef31ef5';
         var s = document.createElement('script');
-        s.src = 'b1-device-harness.js?h=ee6a1d2db764';
+        s.src = 'b1-device-harness.js?h=' + EXPECTED_HARNESS_BUILD;
+        s.setAttribute('data-expected-build', EXPECTED_HARNESS_BUILD);
         document.head.appendChild(s);
       } catch (_) {}
     })();

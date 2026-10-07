@@ -1,24 +1,56 @@
 /* B1-DEVICE-01 — native TEST-ONLY harness.  NON PRODUCTION.
  *
  * Why: the Eruda / bookmarklet route of B1-DEVICE STEP 1 does not start reliably on Android (Samsung Internet / Chrome). This file
- * reproduces the STEP 1 reference behaviour (import + fingerprint) as an on-page screen that works with taps only.
+ * reproduces the STEP 1 behaviour (import + fingerprint) as an on-page screen that works with taps only.
  *
- * Entry point: ONLY `index.html?b1device=1`. The gate in index.html injects this file when (and only when) that query is present;
- * without it nothing in this file is ever loaded, so the normal UI is unchanged.
+ * Entry point: ONLY the exact URL `<canonical page path>?b1device=1` (path /Eiti-Wizard-Lab/index.html or /Eiti-Wizard-Lab/, query exactly
+ * `?b1device=1`, no fragment other than the app's own panel route such as #chat) as it was OPENED. The gate in index.html injects this file under that exact condition, and this file checks the
+ * SAME exact condition again (against the navigation entry, because the app itself rewrites the hash after start-up) before it does anything,
+ * so a stale page with an older, looser gate cannot activate it either. Without it nothing here is ever loaded or shown, so the normal UI is
+ * unchanged.
+ *
+ * Device-run validity (no network, no service-worker change): before any button is enabled the harness verifies that
+ *  - its own code is the build it claims to be (build id = SHA-256 of its own function source with the id literal masked),
+ *  - the page that loaded it expects exactly this build (data-expected-build marker and ?h= in the script URL),
+ *  - the browser is online (a cached page / harness served while offline cannot be shown to be current).
+ * Anything else is STALE_HARNESS + DEVICE_RUN_INVALID: every button is disabled and every action refuses (no import, no PASS).
  *
  * Boundaries (asserted by tests/working-memory/b1-device-harness.test.cjs and b1-device-browser.test.mjs):
- *  - the ONLY write is the existing WmStore.importJSON (wm_* namespace), ONLY when wm_* is completely empty, ONLY the exact frozen fixture
+ *  - the ONLY write is the existing WmStore.importJSON (wm_* namespace), ONLY when wm_* is empty both logically (exportData) and physically
+ *    (every wm_* table incl. the FTS index and its shadow tables, read with fixed SELECT statements), ONLY the exact frozen fixture
+ *  - unexpected physical wm_* rows are never cleaned up: the import aborts (WM_PHYSICAL_NOT_EMPTY)
  *  - nothing else is written: no Canon, wiz_ref, Continuity, ledger or registry access; no cache / storage writes
  *  - no network request, no model invocation, no external CDN
  *  - no API key / token access: no localStorage / sessionStorage / IndexedDB / cookie access of its own; the screen shows counts, ids,
  *    statuses, hashes and version strings only; no console output
  *  - nothing on this screen is Canon or runtime authority: it is a device-test aid
  */
-(function () {
+(function B1DeviceHarness() {
   'use strict';
+  // ── Exact entry condition (fail-closed): any other path / query / fragment => this file does nothing at all ───────────────────
+  const ENTRY_PATHS = ['/Eiti-Wizard-Lab/index.html', '/Eiti-Wizard-Lab/'];
+  const ENTRY_SEARCH = '?b1device=1';
+  // The ONLY fragments accepted are the app's own panel routes: on every load the app rewrites the hash itself (history.replaceState '#chat', later
+  // '#<panel>') and Android reloads / restores a tab with it, so '#chat' is not a variant of the entry condition. Anything else (#, #x, #b1device=1, ...) is.
+  const APP_ROUTE = /^#(?:projects|chat|agent|settings|notes|memory|history|files|eiti-files|diary|board)$/;
+  // The URL the user OPENED is read from the navigation entry (it keeps the URL exactly as navigated, fragment included, unlike location.hash which the
+  // app has already rewritten by the time this runs). The current pathname / query must still be unchanged.
+  function isExactEntry() {
+    try {
+      const nav = performance.getEntriesByType('navigation')[0];
+      if (!nav || typeof nav.name !== 'string') return false;                                              // cannot prove the entry URL => inert
+      return ENTRY_PATHS.some(p => { const base = location.origin + p + ENTRY_SEARCH; return nav.name === base || (nav.name.indexOf(base + '#') === 0 && APP_ROUTE.test(nav.name.slice(base.length))); }) &&
+        ENTRY_PATHS.indexOf(location.pathname) !== -1 && location.search === ENTRY_SEARCH;
+    } catch (_) { return false; }
+  }
+  if (!isExactEntry()) return;
   const ROOT_ID = 'b1device-root';
   if (document.getElementById(ROOT_ID)) return;                       // one instance only
   const SCRIPT = document.currentScript;                              // only valid while this file first executes
+
+  // ── Build identity ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  // HARNESS_BUILD_ID = first 12 hex of SHA-256(source text of this function with the next line's literal masked to '').
+  const HARNESS_BUILD_ID = '90599ef31ef5';
 
   // ── Frozen B1-DEVICE-01 checkpoints (three DIFFERENT hashes; never substitute one for another) ─────────────────────────────
   const EXPECTED_SEED = '780bfac4bce6442f46f5fc9827b0d8cc25cba3f4c80ad7e54bc2e87dabba1ec0';      // SEED_HASH (work-id mapping)
@@ -29,9 +61,6 @@
   const LISTS = ['projects', 'sources', 'items', 'item_sources', 'relations', 'changes'];
   // The exact frozen fixture (file bytes, as one string).
   const FIXTURE_JSON = "{\"format\":\"eiti-working-memory-export/1\",\"projects\":[{\"project_id\":\"firn\",\"code\":\"FIRN\",\"name\":\"Project FIRN synthetic\",\"summary\":\"Deterministic FMB seed\",\"created_at\":\"2026-10-06T12:00:01.000Z\",\"updated_at\":\"2026-10-06T12:00:01.000Z\"},{\"project_id\":\"other\",\"code\":\"OTHER\",\"name\":\"Distractor OTHER\",\"summary\":\"Scope contamination bait\",\"created_at\":\"2026-10-06T12:00:03.000Z\",\"updated_at\":\"2026-10-06T12:00:03.000Z\"}],\"sources\":[{\"source_id\":\"src-firn-nav\",\"project_id\":\"firn\",\"surface\":\"NOTION\",\"role\":\"NAVIGATION\",\"title\":\"FIRN nav page\",\"locator\":\"notion://synthetic/firn-board\",\"revision\":null,\"note\":null,\"created_at\":\"2026-10-06T12:00:07.000Z\",\"updated_at\":\"2026-10-06T12:00:07.000Z\"},{\"source_id\":\"src-firn-primary\",\"project_id\":\"firn\",\"surface\":\"GITHUB\",\"role\":\"PRIMARY\",\"title\":\"FIRN primary repo\",\"locator\":\"github://synthetic/firn#main\",\"revision\":null,\"note\":null,\"created_at\":\"2026-10-06T12:00:05.000Z\",\"updated_at\":\"2026-10-06T12:00:05.000Z\"},{\"source_id\":\"src-other\",\"project_id\":\"other\",\"surface\":\"LOCAL\",\"role\":\"PRIMARY\",\"title\":\"OTHER local\",\"locator\":\"local://other/notes.md\",\"revision\":null,\"note\":null,\"created_at\":\"2026-10-06T12:00:09.000Z\",\"updated_at\":\"2026-10-06T12:00:09.000Z\"}],\"items\":[{\"work_id\":\"WRK-FIRN-20261006-001\",\"project_id\":\"firn\",\"thread\":\"\",\"type\":\"NOTE\",\"status\":\"CURRENT\",\"priority\":\"P0\",\"title\":\"FIRN current focus: resume Gate B1 orientation\",\"summary\":null,\"body_md\":null,\"current_question\":null,\"status_note\":null,\"next_action\":\"Confirm orientation with owner\",\"provenance_class\":\"USER_NOTE\",\"tags_json\":\"[]\",\"non_canon\":1,\"created_at\":\"2026-10-06T12:00:12.000Z\",\"updated_at\":\"2026-10-06T12:00:12.000Z\",\"resolved_at\":null,\"archived_at\":null},{\"work_id\":\"WRK-FIRN-20261006-002\",\"project_id\":\"firn\",\"thread\":\"parser\",\"type\":\"TASK\",\"status\":\"IN_PROGRESS\",\"priority\":\"P1\",\"title\":\"FIRN in-progress: polish parser adapters\",\"summary\":null,\"body_md\":null,\"current_question\":null,\"status_note\":null,\"next_action\":\"Finish parser adapters\",\"provenance_class\":\"USER_NOTE\",\"tags_json\":\"[]\",\"non_canon\":1,\"created_at\":\"2026-10-06T12:00:15.000Z\",\"updated_at\":\"2026-10-06T12:00:15.000Z\",\"resolved_at\":null,\"archived_at\":null},{\"work_id\":\"WRK-FIRN-20261006-003\",\"project_id\":\"firn\",\"thread\":\"\",\"type\":\"QUESTION\",\"status\":\"OPEN\",\"priority\":\"P1\",\"title\":\"FIRN open: clarify export scope\",\"summary\":null,\"body_md\":null,\"current_question\":\"What is in-scope for export?\",\"status_note\":null,\"next_action\":\"Ask owner about export scope\",\"provenance_class\":\"USER_NOTE\",\"tags_json\":\"[]\",\"non_canon\":1,\"created_at\":\"2026-10-06T12:00:18.000Z\",\"updated_at\":\"2026-10-06T12:00:18.000Z\",\"resolved_at\":null,\"archived_at\":null},{\"work_id\":\"WRK-FIRN-20261006-004\",\"project_id\":\"firn\",\"thread\":\"\",\"type\":\"TASK\",\"status\":\"BLOCKED\",\"priority\":\"P2\",\"title\":\"FIRN blocked: waiting owner review\",\"summary\":null,\"body_md\":null,\"current_question\":null,\"status_note\":\"Waiting for owner review of protocol\",\"next_action\":null,\"provenance_class\":\"USER_NOTE\",\"tags_json\":\"[]\",\"non_canon\":1,\"created_at\":\"2026-10-06T12:00:21.000Z\",\"updated_at\":\"2026-10-06T12:00:21.000Z\",\"resolved_at\":null,\"archived_at\":null},{\"work_id\":\"WRK-FIRN-20261006-005\",\"project_id\":\"firn\",\"thread\":\"\",\"type\":\"NOTE\",\"status\":\"UNKNOWN\",\"priority\":\"P3\",\"title\":\"FIRN unknown: unexplained latency spike\",\"summary\":null,\"body_md\":null,\"current_question\":null,\"status_note\":null,\"next_action\":null,\"provenance_class\":\"USER_NOTE\",\"tags_json\":\"[]\",\"non_canon\":1,\"created_at\":\"2026-10-06T12:00:24.000Z\",\"updated_at\":\"2026-10-06T12:00:24.000Z\",\"resolved_at\":null,\"archived_at\":null},{\"work_id\":\"WRK-FIRN-20261006-006\",\"project_id\":\"firn\",\"thread\":\"\",\"type\":\"TASK\",\"status\":\"COMPLETED\",\"priority\":\"P2\",\"title\":\"FIRN completed: seed schema ready\",\"summary\":null,\"body_md\":null,\"current_question\":null,\"status_note\":null,\"next_action\":null,\"provenance_class\":\"USER_NOTE\",\"tags_json\":\"[]\",\"non_canon\":1,\"created_at\":\"2026-10-06T12:00:27.000Z\",\"updated_at\":\"2026-10-06T12:00:27.000Z\",\"resolved_at\":null,\"archived_at\":null},{\"work_id\":\"WRK-FIRN-20261006-007\",\"project_id\":\"firn\",\"thread\":\"\",\"type\":\"HYPOTHESIS\",\"status\":\"OPEN\",\"priority\":\"P2\",\"title\":\"FIRN model proposal: try Graphiti donor\",\"summary\":null,\"body_md\":null,\"current_question\":null,\"status_note\":null,\"next_action\":null,\"provenance_class\":\"MODEL_PROPOSAL\",\"tags_json\":\"[\\\"graphiti\\\",\\\"proposal\\\"]\",\"non_canon\":1,\"created_at\":\"2026-10-06T12:00:30.000Z\",\"updated_at\":\"2026-10-06T12:00:30.000Z\",\"resolved_at\":null,\"archived_at\":null},{\"work_id\":\"WRK-FIRN-20261006-008\",\"project_id\":\"firn\",\"thread\":\"\",\"type\":\"DECISION\",\"status\":\"CURRENT\",\"priority\":\"P0\",\"title\":\"FIRN user decision: keep DEFAULT_MODE WORKING\",\"summary\":null,\"body_md\":null,\"current_question\":null,\"status_note\":null,\"next_action\":null,\"provenance_class\":\"USER_DECISION\",\"tags_json\":\"[]\",\"non_canon\":1,\"created_at\":\"2026-10-06T12:00:33.000Z\",\"updated_at\":\"2026-10-06T12:00:33.000Z\",\"resolved_at\":null,\"archived_at\":null},{\"work_id\":\"WRK-OTHER-20261006-001\",\"project_id\":\"other\",\"thread\":\"\",\"type\":\"TASK\",\"status\":\"OPEN\",\"priority\":\"P0\",\"title\":\"OTHER distractor open: secret decoy task\",\"summary\":null,\"body_md\":null,\"current_question\":null,\"status_note\":null,\"next_action\":\"Do not mix into FIRN\",\"provenance_class\":\"USER_NOTE\",\"tags_json\":\"[]\",\"non_canon\":1,\"created_at\":\"2026-10-06T12:00:36.000Z\",\"updated_at\":\"2026-10-06T12:00:36.000Z\",\"resolved_at\":null,\"archived_at\":null}],\"item_sources\":[{\"work_id\":\"WRK-FIRN-20261006-002\",\"source_id\":\"src-firn-primary\",\"is_primary\":1}],\"relations\":[{\"relation_id\":\"wmr_000016\",\"from_work_id\":\"WRK-FIRN-20261006-004\",\"to_work_id\":\"WRK-FIRN-20261006-002\",\"relation_type\":\"BLOCKED_BY\",\"created_at\":\"2026-10-06T12:00:39.000Z\"}],\"changes\":[{\"change_id\":\"wmc_000001\",\"work_id\":null,\"change_type\":\"CREATE_PROJECT\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"code\\\",\\\"created_at\\\",\\\"name\\\",\\\"project_id\\\",\\\"summary\\\",\\\"updated_at\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"project_id\\\":\\\"firn\\\",\\\"code\\\":\\\"FIRN\\\",\\\"name\\\":\\\"Project FIRN synthetic\\\",\\\"summary\\\":\\\"Deterministic FMB seed\\\",\\\"created_at\\\":\\\"2026-10-06T12:00:01.000Z\\\",\\\"updated_at\\\":\\\"2026-10-06T12:00:01.000Z\\\"}\",\"created_at\":\"2026-10-06T12:00:02.000Z\"},{\"change_id\":\"wmc_000002\",\"work_id\":null,\"change_type\":\"CREATE_PROJECT\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"code\\\",\\\"created_at\\\",\\\"name\\\",\\\"project_id\\\",\\\"summary\\\",\\\"updated_at\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"project_id\\\":\\\"other\\\",\\\"code\\\":\\\"OTHER\\\",\\\"name\\\":\\\"Distractor OTHER\\\",\\\"summary\\\":\\\"Scope contamination bait\\\",\\\"created_at\\\":\\\"2026-10-06T12:00:03.000Z\\\",\\\"updated_at\\\":\\\"2026-10-06T12:00:03.000Z\\\"}\",\"created_at\":\"2026-10-06T12:00:04.000Z\"},{\"change_id\":\"wmc_000003\",\"work_id\":null,\"change_type\":\"CREATE_SOURCE\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"created_at\\\",\\\"locator\\\",\\\"note\\\",\\\"project_id\\\",\\\"revision\\\",\\\"role\\\",\\\"source_id\\\",\\\"surface\\\",\\\"title\\\",\\\"updated_at\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"source_id\\\":\\\"src-firn-primary\\\",\\\"project_id\\\":\\\"firn\\\",\\\"surface\\\":\\\"GITHUB\\\",\\\"role\\\":\\\"PRIMARY\\\",\\\"title\\\":\\\"FIRN primary repo\\\",\\\"locator\\\":\\\"github://synthetic/firn#main\\\",\\\"revision\\\":null,\\\"note\\\":null,\\\"created_at\\\":\\\"2026-10-06T12:00:05.000Z\\\",\\\"updated_at\\\":\\\"2026-10-06T12:00:05.000Z\\\"}\",\"created_at\":\"2026-10-06T12:00:06.000Z\"},{\"change_id\":\"wmc_000004\",\"work_id\":null,\"change_type\":\"CREATE_SOURCE\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"created_at\\\",\\\"locator\\\",\\\"note\\\",\\\"project_id\\\",\\\"revision\\\",\\\"role\\\",\\\"source_id\\\",\\\"surface\\\",\\\"title\\\",\\\"updated_at\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"source_id\\\":\\\"src-firn-nav\\\",\\\"project_id\\\":\\\"firn\\\",\\\"surface\\\":\\\"NOTION\\\",\\\"role\\\":\\\"NAVIGATION\\\",\\\"title\\\":\\\"FIRN nav page\\\",\\\"locator\\\":\\\"notion://synthetic/firn-board\\\",\\\"revision\\\":null,\\\"note\\\":null,\\\"created_at\\\":\\\"2026-10-06T12:00:07.000Z\\\",\\\"updated_at\\\":\\\"2026-10-06T12:00:07.000Z\\\"}\",\"created_at\":\"2026-10-06T12:00:08.000Z\"},{\"change_id\":\"wmc_000005\",\"work_id\":null,\"change_type\":\"CREATE_SOURCE\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"created_at\\\",\\\"locator\\\",\\\"note\\\",\\\"project_id\\\",\\\"revision\\\",\\\"role\\\",\\\"source_id\\\",\\\"surface\\\",\\\"title\\\",\\\"updated_at\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"source_id\\\":\\\"src-other\\\",\\\"project_id\\\":\\\"other\\\",\\\"surface\\\":\\\"LOCAL\\\",\\\"role\\\":\\\"PRIMARY\\\",\\\"title\\\":\\\"OTHER local\\\",\\\"locator\\\":\\\"local://other/notes.md\\\",\\\"revision\\\":null,\\\"note\\\":null,\\\"created_at\\\":\\\"2026-10-06T12:00:09.000Z\\\",\\\"updated_at\\\":\\\"2026-10-06T12:00:09.000Z\\\"}\",\"created_at\":\"2026-10-06T12:00:10.000Z\"},{\"change_id\":\"wmc_000006\",\"work_id\":\"WRK-FIRN-20261006-001\",\"change_type\":\"CREATE_ITEM\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"archived_at\\\",\\\"body_md\\\",\\\"created_at\\\",\\\"current_question\\\",\\\"next_action\\\",\\\"non_canon\\\",\\\"priority\\\",\\\"project_id\\\",\\\"provenance_class\\\",\\\"resolved_at\\\",\\\"status\\\",\\\"status_note\\\",\\\"summary\\\",\\\"tags_json\\\",\\\"thread\\\",\\\"title\\\",\\\"type\\\",\\\"updated_at\\\",\\\"work_id\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"work_id\\\":\\\"WRK-FIRN-20261006-001\\\",\\\"project_id\\\":\\\"firn\\\",\\\"thread\\\":\\\"\\\",\\\"type\\\":\\\"NOTE\\\",\\\"status\\\":\\\"CURRENT\\\",\\\"priority\\\":\\\"P0\\\",\\\"title\\\":\\\"FIRN current focus: resume Gate B1 orientation\\\",\\\"summary\\\":null,\\\"body_md\\\":null,\\\"current_question\\\":null,\\\"status_note\\\":null,\\\"next_action\\\":\\\"Confirm orientation with owner\\\",\\\"provenance_class\\\":\\\"USER_NOTE\\\",\\\"tags_json\\\":\\\"[]\\\",\\\"non_canon\\\":1,\\\"created_at\\\":\\\"2026-10-06T12:00:12.000Z\\\",\\\"updated_at\\\":\\\"2026-10-06T12:00:12.000Z\\\",\\\"resolved_at\\\":null,\\\"archived_at\\\":null}\",\"created_at\":\"2026-10-06T12:00:13.000Z\"},{\"change_id\":\"wmc_000007\",\"work_id\":\"WRK-FIRN-20261006-002\",\"change_type\":\"CREATE_ITEM\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"archived_at\\\",\\\"body_md\\\",\\\"created_at\\\",\\\"current_question\\\",\\\"next_action\\\",\\\"non_canon\\\",\\\"priority\\\",\\\"project_id\\\",\\\"provenance_class\\\",\\\"resolved_at\\\",\\\"status\\\",\\\"status_note\\\",\\\"summary\\\",\\\"tags_json\\\",\\\"thread\\\",\\\"title\\\",\\\"type\\\",\\\"updated_at\\\",\\\"work_id\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"work_id\\\":\\\"WRK-FIRN-20261006-002\\\",\\\"project_id\\\":\\\"firn\\\",\\\"thread\\\":\\\"parser\\\",\\\"type\\\":\\\"TASK\\\",\\\"status\\\":\\\"IN_PROGRESS\\\",\\\"priority\\\":\\\"P1\\\",\\\"title\\\":\\\"FIRN in-progress: polish parser adapters\\\",\\\"summary\\\":null,\\\"body_md\\\":null,\\\"current_question\\\":null,\\\"status_note\\\":null,\\\"next_action\\\":\\\"Finish parser adapters\\\",\\\"provenance_class\\\":\\\"USER_NOTE\\\",\\\"tags_json\\\":\\\"[]\\\",\\\"non_canon\\\":1,\\\"created_at\\\":\\\"2026-10-06T12:00:15.000Z\\\",\\\"updated_at\\\":\\\"2026-10-06T12:00:15.000Z\\\",\\\"resolved_at\\\":null,\\\"archived_at\\\":null}\",\"created_at\":\"2026-10-06T12:00:16.000Z\"},{\"change_id\":\"wmc_000008\",\"work_id\":\"WRK-FIRN-20261006-003\",\"change_type\":\"CREATE_ITEM\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"archived_at\\\",\\\"body_md\\\",\\\"created_at\\\",\\\"current_question\\\",\\\"next_action\\\",\\\"non_canon\\\",\\\"priority\\\",\\\"project_id\\\",\\\"provenance_class\\\",\\\"resolved_at\\\",\\\"status\\\",\\\"status_note\\\",\\\"summary\\\",\\\"tags_json\\\",\\\"thread\\\",\\\"title\\\",\\\"type\\\",\\\"updated_at\\\",\\\"work_id\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"work_id\\\":\\\"WRK-FIRN-20261006-003\\\",\\\"project_id\\\":\\\"firn\\\",\\\"thread\\\":\\\"\\\",\\\"type\\\":\\\"QUESTION\\\",\\\"status\\\":\\\"OPEN\\\",\\\"priority\\\":\\\"P1\\\",\\\"title\\\":\\\"FIRN open: clarify export scope\\\",\\\"summary\\\":null,\\\"body_md\\\":null,\\\"current_question\\\":\\\"What is in-scope for export?\\\",\\\"status_note\\\":null,\\\"next_action\\\":\\\"Ask owner about export scope\\\",\\\"provenance_class\\\":\\\"USER_NOTE\\\",\\\"tags_json\\\":\\\"[]\\\",\\\"non_canon\\\":1,\\\"created_at\\\":\\\"2026-10-06T12:00:18.000Z\\\",\\\"updated_at\\\":\\\"2026-10-06T12:00:18.000Z\\\",\\\"resolved_at\\\":null,\\\"archived_at\\\":null}\",\"created_at\":\"2026-10-06T12:00:19.000Z\"},{\"change_id\":\"wmc_000009\",\"work_id\":\"WRK-FIRN-20261006-004\",\"change_type\":\"CREATE_ITEM\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"archived_at\\\",\\\"body_md\\\",\\\"created_at\\\",\\\"current_question\\\",\\\"next_action\\\",\\\"non_canon\\\",\\\"priority\\\",\\\"project_id\\\",\\\"provenance_class\\\",\\\"resolved_at\\\",\\\"status\\\",\\\"status_note\\\",\\\"summary\\\",\\\"tags_json\\\",\\\"thread\\\",\\\"title\\\",\\\"type\\\",\\\"updated_at\\\",\\\"work_id\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"work_id\\\":\\\"WRK-FIRN-20261006-004\\\",\\\"project_id\\\":\\\"firn\\\",\\\"thread\\\":\\\"\\\",\\\"type\\\":\\\"TASK\\\",\\\"status\\\":\\\"BLOCKED\\\",\\\"priority\\\":\\\"P2\\\",\\\"title\\\":\\\"FIRN blocked: waiting owner review\\\",\\\"summary\\\":null,\\\"body_md\\\":null,\\\"current_question\\\":null,\\\"status_note\\\":\\\"Waiting for owner review of protocol\\\",\\\"next_action\\\":null,\\\"provenance_class\\\":\\\"USER_NOTE\\\",\\\"tags_json\\\":\\\"[]\\\",\\\"non_canon\\\":1,\\\"created_at\\\":\\\"2026-10-06T12:00:21.000Z\\\",\\\"updated_at\\\":\\\"2026-10-06T12:00:21.000Z\\\",\\\"resolved_at\\\":null,\\\"archived_at\\\":null}\",\"created_at\":\"2026-10-06T12:00:22.000Z\"},{\"change_id\":\"wmc_000010\",\"work_id\":\"WRK-FIRN-20261006-005\",\"change_type\":\"CREATE_ITEM\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"archived_at\\\",\\\"body_md\\\",\\\"created_at\\\",\\\"current_question\\\",\\\"next_action\\\",\\\"non_canon\\\",\\\"priority\\\",\\\"project_id\\\",\\\"provenance_class\\\",\\\"resolved_at\\\",\\\"status\\\",\\\"status_note\\\",\\\"summary\\\",\\\"tags_json\\\",\\\"thread\\\",\\\"title\\\",\\\"type\\\",\\\"updated_at\\\",\\\"work_id\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"work_id\\\":\\\"WRK-FIRN-20261006-005\\\",\\\"project_id\\\":\\\"firn\\\",\\\"thread\\\":\\\"\\\",\\\"type\\\":\\\"NOTE\\\",\\\"status\\\":\\\"UNKNOWN\\\",\\\"priority\\\":\\\"P3\\\",\\\"title\\\":\\\"FIRN unknown: unexplained latency spike\\\",\\\"summary\\\":null,\\\"body_md\\\":null,\\\"current_question\\\":null,\\\"status_note\\\":null,\\\"next_action\\\":null,\\\"provenance_class\\\":\\\"USER_NOTE\\\",\\\"tags_json\\\":\\\"[]\\\",\\\"non_canon\\\":1,\\\"created_at\\\":\\\"2026-10-06T12:00:24.000Z\\\",\\\"updated_at\\\":\\\"2026-10-06T12:00:24.000Z\\\",\\\"resolved_at\\\":null,\\\"archived_at\\\":null}\",\"created_at\":\"2026-10-06T12:00:25.000Z\"},{\"change_id\":\"wmc_000011\",\"work_id\":\"WRK-FIRN-20261006-006\",\"change_type\":\"CREATE_ITEM\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"archived_at\\\",\\\"body_md\\\",\\\"created_at\\\",\\\"current_question\\\",\\\"next_action\\\",\\\"non_canon\\\",\\\"priority\\\",\\\"project_id\\\",\\\"provenance_class\\\",\\\"resolved_at\\\",\\\"status\\\",\\\"status_note\\\",\\\"summary\\\",\\\"tags_json\\\",\\\"thread\\\",\\\"title\\\",\\\"type\\\",\\\"updated_at\\\",\\\"work_id\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"work_id\\\":\\\"WRK-FIRN-20261006-006\\\",\\\"project_id\\\":\\\"firn\\\",\\\"thread\\\":\\\"\\\",\\\"type\\\":\\\"TASK\\\",\\\"status\\\":\\\"COMPLETED\\\",\\\"priority\\\":\\\"P2\\\",\\\"title\\\":\\\"FIRN completed: seed schema ready\\\",\\\"summary\\\":null,\\\"body_md\\\":null,\\\"current_question\\\":null,\\\"status_note\\\":null,\\\"next_action\\\":null,\\\"provenance_class\\\":\\\"USER_NOTE\\\",\\\"tags_json\\\":\\\"[]\\\",\\\"non_canon\\\":1,\\\"created_at\\\":\\\"2026-10-06T12:00:27.000Z\\\",\\\"updated_at\\\":\\\"2026-10-06T12:00:27.000Z\\\",\\\"resolved_at\\\":null,\\\"archived_at\\\":null}\",\"created_at\":\"2026-10-06T12:00:28.000Z\"},{\"change_id\":\"wmc_000012\",\"work_id\":\"WRK-FIRN-20261006-007\",\"change_type\":\"CREATE_ITEM\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"archived_at\\\",\\\"body_md\\\",\\\"created_at\\\",\\\"current_question\\\",\\\"next_action\\\",\\\"non_canon\\\",\\\"priority\\\",\\\"project_id\\\",\\\"provenance_class\\\",\\\"resolved_at\\\",\\\"status\\\",\\\"status_note\\\",\\\"summary\\\",\\\"tags_json\\\",\\\"thread\\\",\\\"title\\\",\\\"type\\\",\\\"updated_at\\\",\\\"work_id\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"work_id\\\":\\\"WRK-FIRN-20261006-007\\\",\\\"project_id\\\":\\\"firn\\\",\\\"thread\\\":\\\"\\\",\\\"type\\\":\\\"HYPOTHESIS\\\",\\\"status\\\":\\\"OPEN\\\",\\\"priority\\\":\\\"P2\\\",\\\"title\\\":\\\"FIRN model proposal: try Graphiti donor\\\",\\\"summary\\\":null,\\\"body_md\\\":null,\\\"current_question\\\":null,\\\"status_note\\\":null,\\\"next_action\\\":null,\\\"provenance_class\\\":\\\"MODEL_PROPOSAL\\\",\\\"tags_json\\\":\\\"[\\\\\\\"graphiti\\\\\\\",\\\\\\\"proposal\\\\\\\"]\\\",\\\"non_canon\\\":1,\\\"created_at\\\":\\\"2026-10-06T12:00:30.000Z\\\",\\\"updated_at\\\":\\\"2026-10-06T12:00:30.000Z\\\",\\\"resolved_at\\\":null,\\\"archived_at\\\":null}\",\"created_at\":\"2026-10-06T12:00:31.000Z\"},{\"change_id\":\"wmc_000013\",\"work_id\":\"WRK-FIRN-20261006-008\",\"change_type\":\"CREATE_ITEM\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"archived_at\\\",\\\"body_md\\\",\\\"created_at\\\",\\\"current_question\\\",\\\"next_action\\\",\\\"non_canon\\\",\\\"priority\\\",\\\"project_id\\\",\\\"provenance_class\\\",\\\"resolved_at\\\",\\\"status\\\",\\\"status_note\\\",\\\"summary\\\",\\\"tags_json\\\",\\\"thread\\\",\\\"title\\\",\\\"type\\\",\\\"updated_at\\\",\\\"work_id\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"work_id\\\":\\\"WRK-FIRN-20261006-008\\\",\\\"project_id\\\":\\\"firn\\\",\\\"thread\\\":\\\"\\\",\\\"type\\\":\\\"DECISION\\\",\\\"status\\\":\\\"CURRENT\\\",\\\"priority\\\":\\\"P0\\\",\\\"title\\\":\\\"FIRN user decision: keep DEFAULT_MODE WORKING\\\",\\\"summary\\\":null,\\\"body_md\\\":null,\\\"current_question\\\":null,\\\"status_note\\\":null,\\\"next_action\\\":null,\\\"provenance_class\\\":\\\"USER_DECISION\\\",\\\"tags_json\\\":\\\"[]\\\",\\\"non_canon\\\":1,\\\"created_at\\\":\\\"2026-10-06T12:00:33.000Z\\\",\\\"updated_at\\\":\\\"2026-10-06T12:00:33.000Z\\\",\\\"resolved_at\\\":null,\\\"archived_at\\\":null}\",\"created_at\":\"2026-10-06T12:00:34.000Z\"},{\"change_id\":\"wmc_000014\",\"work_id\":\"WRK-OTHER-20261006-001\",\"change_type\":\"CREATE_ITEM\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"archived_at\\\",\\\"body_md\\\",\\\"created_at\\\",\\\"current_question\\\",\\\"next_action\\\",\\\"non_canon\\\",\\\"priority\\\",\\\"project_id\\\",\\\"provenance_class\\\",\\\"resolved_at\\\",\\\"status\\\",\\\"status_note\\\",\\\"summary\\\",\\\"tags_json\\\",\\\"thread\\\",\\\"title\\\",\\\"type\\\",\\\"updated_at\\\",\\\"work_id\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"work_id\\\":\\\"WRK-OTHER-20261006-001\\\",\\\"project_id\\\":\\\"other\\\",\\\"thread\\\":\\\"\\\",\\\"type\\\":\\\"TASK\\\",\\\"status\\\":\\\"OPEN\\\",\\\"priority\\\":\\\"P0\\\",\\\"title\\\":\\\"OTHER distractor open: secret decoy task\\\",\\\"summary\\\":null,\\\"body_md\\\":null,\\\"current_question\\\":null,\\\"status_note\\\":null,\\\"next_action\\\":\\\"Do not mix into FIRN\\\",\\\"provenance_class\\\":\\\"USER_NOTE\\\",\\\"tags_json\\\":\\\"[]\\\",\\\"non_canon\\\":1,\\\"created_at\\\":\\\"2026-10-06T12:00:36.000Z\\\",\\\"updated_at\\\":\\\"2026-10-06T12:00:36.000Z\\\",\\\"resolved_at\\\":null,\\\"archived_at\\\":null}\",\"created_at\":\"2026-10-06T12:00:37.000Z\"},{\"change_id\":\"wmc_000015\",\"work_id\":\"WRK-FIRN-20261006-002\",\"change_type\":\"LINK_SOURCE\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"is_primary\\\",\\\"source_id\\\",\\\"work_id\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"work_id\\\":\\\"WRK-FIRN-20261006-002\\\",\\\"source_id\\\":\\\"src-firn-primary\\\",\\\"is_primary\\\":1}\",\"created_at\":\"2026-10-06T12:00:38.000Z\"},{\"change_id\":\"wmc_000017\",\"work_id\":\"WRK-FIRN-20261006-004\",\"change_type\":\"ADD_RELATION\",\"actor_class\":\"SYSTEM\",\"changed_fields_json\":\"[\\\"created_at\\\",\\\"from_work_id\\\",\\\"relation_id\\\",\\\"relation_type\\\",\\\"to_work_id\\\"]\",\"before_json\":null,\"after_json\":\"{\\\"relation_id\\\":\\\"wmr_000016\\\",\\\"from_work_id\\\":\\\"WRK-FIRN-20261006-004\\\",\\\"to_work_id\\\":\\\"WRK-FIRN-20261006-002\\\",\\\"relation_type\\\":\\\"BLOCKED_BY\\\",\\\"created_at\\\":\\\"2026-10-06T12:00:39.000Z\\\"}\",\"created_at\":\"2026-10-06T12:00:40.000Z\"}]}\n";
-
-  let BUILD = 'UNKNOWN';
-  try { BUILD = new URL(SCRIPT.src).searchParams.get('h') || 'UNKNOWN'; } catch (_) {}
 
   // ── Hashes: identical definitions to the STEP 1 reference scripts ───────────────────────────────────────────────────────────
   async function sha256Hex(str) {
@@ -69,6 +98,50 @@
     }));
   }
 
+  // ── Build / freshness verification (no network, no service-worker change) ───────────────────────────────────────────────────
+  async function selfBuild() {
+    const masked = B1DeviceHarness.toString().replace(/const HARNESS_BUILD_ID = '[0-9a-f]{12}';/, "const HARNESS_BUILD_ID = '';");
+    return (await sha256Hex(masked)).slice(0, 12);
+  }
+  async function verifyBuild() {
+    const v = { problems: [], self: '', pageExpected: null, urlBuild: null, online: null };
+    v.self = await selfBuild();
+    if (!/^[0-9a-f]{12}$/.test(HARNESS_BUILD_ID) || v.self !== HARNESS_BUILD_ID) v.problems.push('HARNESS_SELF_HASH_MISMATCH');
+    try { v.pageExpected = SCRIPT.getAttribute('data-expected-build'); } catch (_) { v.pageExpected = null; }
+    if (!v.pageExpected) v.problems.push('PAGE_BUILD_MARKER_MISSING');
+    else if (v.pageExpected !== HARNESS_BUILD_ID) v.problems.push('PAGE_HARNESS_BUILD_MISMATCH');
+    try { v.urlBuild = new URL(SCRIPT.src).searchParams.get('h'); } catch (_) { v.urlBuild = null; }
+    if (v.urlBuild !== HARNESS_BUILD_ID) v.problems.push('HARNESS_URL_BUILD_MISMATCH');
+    v.online = navigator.onLine;
+    if (v.online === false) v.problems.push('OFFLINE_FRESHNESS_UNVERIFIED');
+    return v;
+  }
+  let run = { state: 'VERIFYING', v: null };                          // VERIFYING | VALID | INVALID
+  const isValid = () => run.state === 'VALID';
+  function buildLines() {
+    const v = run.v || { self: '', pageExpected: null, urlBuild: null, online: null };
+    return [
+      'HARNESS_BUILD = ' + HARNESS_BUILD_ID,
+      'HARNESS_BUILD_SELF_COMPUTED = ' + (v.self || 'UNKNOWN'),
+      'PAGE_EXPECTED_BUILD = ' + (v.pageExpected || 'MISSING'),
+      'SCRIPT_URL_BUILD = ' + (v.urlBuild || 'MISSING'),
+      'BUILD_CHECK = ' + (run.state === 'VALID' ? 'OK' : run.state === 'INVALID' ? 'MISMATCH' : 'PENDING'),
+      'ONLINE = ' + (v.online === false ? 'NO' : v.online === true ? 'YES' : 'UNKNOWN'),
+    ];
+  }
+  function invalidResult() {
+    const v = run.v || { problems: ['BUILD_NOT_VERIFIED'] };
+    const buildProblems = v.problems.filter(p => p !== 'OFFLINE_FRESHNESS_UNVERIFIED');
+    const L = ['DEVICE_RUN_INVALID',
+      'STALE_HARNESS = ' + (run.state === 'VERIFYING' ? 'UNKNOWN (build verification has not finished)' : buildProblems.length ? 'YES' : 'POSSIBLE (offline: a cached page / harness cannot be shown to be current)'),
+      'REASONS = ' + (v.problems.join(', ') || 'BUILD_NOT_VERIFIED')];
+    L.push.apply(L, buildLines());
+    L.push('No import, no fingerprint pass and no environment OK are possible in this state. Reload the exact URL while online; compare HARNESS_BUILD with the build id published for the PR head.');
+    L.push('WRITES_PERFORMED = NO');
+    return { verdict: 'DEVICE_RUN_INVALID', text: L.join('\n') };
+  }
+  const validHeader = () => 'DEVICE_RUN = VALID (harness build ' + HARNESS_BUILD_ID + ' verified: self-hash, page marker, script URL, online)';
+
   // ── Read-only helpers ───────────────────────────────────────────────────────────────────────────────────────────────────────
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   // The app creates WmStore asynchronously at start-up (undefined = not yet, null = schema init failed). We never create it.
@@ -86,6 +159,41 @@
   }
   const countsLine = c => LISTS.map(k => 'wm_' + k + ' = ' + c[k]).join('\n');
   const countsMatch = c => Object.keys(EXPECTED).every(k => c[k] === EXPECTED[k]);
+
+  // Physical emptiness of the wm_* namespace, including the FTS5 index and its shadow tables. Read-only: fixed SELECT statements on
+  // table names taken from sqlite_master (validated wm_<identifier>); nothing is repaired or deleted.
+  //   data tables, wm_items_fts, _content, _docsize, _idx, any other wm_* table : no rows
+  //   wm_items_fts_data : only the two structure rows of an empty FTS5 index (ids 1 and 10);  wm_items_fts_config : only the 'version' key
+  const PHYSICAL_CORE = ['wm_projects', 'wm_sources', 'wm_items', 'wm_item_sources', 'wm_relations', 'wm_changes', 'wm_items_fts'];
+  function physicalGuard() {
+    const db = window._wizDB;
+    if (!db || typeof db.exec !== 'function') return { ok: false, code: 'WM_PHYSICAL_UNVERIFIABLE', lines: ['the app SQLite handle is not available'] };
+    try {
+      const first = r => (r && r[0] && r[0].values) || [];
+      const names = first(db.exec("SELECT name FROM sqlite_master WHERE type = 'table'")).map(v => String(v[0])).filter(n => n.indexOf('wm_') === 0).sort();
+      const missing = PHYSICAL_CORE.filter(n => names.indexOf(n) === -1);
+      if (missing.length) return { ok: false, code: 'WM_PHYSICAL_UNVERIFIABLE', lines: ['missing wm_* table(s): ' + missing.join(', ')] };
+      const violations = [];
+      for (const name of names) {
+        if (!/^wm_[a-z0-9_]+$/.test(name)) { violations.push(name + ': unexpected table name'); continue; }
+        if (name === 'wm_items_fts_data') {
+          const extra = first(db.exec('SELECT id FROM "wm_items_fts_data"')).map(v => Number(v[0])).filter(id => id !== 1 && id !== 10);
+          if (extra.length) violations.push(name + ': ' + extra.length + ' unexpected row(s) (ids ' + extra.slice(0, 5).join(',') + ')');
+        } else if (name === 'wm_items_fts_config') {
+          const extra = first(db.exec('SELECT k FROM "wm_items_fts_config"')).map(v => String(v[0])).filter(k => k !== 'version');
+          if (extra.length) violations.push(name + ': ' + extra.length + ' unexpected row(s) (keys ' + extra.slice(0, 5).join(',') + ')');
+        } else {
+          const n = Number(first(db.exec('SELECT COUNT(*) FROM "' + name + '"'))[0][0]);
+          if (n !== 0) violations.push(name + ': ' + n + ' row(s)');
+        }
+      }
+      if (violations.length) return { ok: false, code: 'WM_PHYSICAL_NOT_EMPTY', lines: violations, tables: names.length };
+      return { ok: true, tables: names.length, lines: [] };
+    } catch (e) {
+      return { ok: false, code: 'WM_PHYSICAL_UNVERIFIABLE', lines: ['cannot read wm_* tables: ' + String((e && e.message) || e)] };
+    }
+  }
+
   async function platformLines() {
     let swCache = 'UNKNOWN', swState = 'UNKNOWN';
     try {
@@ -100,11 +208,11 @@
       'SW_CACHE = ' + swCache,
       'SW_CONTROL = ' + swState,
       'GIT_SHA_OBSERVABLE = NOT_IN_APP (the PWA does not embed its git SHA)',
-      'HARNESS_BUILD = ' + BUILD,
+    ].concat(buildLines(), [
       'ORIGIN_PATH = ' + location.origin + location.pathname,
       'SECURE_CONTEXT = ' + (window.isSecureContext ? 'YES' : 'NO'),
       'USER_AGENT = ' + navigator.userAgent,
-    ];
+    ]);
   }
   // Integrity of the embedded fixture itself — no storage is touched.
   async function fixtureIntegrity() {
@@ -123,10 +231,11 @@
     return { problems, raw };
   }
 
-  // ── Actions ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  // ── Actions (each one refuses unless the device run is VALID) ───────────────────────────────────────────────────────────────
   // CHECK ENVIRONMENT — read-only: nothing is created, changed or written.
   async function checkEnvironment() {
-    const L = ['== CHECK ENVIRONMENT (read-only) =='];
+    if (!isValid()) return invalidResult();
+    const L = ['== CHECK ENVIRONMENT (read-only) ==', validHeader()];
     let ok = true;
     const bad = msg => { ok = false; L.push('FAIL: ' + msg); };
     const store = await getStore();
@@ -158,7 +267,11 @@
         L.push('WM_EMPTY = ' + (empty ? 'YES' : 'NO') + ' (rows=' + snap.total + ')');
       } catch (e) { bad('cannot read wm_*: ' + String((e && e.message) || e)); }
     }
-    L.push('IMPORT_WOULD_PROCEED = ' + (ok && empty ? 'YES' : 'NO' + (ok && !empty ? ' (wm_* is not empty — import aborts)' : '')));
+    const phys = physicalGuard();
+    L.push('WM_PHYSICAL_EMPTY = ' + (phys.ok ? 'YES' : phys.code === 'WM_PHYSICAL_NOT_EMPTY' ? 'NO' : 'UNVERIFIABLE') + (phys.tables ? ' (wm_* tables checked=' + phys.tables + ')' : ''));
+    if (!phys.ok) { L.push('CODE = ' + phys.code); for (const x of phys.lines) L.push('  ' + x); }
+    const proceed = ok && empty && phys.ok;
+    L.push('IMPORT_WOULD_PROCEED = ' + (proceed ? 'YES' : 'NO' + (ok && !empty ? ' (wm_* is not empty — import aborts)' : ok && empty && !phys.ok ? ' (' + phys.code + ' — import aborts)' : '')));
     L.push('WRITES_PERFORMED = NO');
     L.push.apply(L, await platformLines());
     return { verdict: ok ? 'ENV_OK' : 'ENV_FAIL', text: L.join('\n') };
@@ -166,7 +279,8 @@
 
   // IMPORT FROZEN FIXTURE — the single write of this harness: WmStore.importJSON(exact fixture), only into an empty wm_*.
   async function importFixture() {
-    const L = ['== IMPORT FROZEN FIXTURE =='];
+    if (!isValid()) return invalidResult();
+    const L = ['== IMPORT FROZEN FIXTURE ==', validHeader()];
     let attempted = false;
     const fail = msg => {
       L.push('FAIL: ' + msg);
@@ -179,6 +293,13 @@
 
     const before = snapshotOf(store);
     if (before.total !== 0) return fail('WM not empty (rows=' + before.total + ') — abort; use an isolated browser profile');
+    const phys = physicalGuard();
+    if (!phys.ok) {
+      L.push('CODE = ' + phys.code);
+      for (const x of phys.lines) L.push('  ' + x);
+      return fail(phys.code + ' — abort before import; nothing was cleaned up or changed (use an isolated browser profile)');
+    }
+    L.push('WM_PHYSICAL_EMPTY = YES (wm_* tables checked=' + phys.tables + ')');
 
     const fixture = await fixtureIntegrity();
     if (fixture.problems.length) return fail(fixture.problems[0]);
@@ -216,6 +337,7 @@
 
   // RUN FINGERPRINT — read-only; same output contract as the STEP 1 fingerprint script.
   async function runFingerprint() {
+    if (!isValid()) return invalidResult();
     const store = await getStore();
     if (!store || typeof store.exportData !== 'function') return { verdict: 'FAIL', text: 'FINGERPRINT_FAIL\nFAIL: WmStore missing' };
     const snap = snapshotOf(store);
@@ -225,7 +347,7 @@
     const okCounts = countsMatch(snap.counts);
     const okHash = logical === EXPECTED_LOGICAL && seed === EXPECTED_SEED;
     const verdict = okCounts && okHash ? 'PASS' : 'FAIL';
-    const L = ['FINGERPRINT_' + verdict];
+    const L = ['FINGERPRINT_' + verdict, validHeader()];
     L.push.apply(L, await platformLines());
     L.push(countsLine(snap.counts));
     if (snap.total === 0) L.push('NOTE: wm_* is empty — nothing has been imported on this profile yet');
@@ -255,12 +377,17 @@
     });
     root.setAttribute('role', 'main');
     root.setAttribute('aria-label', 'B1-DEVICE TEST — NON PRODUCTION');
+    root.setAttribute('data-run-state', 'VERIFYING');
     const banner = make('div', {}, { background: '#b00020', color: '#ffffff', padding: '12px 14px' });
     banner.appendChild(make('div', { id: 'b1d-title', textContent: 'B1-DEVICE TEST — NON PRODUCTION' }, { 'font-weight': '700', 'font-size': '17px', 'letter-spacing': '0.2px' }));
     banner.appendChild(make('div', { id: 'b1d-sub', textContent: 'TEST ONLY · opened by ?b1device=1 · not part of the normal app UI' }, { 'font-size': '13px', opacity: '0.95' }));
     root.appendChild(banner);
     const body = make('div', {}, { padding: '12px 14px' });
     root.appendChild(body);
+    const statusEl = make('div', { id: 'b1d-status', textContent: 'VERIFYING BUILD …' }, {
+      padding: '8px 10px', margin: '0 0 10px 0', 'border-radius': '6px', background: '#fff3cd', color: '#5c4400', 'font-size': '13px', 'font-weight': '700', 'overflow-wrap': 'anywhere'
+    });
+    body.appendChild(statusEl);
 
     const buttons = [];
     const verdictEl = make('div', { id: 'b1d-verdict', textContent: '—' }, {
@@ -268,20 +395,21 @@
       background: '#e0e0e0', color: '#333333', 'overflow-wrap': 'anywhere'
     });
     verdictEl.setAttribute('data-verdict', 'NONE');
-    const out = make('pre', { id: 'b1d-out', textContent: 'Press a button. CHECK ENVIRONMENT and RUN FINGERPRINT never change anything; IMPORT FROZEN FIXTURE writes only into an empty wm_*.' }, {
+    const out = make('pre', { id: 'b1d-out', textContent: 'Verifying the harness build before anything is enabled …' }, {
       margin: '0', padding: '10px', background: '#f4f4f4', border: '1px solid #cccccc', 'border-radius': '6px', 'white-space': 'pre-wrap',
       'overflow-wrap': 'anywhere', 'user-select': 'text', '-webkit-user-select': 'text', font: '13px/1.45 ui-monospace, Menlo, Consolas, monospace'
     });
     let busy = false;
-    const COLORS = { PASS: '#1b7f3b', IMPORT_PASS: '#1b7f3b', ENV_OK: '#1b7f3b', FAIL: '#b00020', IMPORT_FAIL: '#b00020', ENV_FAIL: '#b00020' };
+    const COLORS = { PASS: '#1b7f3b', IMPORT_PASS: '#1b7f3b', ENV_OK: '#1b7f3b', FAIL: '#b00020', IMPORT_FAIL: '#b00020', ENV_FAIL: '#b00020', DEVICE_RUN_INVALID: '#7a0014' };
     const setVerdict = v => {
       verdictEl.textContent = v; verdictEl.setAttribute('data-verdict', v);
       css(verdictEl, { background: COLORS[v] || '#e0e0e0', color: COLORS[v] ? '#ffffff' : '#333333' });
     };
-    const run = (label, action) => async () => {
+    const setEnabled = on => { for (const b of buttons) { b.disabled = !on; b.style.setProperty('opacity', on ? '1' : '0.4'); } };
+    const runner = (label, action) => async () => {
       if (busy) return;
       busy = true;
-      for (const b of buttons) b.disabled = true;
+      setEnabled(false);
       setVerdict('RUNNING'); out.textContent = label + ' …';
       try {
         const r = await action();
@@ -289,15 +417,15 @@
       } catch (e) {
         out.textContent = 'FAIL: ' + String((e && e.message) || e); setVerdict('FAIL');
       }
-      for (const b of buttons) b.disabled = false;
+      setEnabled(isValid());
       busy = false;
     };
     const addButton = (id, label, action, bg) => {
-      const b = make('button', { id, type: 'button', textContent: label }, {
+      const b = make('button', { id, type: 'button', textContent: label, disabled: true }, {
         display: 'block', width: '100%', 'min-height': '54px', margin: '0 0 10px 0', padding: '12px', 'font-size': '16px', 'font-weight': '700',
-        color: '#ffffff', background: bg, border: '0', 'border-radius': '8px', 'touch-action': 'manipulation', cursor: 'pointer'
+        color: '#ffffff', background: bg, border: '0', 'border-radius': '8px', 'touch-action': 'manipulation', cursor: 'pointer', opacity: '0.4'
       });
-      b.addEventListener('click', run(label, action));
+      b.addEventListener('click', runner(label, action));
       buttons.push(b); body.appendChild(b);
     };
     addButton('b1d-check', 'CHECK ENVIRONMENT', checkEnvironment, '#37474f');
@@ -306,6 +434,25 @@
     body.appendChild(verdictEl);
     body.appendChild(out);
     (document.body || document.documentElement).appendChild(root);
+
+    // Verify the build first; only a VALID device run enables the buttons.
+    verifyBuild().then(v => ({ v, error: null }), error => ({ v: null, error })).then(({ v, error }) => {
+      if (error || !v) run = { state: 'INVALID', v: { problems: ['BUILD_VERIFICATION_ERROR: ' + String((error && error.message) || error)], self: '', pageExpected: null, urlBuild: null, online: null } };
+      else run = { state: v.problems.length ? 'INVALID' : 'VALID', v };
+      root.setAttribute('data-run-state', run.state);
+      if (run.state === 'VALID') {
+        statusEl.textContent = 'BUILD VERIFIED · ' + HARNESS_BUILD_ID + ' · online';
+        css(statusEl, { background: '#d4edda', color: '#155724' });
+        out.textContent = validHeader() + '\n' + buildLines().join('\n') + '\n\nPress a button. CHECK ENVIRONMENT and RUN FINGERPRINT never change anything; IMPORT FROZEN FIXTURE writes only into an empty wm_*.';
+        setEnabled(true);
+      } else {
+        const r = invalidResult();
+        statusEl.textContent = 'STALE_HARNESS · DEVICE_RUN_INVALID';
+        css(statusEl, { background: '#f8d7da', color: '#721c24' });
+        out.textContent = r.text; setVerdict(r.verdict);
+        setEnabled(false);
+      }
+    });
   }
 
   if (document.body) build();

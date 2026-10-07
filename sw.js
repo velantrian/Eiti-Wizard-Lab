@@ -3,6 +3,11 @@ const CACHE_NAME = 'eiti-wizard-lab-v1.8.10-wm1'; // bump on every change to a c
 const BASE_PATH = '/Eiti-Wizard-Lab';
 // Research Index (navigation only, not runtime authority): served network-first so online clients get a fresh copy.
 const RESEARCH_INDEX_PATH = BASE_PATH + '/docs/research/EXPERIMENT_EVIDENCE_INDEX.md';
+// Network budget for the research index. Must stay SHORTER than the page-side budget in index.html (wizResearchIndexLoader)
+// so a stalled connection reaches the cached fallback before the page gives up.
+const RESEARCH_FETCH_TIMEOUT_MS = 4000;
+// Minimal check before an index-like 200 may be cached (the strict parser in research-router.js remains the authority).
+const looksLikeResearchIndex = text => typeof text === 'string' && /RESEARCH_INDEX_ONLY/.test(text) && /^## C\. /m.test(text);
 
 const STATIC_ASSETS = [
   BASE_PATH + '/',
@@ -93,12 +98,15 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Research Index — online-first (exact path only): a fresh network copy always beats the cache.
-  //  - 200            -> served and cached (the cache write is held open with event.waitUntil)
-  //  - transport failure -> cached copy if one exists, flagged X-Eiti-Served-From: sw-offline-cache
-  //  - 5xx (transient server failure) -> cached copy if one exists, flagged X-Eiti-Served-From: sw-stale-cache
-  //  - 404/410 (authoritative removal) and other 4xx -> passed through; a stale cache must not mask removal, so the cached copy is evicted
-  // Not precached (never blocks install); not runtime authority.
+  // Research Index — online-first (exact path only): a fresh, valid network copy always beats the cache.
+  //  - 200 that looks like the index -> served and cached (the write is held open with event.waitUntil)
+  //  - 200 that does NOT look like the index (captive portal / proxy / CDN error page) -> NEVER cached, never overwrites the
+  //    last known-good copy; a valid cached copy is served instead (flagged sw-stale-cache), else the body is passed through
+  //    (the page-side parser then fails closed)
+  //  - transport failure or timeout (RESEARCH_FETCH_TIMEOUT_MS) -> valid cached copy flagged sw-offline-cache, else 504
+  //  - 5xx -> valid cached copy flagged sw-stale-cache, else the 5xx response
+  //  - 404/410 (authoritative removal) and other 4xx -> passed through; the cached copy is evicted on 404/410
+  // The strict parser (research-router.js) stays the runtime authority. Not precached; not runtime authority.
   if (url.pathname === RESEARCH_INDEX_PATH) {
     const flagged = (cached, value) => {
       const headers = new Headers(cached.headers);
@@ -107,13 +115,22 @@ self.addEventListener('fetch', event => {
     };
     const cachedIndex = value => caches.open(CACHE_NAME).then(cache => cache.match(request)).then(cached => (cached ? flagged(cached, value) : null));
     event.respondWith((async () => {
-      let response;
-      try { response = await fetch(request, { cache: 'no-store' }); }
-      catch (_) { return (await cachedIndex('sw-offline-cache').catch(() => null)) || new Response('', { status: 504, statusText: 'Offline' }); }
+      let response, text = null;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), RESEARCH_FETCH_TIMEOUT_MS);   // covers headers AND body of a 200
+      try {
+        response = await fetch(request, { cache: 'no-store', signal: controller.signal });
+        if (response.status === 200) text = await response.text();
+      } catch (_) {
+        return (await cachedIndex('sw-offline-cache').catch(() => null)) || new Response('', { status: 504, statusText: 'Offline' });
+      } finally { clearTimeout(timer); }
       if (response.status === 200) {
-        const copy = response.clone();
-        event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => {}));
-        return response;
+        const headers = new Headers({ 'Content-Type': response.headers.get('Content-Type') || 'text/markdown; charset=utf-8' });
+        if (looksLikeResearchIndex(text)) {
+          event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(request, new Response(text, { status: 200, headers }))).catch(() => {}));
+          return new Response(text, { status: 200, headers });
+        }
+        return (await cachedIndex('sw-stale-cache').catch(() => null)) || new Response(text, { status: 200, headers });
       }
       if (response.status >= 500) return (await cachedIndex('sw-stale-cache').catch(() => null)) || response;
       if (response.status === 404 || response.status === 410) event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.delete(request)).catch(() => {}));

@@ -22,7 +22,7 @@
   const PROJECT_PROPS = { project: { type: 'string', description: 'project_id or code' }, project_id: { type: 'string', description: 'alias of project (project_id or code); if both are given they must name the same project' } };
   const LIMIT_NOTE = 'integer >= 1; above the max it is clamped and reported in limit_clamped; invalid values are rejected';
   const TOOLS_SPEC = Object.freeze([
-    { name: 'wm_orientation', description: 'WORKING MEMORY (read-only): bounded startup/resume view — current, in_progress, open, blocked, unknown, next actions, recent completed, projects {items,total,truncated}, source pointers. Call first when resuming work in a fresh session. Scope with project / project_id (never silently unscoped). Does not load research.',
+    { name: 'wm_orientation', description: 'WORKING MEMORY (read-only): bounded startup/resume view — current, in_progress, open, blocked, unknown, next actions, recent completed, projects {items,total,truncated}, source pointers (PRIMARY + NAVIGATION roles only; use wm_project_sources for every registered source). Call first when resuming work in a fresh session. Scope with project / project_id (never silently unscoped). Does not load research.',
       parameters: { type: 'object', properties: Object.assign({}, PROJECT_PROPS, { limit: { type: 'number', description: 'items per bucket (default 5, max 10; ' + LIMIT_NOTE + ')' }, project_limit: { type: 'number', description: 'projects listed (default 10, max 50)' } }) } },
     { name: 'wm_list_projects', description: 'WORKING MEMORY (read-only): list registered Working Memory projects (bounded: items/total/truncated).', parameters: { type: 'object', properties: { limit: { type: 'number', description: 'default 20, max 50' } } } },
     { name: 'wm_list', description: 'WORKING MEMORY (read-only): list work items. Filters: project/project_id, status, type, priority, thread, includeArchived (boolean), limit. Archived excluded by default.',
@@ -34,6 +34,10 @@
     { name: 'research_route', description: 'RESEARCH PLANE pointer (read-only; independent of Working Memory): route into docs/research/EXPERIMENT_EVIDENCE_INDEX.md. No args = overview; card = research CARD number (an integer, not a file line); query = case-insensitive substring terms over title/name/question/status/verdict/open finding/primary evidence (e.g. NOT_RUN, BLOCKED, TCE). Give card OR query, not both. Returns verbatim index fields incl. caveats (CONSISTENCY, NOTES, ...); no verdict is derived. A query shows up to 3 cards in full; every matching card number is in matched_card_numbers and the unshown ones in omitted_card_numbers (fetch with card). Research is NOT working state and never a user decision.', parameters: { type: 'object', properties: { query: { type: 'string' }, card: { type: 'number', description: 'research card number' } } } },
   ].map(t => Object.freeze(t)));
   const TOOL_NAMES = Object.freeze(TOOLS_SPEC.map(t => t.name));
+  // Explicit allowed-argument set per tool = its declared parameters (+ the one intentional alias `line` of research_route).
+  // Any other argument name is a VALIDATION error: a typo such as projectId / include_archived / limt must never be silently ignored.
+  const ALLOWED_ARGS = Object.freeze(Object.fromEntries(TOOLS_SPEC.map(t => [t.name,
+    Object.freeze(new Set(Object.keys(t.parameters.properties).concat(t.name === 'research_route' ? ['line'] : [])))])));
 
   // DIAGNOSTIC ONLY: not invoked at runtime and not acceptance evidence for model routing.
   // Routing authority in B1 = tool descriptions + GUIDANCE + explicit plane labels on every result.
@@ -96,6 +100,7 @@
     while (i < value.length && count < max) { i += value.codePointAt(i) > 0xFFFF ? 2 : 1; count++; }
     return i >= value.length ? { text: value, truncated: false } : { text: value.slice(0, i) + '…', truncated: true };
   }
+  function countCodePoints(text) { let n = 0; for (let i = 0; i < text.length; i += text.codePointAt(i) > 0xFFFF ? 2 : 1) n++; return n; }
   function boundFields(source, spec, truncated) {
     const out = {};
     for (const [key, max] of spec) {
@@ -154,6 +159,8 @@
   }
 
   const SOURCE_POINTERS_PER_PROJECT = 3, SOURCE_POINTERS_TOTAL = 15;
+  // Intentional bounded startup behaviour: orientation lists only these source roles; total/truncated refer to THEM, not to all registered sources.
+  const INCLUDED_POINTER_ROLES = Object.freeze(['PRIMARY', 'NAVIGATION']);
 
   // options.store may be null/undefined: the Working Plane tools then report WORKING_MEMORY_UNAVAILABLE
   // while research_route keeps working (WORKING PLANE FAILURE != RESEARCH PLANE FAILURE).
@@ -211,7 +218,7 @@
       let pointerTotal = 0;
       const pointerItems = [], omitted = [];
       for (const p of projects) {
-        const eligible = store.listSources(p.project_id).filter(x => Object.prototype.hasOwnProperty.call(SOURCE_ROLE_ORDER, x.role)).sort(bySourcePrecedence);
+        const eligible = store.listSources(p.project_id).filter(x => INCLUDED_POINTER_ROLES.includes(x.role)).sort(bySourcePrecedence);
         pointerTotal += eligible.length;
         const room = SOURCE_POINTERS_TOTAL - pointerItems.length;
         const take = eligible.slice(0, Math.min(SOURCE_POINTERS_PER_PROJECT, Math.max(0, room)));
@@ -228,6 +235,7 @@
         totals: { current: current.total, in_progress: inProgress.total, open: open.total, blocked: blocked.total, unknown: unknown.total, next_actions: withNext.total, recent_completed: completed.total },
         truncated: { current: current.truncated, in_progress: inProgress.truncated, open: open.truncated, blocked: blocked.truncated, unknown: unknown.truncated, next_actions: withNext.truncated, recent_completed: completed.truncated },
         source_pointers: { items: pointerItems, total: pointerTotal, truncated: pointerItems.length < pointerTotal,
+          included_roles: INCLUDED_POINTER_ROLES.slice(), full_source_discovery: 'wm_project_sources',
           per_project_cap: SOURCE_POINTERS_PER_PROJECT, total_cap: SOURCE_POINTERS_TOTAL, omitted_project_ids: omitted,
           order: 'PRIMARY before NAVIGATION, then title' },
         research: { available: true, loaded: false, entrypoint: RESEARCH_ENTRYPOINT },
@@ -253,7 +261,7 @@
       const body = boundText(item.body_md, CAPS.body_md), tags = boundText(item.tags_json, CAPS.tags_json);
       const view = compact(item);
       view.body_md = body.text; view.tags_json = tags.text;
-      if (body.truncated) { view.truncated_fields.push('body_md'); view.body_md_total_chars = item.body_md.length; }
+      if (body.truncated) { view.truncated_fields.push('body_md'); view.body_md_total_chars = countCodePoints(item.body_md); }
       if (tags.truncated) view.truncated_fields.push('tags_json');
       // Source ROLE precedence (PRIMARY before NAVIGATION), not item-link is_primary ordering; is_primary stays as link metadata.
       const sources = store.listItemSources(item.work_id).sort(bySourcePrecedence);
@@ -305,6 +313,8 @@
       if (!fn) return { ok: false, error: 'Unknown read tool: ' + name, code: 'UNKNOWN_TOOL' };
       const plane = name === 'research_route' ? 'RESEARCH' : 'WORKING';
       if (args != null && (typeof args !== 'object' || Array.isArray(args))) return { ok: false, plane, code: 'VALIDATION', error: 'arguments must be an object' };
+      const unknown = Object.keys(args || {}).filter(k => !ALLOWED_ARGS[name].has(k));
+      if (unknown.length) return { ok: false, plane, code: 'VALIDATION', error: 'Unknown argument(s) for ' + name + ': ' + unknown.join(', ') + '. Allowed: ' + [...ALLOWED_ARGS[name]].join(', ') + '. Nothing was executed.' };
       const ctx = { clamped: {} };
       try {
         const result = await fn(args || {}, ctx);

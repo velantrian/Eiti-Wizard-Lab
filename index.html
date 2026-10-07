@@ -6158,14 +6158,21 @@ function wizDecayTick() {
 
 // ════════════════════════════════════════════════════════════════
 
-// Research Index loader for research_route: fresh over the network (SW is network-first for this path);
-// reports OFFLINE_CACHE (transport failure) / STALE_CACHE (server 5xx) when the service worker served its cached fallback copy.
+// Research Index loader for research_route: fresh over the network (SW is online-first for this path) with a hard
+// time budget so a stalled connection cannot block the agent loop (the SW's own budget is shorter, so its cached
+// fallback is served first). Reports OFFLINE_CACHE (transport failure/timeout) / STALE_CACHE (server 5xx or non-index 200)
+// when the service worker served its cached fallback copy.
+const WIZ_RESEARCH_FETCH_TIMEOUT_MS = 8000;
 async function wizResearchIndexLoader() {
-  const res = await fetch(window.ResearchRouter.INDEX_PATH, { cache: 'no-store' });
-  if (!res.ok) return null;
-  const served = res.headers.get(window.ResearchRouter.OFFLINE_HEADER);
-  const source = served === window.ResearchRouter.OFFLINE_VALUE ? 'OFFLINE_CACHE' : served === window.ResearchRouter.STALE_VALUE ? 'STALE_CACHE' : 'NETWORK';
-  return { text: await res.text(), source };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), WIZ_RESEARCH_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(window.ResearchRouter.INDEX_PATH, { cache: 'no-store', signal: controller.signal });
+    if (!res.ok) return null;
+    const served = res.headers.get(window.ResearchRouter.OFFLINE_HEADER);
+    const source = served === window.ResearchRouter.OFFLINE_VALUE ? 'OFFLINE_CACHE' : served === window.ResearchRouter.STALE_VALUE ? 'STALE_CACHE' : 'NETWORK';
+    return { text: await res.text(), source };   // body read is inside the same time budget
+  } finally { clearTimeout(timer); }
 }
 
 async function executeAgentTool(name, args) {
@@ -6385,15 +6392,18 @@ async function executeAgentTool(name, args) {
       }
 
       // ── working-memory-agent-read-bridge-v0.1 (B1): read-only; no wm_* writes, no research promotion ──
-      // research_route is the Research Plane: it never needs SQLite or Working Memory (plane failures are independent).
-      case 'research_route': {
-        if (!window.ResearchRouter) return JSON.stringify({ ok: false, plane: 'RESEARCH', code: 'ROUTER_UNAVAILABLE', entrypoint: 'docs/research/EXPERIMENT_EVIDENCE_INDEX.md' });
-        return JSON.stringify(await window.ResearchRouter.routeWithLoader(wizResearchIndexLoader, args));
-      }
+      // ONE runtime path for every B1 tool: WmAgentRead bridge.execute (validation + error shapes live there).
+      // research_route needs neither SQLite nor Working Memory: the bridge works with store = null.
+      case 'research_route':
       case 'wm_orientation': case 'wm_list_projects': case 'wm_list': case 'wm_get': case 'wm_search':
       case 'wm_related': case 'wm_project_sources': {
-        try { await wizInitSQLite(); } catch (_) {}
-        if (!window.WmAgentRead) return JSON.stringify({ ok: false, plane: 'WORKING', code: 'WORKING_MEMORY_UNAVAILABLE', error: 'Working Memory read bridge not loaded' });
+        const isResearch = name === 'research_route';
+        if (!isResearch) { try { await wizInitSQLite(); } catch (_) {} }
+        if (!window.WmAgentRead) {
+          return JSON.stringify(isResearch
+            ? { plane: 'RESEARCH', index_loaded: false, parse_status: 'ROUTER_UNAVAILABLE', entrypoint: 'docs/research/EXPERIMENT_EVIDENCE_INDEX.md', diagnostics: { reasons: ['read bridge script is not loaded'] }, note: 'Fail-closed: no research cards can be served from this call.' }
+            : { ok: false, plane: 'WORKING', code: 'WORKING_MEMORY_UNAVAILABLE', error: 'Working Memory read bridge not loaded' });
+        }
         const store = window.WmStore || null;
         if (!window._wmAgentBridge || window._wmAgentBridge.store !== store)
           window._wmAgentBridge = { store, bridge: window.WmAgentRead.create({ store, router: window.ResearchRouter, loadResearchIndex: wizResearchIndexLoader }) };

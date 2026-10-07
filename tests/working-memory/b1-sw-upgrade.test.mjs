@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import net from 'node:net';
+import http from 'node:http';
 import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
@@ -102,6 +103,39 @@ try {
   const offline = await route(page, { card: 1 });
   assert.equal(offline.index_loaded, true); assert.equal(offline.index_source, 'OFFLINE_CACHE'); assert(offline.cards[0].STATUS.includes('FRESHNESS-MARKER'));
   console.log('PASS  offline fallback serves the cached index and is flagged OFFLINE_CACHE');
+
+  // ── real-network failure modes against a controllable origin on the same port ──
+  // After the offline step the python server is gone; a tiny node server now plays: captive-portal 200 / 503 / stalled connection / 404.
+  let mode = 'html200'; const sockets = new Set();
+  const ctl = http.createServer((req, res) => {
+    if (mode === 'hang') return;   // accept the request, never answer
+    if (mode === 'html200') { res.writeHead(200, { 'Content-Type': 'text/html' }); res.end('<html><body>Please sign in to the Wi-Fi</body></html>'); return; }
+    if (mode === '503') { res.writeHead(503); res.end('upstream down'); return; }
+    if (mode === '404') { res.writeHead(404); res.end('gone'); return; }
+    res.writeHead(500); res.end();
+  });
+  ctl.on('connection', sock => { sockets.add(sock); sock.on('close', () => sockets.delete(sock)); });
+  await new Promise((resolve, reject) => ctl.once('error', reject).listen(port, '127.0.0.1', resolve));
+  const good = r => { assert.equal(r.index_loaded, true); assert(r.cards[0].STATUS.includes('FRESHNESS-MARKER'), 'the last known-good index must be served'); };
+  try {
+    mode = 'html200'; let r = await route(page, { card: 1 });
+    good(r); assert.equal(r.index_source, 'STALE_CACHE'); assert.equal(r.stale, true); assert.match(r.warning, /STALE/);
+    console.log('PASS  captive-portal 200 does not poison the cache; the good copy is served and marked STALE_CACHE');
+    mode = '503'; r = await route(page, { card: 1 }); good(r); assert.equal(r.index_source, 'STALE_CACHE'); assert.equal(r.stale, true);
+    console.log('PASS  5xx falls back to the cached index and is marked STALE_CACHE');
+    mode = 'hang'; const t0 = Date.now(); r = await route(page, { card: 1 }); const took = Date.now() - t0;
+    good(r); assert.equal(r.index_source, 'OFFLINE_CACHE'); assert.equal(r.stale, true); assert(took >= 3500 && took < 7500, 'stalled fetch must be cut by the service worker budget (~4s), not the page budget (8s); took ' + took + 'ms');
+    console.log('PASS  stalled connection times out (' + took + 'ms) and falls back to the cached index (OFFLINE_CACHE)');
+    for (const sock of sockets) sock.destroy(); await new Promise(resolve => ctl.close(resolve));
+    r = await route(page, { card: 1 }); good(r); assert.equal(r.index_source, 'OFFLINE_CACHE');   // still the good copy: it was never overwritten
+    console.log('PASS  the cached index was never overwritten by the bogus 200 / 5xx');
+    await new Promise((resolve, reject) => ctl.listen(port, '127.0.0.1', err => err ? reject(err) : resolve()));
+    mode = '404'; r = await route(page, { card: 1 });
+    assert.equal(r.index_loaded, false); assert.equal(r.parse_status, 'INDEX_UNAVAILABLE'); assert(!r.cards, '404 must not be masked by the stale cache');
+    for (const sock of sockets) sock.destroy(); await new Promise(resolve => ctl.close(resolve));
+    r = await route(page, { card: 1 }); assert.equal(r.index_loaded, false, 'after an authoritative 404 even offline must not resurrect the removed index'); assert(!r.cards);
+    console.log('PASS  404 is not masked by the stale cache and evicts it');
+  } finally { for (const sock of sockets) sock.destroy(); try { ctl.close(); } catch (_) {} }
   assert.deepEqual(pageErrors, [], 'browser errors: ' + JSON.stringify(pageErrors));
 } finally {
   if (browser) await browser.close();

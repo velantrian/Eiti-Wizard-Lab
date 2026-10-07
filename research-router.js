@@ -34,7 +34,7 @@
   const MAX_MALFORMED_REPORTED = 10;
   const LIST_KEYS = Object.freeze(['STATUS', 'EXECUTION_VERDICT', 'OPEN_FINDING', 'PRIMARY_EVIDENCE', 'CONSISTENCY']);
   const SEARCH_KEYS = Object.freeze(['EXPERIMENT_ID / NAME', 'QUESTION', 'STATUS', 'EXECUTION_VERDICT', 'OPEN_FINDING', 'PRIMARY_EVIDENCE']);
-  const CARD_FIELD_CHARS = 500;   // per field in a card view (code points)
+  const CARD_FIELD_CHARS = 500;   // per field when a card appears in a QUERY result (code points); a direct {card:N} request is never clipped
   const LIST_FIELD_CHARS = 120;   // per field in the overview list
   const MAX_CARDS = 3;
   const MAX_LIST = 30;
@@ -46,7 +46,7 @@
 
   // Clip to `max` Unicode CODE POINTS (never splits a surrogate pair); an ellipsis marks the cut.
   function clipCodePoints(text, max) {
-    if (text.length <= max) return { text, truncated: false };   // UTF-16 length <= max implies <= max code points
+    if (max === Infinity || text.length <= max) return { text, truncated: false };   // UTF-16 length <= max implies <= max code points
     let i = 0, count = 0;
     while (i < text.length && count < max) { i += text.codePointAt(i) > 0xFFFF ? 2 : 1; count++; }
     return i >= text.length ? { text, truncated: false } : { text: text.slice(0, i) + '…', truncated: true };
@@ -174,15 +174,19 @@
     args = args || {}; meta = meta || {};
     const base = { plane: 'RESEARCH', header: HEADER, notice: NOTICE, entrypoint: INDEX_PATH, read_only: true, promoted_to_working: false,
       index_source: meta.source || 'UNKNOWN' };
+    // A cached fallback (OFFLINE_CACHE / STALE_CACHE) must never look like fresh navigation.
+    base.stale = base.index_source === 'NETWORK' ? false : (base.index_source === 'OFFLINE_CACHE' || base.index_source === 'STALE_CACHE') ? true : null;
+    if (base.stale === true) base.warning = 'STALE: this research navigation comes from a cached copy of the index (' + base.index_source + '), not a fresh network read; it may not reflect the current index. Say so when relying on it.';
     // card = research CARD number (not a filesystem line number); `line` is accepted only as an alias of card.
     const hasCard = args.card != null, hasLine = args.line != null;
-    const hasQuery = args.query != null;
-    if (hasQuery && typeof args.query !== 'string') return validation('query must be a string.');
-    if (hasQuery && args.query.trim() === '') return validation('query must be a non-empty string; omit it for the overview.');
+    if (args.query != null && typeof args.query !== 'string') return validation('query must be a string.');
+    const hasQuery = typeof args.query === 'string' && args.query.trim() !== '';   // a blank optional query is ABSENT ...
     for (const [name, present] of [['card', hasCard], ['line', hasLine]]) if (present && !isPositiveInteger(args[name])) return validation(name + ' must be a positive integer research card number (a number, not a string).');
     if (hasCard && hasLine && args.card !== args.line) return validation('Provide either card or line (alias), not conflicting values.');
     const cardNumber = hasCard ? args.card : hasLine ? args.line : null;
     if (cardNumber != null && hasQuery) return validation('Provide either card/line or query, not both.');
+    // ... but a blank query with no card is no routing request at all
+    if (args.query != null && !hasQuery && cardNumber == null) return validation('query must be a non-empty string; omit it for the overview, or give card.');
 
     if (!looksLikeIndex(markdown)) {
       const unavailable = markdown == null || markdown === '';
@@ -197,6 +201,12 @@
     }
     const cards = parseCards(markdown);
     if (!cards.length) return failClosed(base, 'NO_CARDS_PARSED', ['header found but no "### N. title" cards were parsed under "## C."']);
+    const seen = new Map(); for (const c of cards) seen.set(c.number, (seen.get(c.number) || 0) + 1);
+    const duplicated = [...seen].filter(([, n]) => n > 1);
+    if (duplicated.length) {
+      return failClosed(base, 'DUPLICATE_CARD_NUMBER', duplicated.slice(0, MAX_ISSUES_REPORTED).map(([num, n]) => 'card number ' + num + ' appears ' + n + ' times'),
+        { duplicate_card_numbers: duplicated.slice(0, MAX_ISSUES_REPORTED).map(([num]) => num) });
+    }
     const malformed = cards.map(c => ({ card_number: c.number, missing: REQUIRED_FIELDS.filter(k => !(c.fields[k] && c.fields[k].trim())) })).filter(m => m.missing.length);
     if (malformed.length) {
       return failClosed(base, 'MALFORMED_CARDS', malformed.slice(0, MAX_MALFORMED_REPORTED).map(m => 'card ' + m.card_number + ': missing ' + m.missing.join(', ')),
@@ -215,7 +225,7 @@
       const shown = cards.slice(0, MAX_LIST);
       return Object.assign(base, { cards: shown.map(listEntry), truncated: cards.length > MAX_LIST,
         card_numbers: numbers(cards.map(c => c.number)).numbers, omitted_card_numbers: numbers(cards.slice(MAX_LIST).map(c => c.number)).numbers,
-        note: 'Overview (fields verbatim, clipped per truncated_fields). Pass card (number) or query for the full card; omitted_card_numbers lists cards not shown here.' });
+        note: (base.warning ? base.warning + ' ' : '') + 'Overview (fields verbatim, clipped per truncated_fields). Pass card (number) for the complete card; omitted_card_numbers lists cards not shown here.' });
     }
     let matches;
     if (cardNumber != null) matches = cards.filter(c => c.number === cardNumber);
@@ -228,13 +238,22 @@
     }
     // Every matching card number is discoverable: cards are returned in full only up to MAX_CARDS,
     // the remaining matches are listed in omitted_card_numbers (fetch each with { card: N }).
+    const direct = cardNumber != null;
     const shown = matches.slice(0, MAX_CARDS), allNumbers = numbers(matches.map(c => c.number)), omitted = numbers(matches.slice(MAX_CARDS).map(c => c.number));
+    // A direct { card: N } request returns every field COMPLETE (no clipping); only query results are clipped.
+    const views = shown.map(c => projectCard(c, FIELD_KEYS, direct ? Infinity : CARD_FIELD_CHARS));
+    const anyClipped = views.some(v => v.truncated_fields.length);
+    let note;
+    if (!matches.length) note = 'No card in the current index matches. This is not evidence that no such research exists.';
+    else {
+      note = 'Fields are verbatim from the index; null = field absent; caveat fields (CONSISTENCY, NOTES, ...) are part of the card. Verify at PRIMARY_EVIDENCE.';
+      if (direct) note += ' Direct card: all fields are complete.';
+      if (matches.length > MAX_CARDS) note += ' Only the first ' + MAX_CARDS + ' matching cards are shown in full: call again with { card: N } for each number in omitted_card_numbers.';
+      if (anyClipped) note += ' Some fields are clipped here (see truncated_fields): call { card: N } for the complete card.';
+    }
+    if (base.warning) note = base.warning + ' ' + note;
     return Object.assign(base, { matched: matches.length, matched_card_numbers: allNumbers.numbers, matched_card_numbers_truncated: allNumbers.truncated,
-      truncated: matches.length > MAX_CARDS, omitted_card_numbers: omitted.numbers,
-      cards: shown.map(c => projectCard(c, FIELD_KEYS, CARD_FIELD_CHARS)),
-      note: matches.length ? 'Fields are verbatim from the index; null = field absent; caveat fields (CONSISTENCY, NOTES, ...) are part of the card. Verify at PRIMARY_EVIDENCE.' +
-        (matches.length > MAX_CARDS ? ' Only the first ' + MAX_CARDS + ' matching cards are shown in full: call again with { card: N } for each number in omitted_card_numbers.' : '')
-        : 'No card in the current index matches. This is not evidence that no such research exists.' });
+      truncated: matches.length > MAX_CARDS, omitted_card_numbers: omitted.numbers, cards: views, note });
   }
 
   // Loader may return a string or { text, source }; failures degrade to pointer-only, never throw.

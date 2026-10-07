@@ -94,6 +94,26 @@ try {
   assert.equal(noWm.working.ok, false); assert.equal(noWm.working.code, 'WORKING_MEMORY_UNAVAILABLE');
   assert.equal(await page.evaluate(() => !!window.WmStore), true, 'WmStore restored');
 
+  // One runtime path: every B1 tool (research_route included) goes through the same bridge.execute via the real dispatcher.
+  const unified = await page.evaluate(async () => {
+    const j = async (n, a) => JSON.parse(await executeAgentTool(n, a));
+    const saved = window.WmStore; window.WmStore = null;   // research must still work, and validation must precede Working Memory availability
+    try {
+      return { nonObject: await j('research_route', 'text'), nonObjectWm: await j('wm_list', [1]), typoNoStore: await j('wm_list', { projectId: 'x' }), card11: await j('research_route', { card: 11 }),
+        blankWithCard: await j('research_route', { card: 1, query: '' }), blankAlone: await j('research_route', { query: '' }), unknownResearch: await j('research_route', { cardNumber: 1 }),
+        bridgeExists: !!window._wmAgentBridge && window._wmAgentBridge.store === null };
+    } finally { window.WmStore = saved; }
+  });
+  assert.equal(unified.nonObject.code, 'VALIDATION'); assert.equal(unified.nonObject.plane, 'RESEARCH'); assert.equal(unified.nonObjectWm.code, 'VALIDATION');
+  assert.equal(unified.typoNoStore.code, 'VALIDATION'); assert.match(unified.typoNoStore.error, /Unknown argument\(s\).*projectId/);
+  assert.equal(unified.unknownResearch.code, 'VALIDATION');
+  assert.deepEqual(unified.card11.cards[0].truncated_fields, []); assert([...unified.card11.cards[0].STATUS].length > 500, 'direct card 11 STATUS must be complete'); assert.match(unified.card11.cards[0].STATUS, /not merged to main\*\*\.$/);
+  assert.equal(unified.blankWithCard.matched, 1); assert.equal(unified.blankAlone.code, 'VALIDATION'); assert.equal(unified.bridgeExists, true, 'research_route did not create/use the shared bridge');
+  const scoped = await page.evaluate(async () => JSON.parse(await executeAgentTool('wm_list', { projectId: 'B1-BROWSER' })));
+  assert.equal(scoped.code, 'VALIDATION', 'a typoed scope argument must not return unscoped data'); assert(!('items' in scoped));
+  const oriented = await page.evaluate(async () => JSON.parse(await executeAgentTool('wm_orientation', { project_id: 'b1-browser' })));
+  assert.equal(oriented.scope.project_id, 'b1-browser'); assert.deepEqual(oriented.source_pointers.included_roles, ['PRIMARY', 'NAVIGATION']); assert.equal(oriented.projects.total, 1);
+
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => window._wizDB && window.WmStore && window.WmAgentRead, { timeout: 30000 });
   const second = await readAll();

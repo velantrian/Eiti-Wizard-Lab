@@ -15,9 +15,16 @@ const INDEX_HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const NOW = '2026-10-06T12:00:00.000Z';
 let SQL, passed = 0, failed = 0;
 
+// A test that never settles must FAIL, not silently end the process with exit code 0.
+let completed = false;
+process.on('exit', code => { if (!completed && code === 0) { console.log('FAIL  [harness] the suite did not run to completion (a test promise never settled)'); process.exitCode = 3; } });
 async function T(id, name, fn) {
-  try { await fn(); passed++; console.log(`PASS  [${id}] ${name}`); }
-  catch (e) { failed++; console.log(`FAIL  [${id}] ${name}\n      ${e.stack.split('\n').slice(0, 4).join('\n      ')}`); }
+  let timer;
+  try {
+    await Promise.race([fn(), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('test timed out after 30s (a promise never settled)')), 30000); })]);
+    passed++; console.log(`PASS  [${id}] ${name}`);
+  } catch (e) { failed++; console.log(`FAIL  [${id}] ${name}\n      ${e.stack.split('\n').slice(0, 4).join('\n      ')}`); }
+  finally { clearTimeout(timer); }
 }
 function mkStore(db) {
   let n = 0, t = 0;
@@ -61,6 +68,8 @@ function forbiddenSnapshot(db) {
   return JSON.stringify([r.length ? r[0].values : [], rows]);
 }
 function makeBridge(store, md) { return Bridge.create({ store, router: Router, loadResearchIndex: async () => (md === undefined ? INDEX_MD : md) }); }
+// A minimal body that passes the service worker's "looks like the research index" check before it may be cached.
+const IB = label => ['# Index', '', 'STATUS: `RESEARCH_INDEX_ONLY`\\', '', '## C. Experiment line index', '', label, ''].join('\n');
 const AUTH_REQUIRED = { STATUS: 'RESEARCH_INDEX_ONLY', CANON: 'NO', RUNTIME_AUTHORITY: 'NO', PRIMARY_EVIDENCE: 'NO' };
 const AUTH_HEADER = ['STATUS: `RESEARCH_INDEX_ONLY`\\', 'CANON: `NO`\\', 'RUNTIME_AUTHORITY: `NO`\\', 'PRIMARY_EVIDENCE: `NO`\\'];
 // Synthetic Evidence-Index fixture: parser semantics are tested here, not against the mutable live index.
@@ -264,13 +273,13 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
   // ── Service worker (unit, mocked runtime) ──
   await T('sw-unit', 'sw.js: CACHE_NAME bumped, B1 scripts cached, research index network-first with flagged offline fallback, others unchanged, old caches removed', async () => {
     const vm = require('node:vm'); const src = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
-    const store = new Map(), listeners = {}; let netBody = 'NEW', netUp = true, netCalls = 0;
+    const store = new Map(), listeners = {}; let netBody = IB('NEW'), netUp = true, netCalls = 0;
     const cachesApi = { async open(name) { if (!store.has(name)) store.set(name, new Map()); const c = store.get(name);
       return { async addAll() {}, async put(req, res) { c.set(typeof req === 'string' ? req : req.url, res); }, async match(req) { const hit = c.get(typeof req === 'string' ? req : req.url); return hit ? hit.clone() : undefined; } }; },
       async match(req) { for (const c of store.values()) { const hit = c.get(typeof req === 'string' ? req : req.url); if (hit) return hit.clone(); } return undefined; },
       async keys() { return [...store.keys()]; }, async delete(k) { return store.delete(k); } };
     const ctx = { self: { addEventListener: (n, f) => { listeners[n] = f; }, skipWaiting() {}, clients: { claim() {}, matchAll: async () => [] }, registration: {} },
-      caches: cachesApi, fetch: async () => { netCalls++; if (!netUp) throw new TypeError('offline'); return new Response(netBody, { status: 200 }); }, Response, Headers, Request, URL, console };
+      caches: cachesApi, fetch: async () => { netCalls++; if (!netUp) throw new TypeError('offline'); return new Response(netBody, { status: 200 }); }, Response, Headers, Request, URL, console, AbortController, setTimeout: () => 0, clearTimeout() {} };
     vm.createContext(ctx); vm.runInContext(src, ctx);
     const name = src.match(/const CACHE_NAME = '([^']+)'/)[1]; assert.notStrictEqual(name, 'eiti-wizard-lab-v1.8.10-wm0'); assert.match(name, /^eiti-wizard-lab-/);
     const assets = src.slice(src.indexOf('STATIC_ASSETS'), src.indexOf('];')); for (const f of ['working-memory.js', 'wm-agent-read.js', 'research-router.js']) assert(assets.includes("'/" + f + "'"), f);
@@ -278,10 +287,10 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     const IDX = '/Eiti-Wizard-Lab/docs/research/EXPERIMENT_EVIDENCE_INDEX.md';
     store.set('eiti-wizard-lab-v1.8.10-wm0', new Map([['http://127.0.0.1:1' + IDX, new Response('OLD')], ['http://127.0.0.1:1/Eiti-Wizard-Lab/working-memory.js', new Response('OLD-JS')]]));
     // online: fresh network copy wins over the old cached copy, and is stored
-    let res = await fire(IDX); assert.strictEqual(await res.text(), 'NEW'); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), null); assert(netCalls >= 1);
+    let res = await fire(IDX); assert.strictEqual(await res.text(), IB('NEW')); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), null); assert(netCalls >= 1);
     await new Promise(r => setTimeout(r, 5)); assert(store.get(name).has('http://127.0.0.1:1' + IDX));
     // offline: cached copy, flagged
-    netUp = false; res = await fire(IDX); assert.strictEqual(await res.text(), 'NEW'); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), 'sw-offline-cache');
+    netUp = false; res = await fire(IDX); assert.strictEqual(await res.text(), IB('NEW')); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), 'sw-offline-cache');
     store.delete(name); store.delete('eiti-wizard-lab-v1.8.10-wm0'); res = await fire(IDX); assert.strictEqual(res.status, 504);
     // other assets keep cache-first behaviour (and other research files are NOT network-first)
     netUp = true; store.set('eiti-wizard-lab-x', new Map([['http://127.0.0.1:1/Eiti-Wizard-Lab/working-memory.js', new Response('CACHED-JS')]]));
@@ -604,8 +613,10 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
   });
   await T('router-bounded', 'router output is bounded and clipped fields are flagged', async () => {
     const big = SYN_INDEX.replace('QUESTION: Beta?', 'QUESTION: ' + 'q'.repeat(2000)).replace('STATUS: Unknown.', 'STATUS: ' + 'u'.repeat(900));
-    const r = await makeBridge(null, big).execute('research_route', { card: 2 });
-    assert([...r.cards[0].QUESTION].length <= 501); assert(r.cards[0].truncated_fields.includes('QUESTION'));
+    const r = await makeBridge(null, big).execute('research_route', { query: 'syn-beta' });   // query results are clipped ...
+    assert([...r.cards[0].QUESTION].length <= 501); assert(r.cards[0].truncated_fields.includes('QUESTION')); assert.match(r.note, /call \{ card: N \} for the complete card/);
+    const whole = (await makeBridge(null, big).execute('research_route', { card: 2 })).cards[0];   // ... a direct card is complete
+    assert.strictEqual(whole.QUESTION, 'q'.repeat(2000)); assert.deepStrictEqual(whole.truncated_fields, []);
     const list = await makeBridge(null, big).execute('research_route', {}); assert(list.cards.find(c => c.card_number === 5).truncated_fields.includes('STATUS'));
     assert(JSON.stringify(await ex('research_route', {})).length < 20000); assert(JSON.stringify(await ex('research_route', { query: 'e' })).length < 12000);
   });
@@ -835,7 +846,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     }
     // research side: card fields are clipped by code point as well
     const md = synIndex([cardBlock(1, { QUESTION: 'q'.repeat(499) + '😀' + 'tail' }), cardBlock(2, { QUESTION: '😀'.repeat(600) })]);
-    const rb = makeBridge(null, md); const q1 = (await rb.execute('research_route', { card: 1 })).cards[0]; const q2 = (await rb.execute('research_route', { card: 2 })).cards[0];
+    const rb = makeBridge(null, md); const q1 = (await rb.execute('research_route', { query: 'syn-1' })).cards[0]; const q2 = (await rb.execute('research_route', { query: 'syn-2' })).cards[0];
     assert.strictEqual(q1.QUESTION, 'q'.repeat(499) + '😀' + '…'); assert(q1.truncated_fields.includes('QUESTION')); assert.strictEqual([...q2.QUESTION].length, 501);
     assert(!loneSurrogate(JSON.stringify([q1, q2, await rb.execute('research_route', {})])));
     assert.deepStrictEqual(Router.clipCodePoints('ab😀cd', 3), { text: 'ab😀…', truncated: true }); assert.deepStrictEqual(Router.clipCodePoints('ab😀', 3), { text: 'ab😀', truncated: false });
@@ -844,29 +855,37 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
   // ── Service worker: Research Index fallback policy (mocked runtime) ──
   const makeSw = () => {
     const vm = require('node:vm'); const src = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
-    const caches = new Map(), listeners = {}; const net = { mode: 'ok', status: 200, body: 'FRESH', calls: 0 };
+    const caches = new Map(), listeners = {}; const net = { mode: 'ok', status: 200, body: IB('FRESH'), calls: 0 }; const timers = [];
     const cachesApi = { async open(name) { if (!caches.has(name)) caches.set(name, new Map()); const c = caches.get(name);
       return { async addAll() {}, async put(req, res) { c.set(req.url || req, res); }, async match(req) { const h = c.get(req.url || req); return h ? h.clone() : undefined; }, async delete(req) { return c.delete(req.url || req); } }; },
       async match(req) { for (const c of caches.values()) { const h = c.get(req.url || req); if (h) return h.clone(); } return undefined; }, async keys() { return [...caches.keys()]; }, async delete(k) { return caches.delete(k); } };
     const ctx = { self: { addEventListener: (n, f) => { listeners[n] = f; }, skipWaiting() {}, clients: { claim() {}, matchAll: async () => [] }, registration: {} }, caches: cachesApi,
-      fetch: async () => { net.calls++; if (net.mode === 'down') throw new TypeError('offline'); return new Response(net.status === 204 ? null : net.body, { status: net.status }); }, Response, Headers, Request, URL, console };
+      fetch: async (u, init) => { net.calls++; net.lastInit = init;
+        if (net.mode === 'down') throw new TypeError('offline');
+        if (net.mode === 'hang') return new Promise((_, rej) => init.signal.addEventListener('abort', () => rej(new TypeError('aborted'))));
+        if (net.mode === 'hang-body') return { status: 200, headers: new Headers(), text: () => new Promise((_, rej) => init.signal.addEventListener('abort', () => rej(new TypeError('aborted')))) };
+        return new Response(net.status === 204 ? null : net.body, { status: net.status, headers: net.headers }); },
+      Response, Headers, Request, URL, console, AbortController,
+      setTimeout: (fn, ms) => { const t = { fn, ms, cleared: false }; timers.push(t); return t; }, clearTimeout: t => { if (t) t.cleared = true; } };
     vm.createContext(ctx); vm.runInContext(src, ctx);
     const name = src.match(/const CACHE_NAME = '([^']+)'/)[1]; const IDX = 'http://127.0.0.1:1/Eiti-Wizard-Lab/docs/research/EXPERIMENT_EVIDENCE_INDEX.md';
-    const fire = async () => { const waits = []; const ev = { request: new Request(IDX), respondWith(p) { this.p = p; }, waitUntil(p) { waits.push(p); } }; listeners.fetch(ev); const res = await ev.p; return { res, waits }; };
-    return { net, fire, cache: () => caches.get(name), name, IDX, seed: body => { caches.set(name, new Map([[IDX, new Response(body)]])); } };
+    const start = () => { const waits = []; const ev = { request: new Request(IDX), respondWith(p) { this.p = p; }, waitUntil(p) { waits.push(p); } }; listeners.fetch(ev); return { ev, waits }; };
+    const fire = async () => { const { ev, waits } = start(); const res = await ev.p; return { res, waits }; };
+    const expire = () => { const due = timers.filter(t => !t.cleared); due.forEach(t => { t.cleared = true; t.fn(); }); return due; };
+    return { net, fire, start, expire, timers, cache: () => caches.get(name), name, IDX, seed: body => { caches.set(name, new Map([[IDX, new Response(body)]])); } };
   };
   await T('sw-research-5xx-fallback', 'research index: online fresh > stale cache; 5xx and transport failure fall back to a flagged cached copy; cache writes are covered by event.waitUntil', async () => {
     const w = makeSw();
-    let { res, waits } = await w.fire(); assert.strictEqual(await res.text(), 'FRESH'); assert(waits.length >= 1, 'cache write must be registered with event.waitUntil');
-    await Promise.all(waits); assert.strictEqual(await w.cache().get(w.IDX).clone().text(), 'FRESH', 'fresh 200 is cached once the waited promise settles');
+    let { res, waits } = await w.fire(); assert.strictEqual(await res.text(), IB('FRESH')); assert(waits.length >= 1, 'cache write must be registered with event.waitUntil');
+    await Promise.all(waits); assert.strictEqual(await w.cache().get(w.IDX).clone().text(), IB('FRESH'), 'fresh 200 is cached once the waited promise settles');
     for (const status of [500, 502, 503, 504, 599]) {
       w.net.status = status; w.net.body = 'SERVER-ERROR'; ({ res, waits } = await w.fire());
-      assert.strictEqual(res.status, 200, 'status ' + status); assert.strictEqual(await res.text(), 'FRESH', 'stale cached copy served for ' + status);
+      assert.strictEqual(res.status, 200, 'status ' + status); assert.strictEqual(await res.text(), IB('FRESH'), 'stale cached copy served for ' + status);
       assert.strictEqual(res.headers.get('X-Eiti-Served-From'), 'sw-stale-cache'); assert.strictEqual(w.cache().has(w.IDX), true, status + ' must not evict or overwrite the cache');
     }
-    w.net.status = 200; w.net.body = 'NEWER'; ({ res, waits } = await w.fire()); await Promise.all(waits);
-    assert.strictEqual(await res.text(), 'NEWER'); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), null, 'online fresh beats stale cache'); assert.strictEqual(await w.cache().get(w.IDX).clone().text(), 'NEWER');
-    w.net.mode = 'down'; ({ res } = await w.fire()); assert.strictEqual(await res.text(), 'NEWER'); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), 'sw-offline-cache');
+    w.net.status = 200; w.net.body = IB('NEWER'); ({ res, waits } = await w.fire()); await Promise.all(waits);
+    assert.strictEqual(await res.text(), IB('NEWER')); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), null, 'online fresh beats stale cache'); assert.strictEqual(await w.cache().get(w.IDX).clone().text(), IB('NEWER'));
+    w.net.mode = 'down'; ({ res } = await w.fire()); assert.strictEqual(await res.text(), IB('NEWER')); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), 'sw-offline-cache');
     // no cached copy: the 5xx itself / a 504 is returned (never an invented success)
     const n = makeSw(); n.net.status = 503; n.net.body = 'DOWN'; ({ res } = await n.fire()); assert.strictEqual(res.status, 503); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), null);
     n.net.mode = 'down'; ({ res } = await n.fire()); assert.strictEqual(res.status, 504);
@@ -891,6 +910,181 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     assert.strictEqual((await b.execute('research_route', {})).index_source, 'STALE_CACHE');
   });
 
+  // ═══ Frozen merge-blocker round ═══
+  await T('direct-card-complete', 'research_route({card:N}) returns every field COMPLETE (live card 11 STATUS = 533 code points, exact source value); only query/overview results are clipped', async () => {
+    const raw11 = rawField(INDEX_MD, 11, 'STATUS'); assert([...raw11].length > 500, 'precondition: card 11 STATUS exceeds the query-result cap');
+    const c11 = (await ex('research_route', { card: 11 })).cards[0];
+    assert.strictEqual(c11.STATUS, raw11); assert.match(c11.STATUS, /\*\*not merged to main\*\*\.$/); assert.deepStrictEqual(c11.truncated_fields, []);
+    assert.strictEqual((await ex('research_route', { line: 11 })).cards[0].STATUS, raw11, 'alias is complete too');
+    // the same card through a query IS clipped and says how to get the rest
+    const viaQuery = await ex('research_route', { query: 'Eiti-Wizard-Lab continuity stages' }); const q11 = viaQuery.cards.find(c => c.card_number === 11);
+    assert(q11 && q11.truncated_fields.includes('STATUS') && q11.STATUS.length < raw11.length); assert.match(viaQuery.note, /\{ card: N \} for the complete card/);
+    // every real card, every single-line field: exact source value, nothing truncated
+    for (const m of INDEX_MD.matchAll(/^### (\d+)\. /gm)) {
+      const n = Number(m[1]); const r = (await ex('research_route', { card: n })).cards[0]; assert.deepStrictEqual(r.truncated_fields, [], 'card ' + n);
+      for (const k of ['QUESTION', 'STATUS', 'EXECUTION_VERDICT', 'SCIENTIFIC_INTERPRETATION', 'WHAT_WAS_OBSERVED', 'WHAT_IT_SUPPORTS', 'WHAT_IT_DOES_NOT_PROVE', 'OPEN_FINDING', 'PRIMARY_EVIDENCE', 'NOTES'])
+        assert.strictEqual(r[k], rawField(INDEX_MD, n, k), `card ${n} ${k}`);
+    }
+    // synthetic: a very long field is complete on a direct request and clipped (flagged) elsewhere
+    const md = synIndex([cardBlock(1, { QUESTION: 'q'.repeat(3000) + '😀' + 'end' })]); const b = makeBridge(null, md);
+    assert.strictEqual((await b.execute('research_route', { card: 1 })).cards[0].QUESTION, 'q'.repeat(3000) + '😀' + 'end');
+    assert((await b.execute('research_route', { query: 'closed' })).cards[0].truncated_fields.includes('QUESTION')); assert((await b.execute('research_route', {})).cards[0].truncated_fields.length >= 0);
+  });
+  await T('unknown-arguments-fail-closed', 'every B1 tool rejects unknown argument names (typos like projectId / include_archived / limt) with VALIDATION and executes nothing', async () => {
+    const d = new SQL.Database(); const st = mkStore(d); const b = makeBridge(st);
+    must(await st.createProject({ project_id: 'ua-a', code: 'PA', name: 'A' })); must(await st.createProject({ project_id: 'ua-b', code: 'PB', name: 'B' }));
+    const item = must(await st.createItem({ project_id: 'ua-a', title: 'ua item', provenance_class: 'USER_NOTE' })); must(await st.createItem({ project_id: 'ua-b', title: 'ua other', provenance_class: 'USER_NOTE' }));
+    const typos = [['wm_list', { projectId: 'PA' }], ['wm_list', { include_archived: true }], ['wm_list', { limt: 5 }], ['wm_list', { project: 'PA', Status: 'OPEN' }], ['wm_list', { statuss: 'OPEN' }],
+      ['wm_search', { query: 'ua', project_code: 'PA' }], ['wm_search', { query_text: 'ua' }], ['wm_search', { q: 'ua' }], ['wm_search', { query: 'ua', include_archived: true }], ['wm_search', { query: 'ua', projectId: 'PA' }],
+      ['wm_orientation', { projectId: 'PA' }], ['wm_orientation', { projectLimit: 3 }], ['wm_orientation', { project_limt: 3 }], ['wm_list_projects', { limt: 3 }], ['wm_list_projects', { offset: 1 }],
+      ['wm_get', { work_id: item.work_id, workId: item.work_id }], ['wm_get', { work_id: item.work_id, source_limit: 3 }], ['wm_related', { work_id: item.work_id, limt: 1 }],
+      ['wm_project_sources', { project: 'PA', projectId: 'PA' }], ['wm_project_sources', { projectId: 'PA' }], ['research_route', { queryy: 'x' }], ['research_route', { cardNumber: 2 }], ['research_route', { card: 1, limit: 3 }]];
+    for (const [tool, args] of typos) {
+      const r = await b.execute(tool, args); assert.strictEqual(r.ok, false, tool + JSON.stringify(args)); assert.strictEqual(r.code, 'VALIDATION', tool + JSON.stringify(args)); assert.match(r.error, /Unknown argument\(s\)/);
+      assert.match(r.error, new RegExp(Object.keys(args).find(k => !Bridge.TOOLS_SPEC.find(t => t.name === tool).parameters.properties[k] && k !== 'line'))); assert(!('items' in r) && !('cards' in r) && !('item' in r), 'nothing may be returned: ' + tool + JSON.stringify(args));
+    }
+    for (const tool of Bridge.TOOL_NAMES) { const r = await b.execute(tool, { zzz: null }); assert.strictEqual(r.code, 'VALIDATION', tool + ' null-valued unknown key'); }
+    // intentionally supported spellings still work: project, project_id (and research_route's line alias)
+    assert.strictEqual((await b.execute('wm_list', { project: 'PA' })).items.length, 1); assert.strictEqual((await b.execute('wm_list', { project_id: 'ua-a' })).items.length, 1);
+    assert.strictEqual((await makeBridge(null, SYN_INDEX).execute('research_route', { line: 2 })).cards[0].card_number, 2);
+    // the allowed set is exactly the declared parameters (+ line): every declared parameter name is accepted by its tool
+    for (const spec of Bridge.TOOLS_SPEC) for (const key of Object.keys(spec.parameters.properties)) {
+      const r = await b.execute(spec.name, { [key]: null }); assert(!/Unknown argument/.test(r.error || ''), spec.name + '.' + key + ' wrongly rejected as unknown');
+    }
+  });
+  await T('duplicate-card-numbers-fail-closed', 'duplicate research card numbers fail the whole index closed (DUPLICATE_CARD_NUMBER); the normal 23-card index still passes', async () => {
+    const dupes = {
+      'identical duplicate': [cardBlock(1), cardBlock(1)],
+      'same number, different titles': [cardBlock(1, { 'EXPERIMENT_ID / NAME': 'A' }).replace('SYN-1', 'ALPHA'), cardBlock(1, { 'EXPERIMENT_ID / NAME': 'B' }).replace('SYN-1', 'BETA')],
+      'non-adjacent duplicate': [cardBlock(1), cardBlock(2), cardBlock(3), cardBlock(2)],
+      'duplicate plus a malformed card': [cardBlock(1), cardBlock(1), '### 3. SYN-EMPTY\n'],
+    };
+    for (const [label, cards] of Object.entries(dupes)) for (const args of [{}, { card: 1 }, { query: 'closed' }]) {
+      const r = await makeBridge(null, synIndex(cards)).execute('research_route', args);
+      assert.strictEqual(r.index_loaded, false, label); assert.strictEqual(r.parse_status, 'DUPLICATE_CARD_NUMBER', label); assert(!r.cards && !('matched' in r) && !('total_cards' in r), label + ' leaked cards');
+      assert(r.duplicate_card_numbers.length >= 1); assert.match(r.diagnostics.reasons[0], /appears \d+ times/); assert.strictEqual(r.partial_index_acceptance, 'NOT_ALLOWED_IN_B1');
+    }
+    const three = await makeBridge(null, synIndex([cardBlock(5), cardBlock(5), cardBlock(5), cardBlock(6), cardBlock(6)])).execute('research_route', {}); assert.deepStrictEqual(three.duplicate_card_numbers, [5, 6]); assert.match(three.diagnostics.reasons[0], /5 appears 3 times/);
+    // the live index: unique numbers, passes
+    const nums = [...INDEX_MD.matchAll(/^### (\d+)\. /gm)].map(m => m[1]); assert.strictEqual(new Set(nums).size, nums.length);
+    const real = await ex('research_route', {}); assert.strictEqual(real.index_loaded, true); assert.strictEqual(real.parse_status, 'OK'); assert.strictEqual(real.total_cards, nums.length);
+    // tampering with the real index: renumbering one card to an existing number fails closed
+    const tampered = INDEX_MD.replace('### 2. ', '### 1. '); assert.notStrictEqual(tampered, INDEX_MD);
+    const tr = await makeBridge(null, tampered).execute('research_route', { card: 1 }); assert.strictEqual(tr.parse_status, 'DUPLICATE_CARD_NUMBER'); assert(!tr.cards);
+  });
+  await T('research-single-runtime-path', 'research_route goes through the SAME bridge.execute path as the wm_* tools (also with WmStore=null): non-object args -> VALIDATION, one failure shape', async () => {
+    // static: the in-app dispatcher has no direct router call; research_route shares the case block with the wm_* tools and calls bridge.execute
+    assert(!/ResearchRouter\.routeWithLoader/.test(INDEX_HTML), 'dispatcher still calls the router directly');
+    const block = INDEX_HTML.slice(INDEX_HTML.indexOf("      case 'research_route':\n      case 'wm_orientation'"), INDEX_HTML.indexOf("      case 'task_add': {"));
+    assert(block.length > 100, 'research_route must share the dispatcher block with the wm_* tools');
+    assert(/window\._wmAgentBridge\.bridge\.execute\(name, args\)/.test(block)); assert(!/ResearchRouter\./.test(block.replace(/router: window\.ResearchRouter/, '')), 'no second behavioural path in the dispatcher');
+    assert(!/wizInitSQLite/.test(block.slice(0, block.indexOf('if (!window.WmAgentRead)')).replace(/if \(!isResearch\) \{ try \{ await wizInitSQLite\(\); \} catch \(_\) \{\} \}/, '')), 'research_route must not require SQLite');
+    // behavioural: bridge with a null store
+    const b = makeBridge(null, SYN_INDEX);
+    for (const bad of ['text', [1, 2], 7, true]) for (const tool of Bridge.TOOL_NAMES) { const r = await b.execute(tool, bad); assert.strictEqual(r.ok, false, tool); assert.strictEqual(r.code, 'VALIDATION', tool); assert.match(r.error, /arguments must be an object/); assert.strictEqual(r.plane, tool === 'research_route' ? 'RESEARCH' : 'WORKING'); }
+    assert.strictEqual((await b.execute('research_route', { card: 1 })).index_loaded, true); assert.strictEqual((await b.execute('research_route')).index_loaded, true); assert.strictEqual((await b.execute('research_route', null)).index_loaded, true);
+    assert.strictEqual((await b.execute('wm_orientation')).code, 'WORKING_MEMORY_UNAVAILABLE');
+    // one failure shape for an unavailable router: bridge-level, same fields as every other fail-closed response
+    const savedRouter = globalThis.ResearchRouter; delete globalThis.ResearchRouter;   // in Node the bridge would otherwise fall back to the global router
+    const noRouter = await Bridge.create({ store: null, router: null }).execute('research_route', { query: 'x' }); globalThis.ResearchRouter = savedRouter;
+    assert.strictEqual(noRouter.index_loaded, false); assert.strictEqual(noRouter.parse_status, 'ROUTER_UNAVAILABLE'); assert.strictEqual(noRouter.plane, 'RESEARCH'); assert(noRouter.diagnostics.reasons.length >= 1); assert(!('ok' in noRouter));
+  });
+  await T('blank-query-semantics', 'research_route: blank optional query is ABSENT when card is given; blank query alone is VALIDATION', async () => {
+    const b = synBridge();
+    for (const args of [{ card: 1, query: '' }, { card: 1, query: '   ' }, { line: 2, query: '' }, { card: 3, query: '\t\n' }]) {
+      const r = await b.execute('research_route', args); assert.strictEqual(r.index_loaded, true, JSON.stringify(args)); assert.strictEqual(r.matched, 1); assert.strictEqual(r.cards[0].card_number, args.card || args.line);
+    }
+    for (const args of [{ query: '' }, { query: '   ' }, { query: '\t' }]) { const r = await b.execute('research_route', args); assert.strictEqual(r.ok, false, JSON.stringify(args)); assert.strictEqual(r.code, 'VALIDATION'); assert.match(r.error, /non-empty string/); }
+    for (const args of [{ card: 1, query: 5 }, { card: 1, query: null ? 'x' : {} }, { card: 1, query: 'x' }]) assert.strictEqual((await b.execute('research_route', args)).code, 'VALIDATION', JSON.stringify(args));
+    assert.strictEqual((await b.execute('research_route', { card: 1, query: null })).matched, 1, 'null query is absent');
+    assert.strictEqual((await b.execute('research_route', {})).index_loaded, true);
+  });
+  await T('stale-cache-explicit', 'index_source NETWORK / OFFLINE_CACHE / STALE_CACHE / UNKNOWN: a cached fallback is explicitly marked stale and never looks like fresh navigation', async () => {
+    const via = async (source, args) => Bridge.create({ store: null, router: Router, loadResearchIndex: async () => ({ text: SYN_INDEX, source }) }).execute('research_route', args || { card: 1 });
+    const net = await via('NETWORK'); assert.strictEqual(net.index_source, 'NETWORK'); assert.strictEqual(net.stale, false); assert(!('warning' in net));
+    for (const source of ['STALE_CACHE', 'OFFLINE_CACHE']) for (const args of [{ card: 1 }, { query: 'syn' }, {}]) {
+      const r = await via(source, args); assert.strictEqual(r.index_source, source); assert.strictEqual(r.stale, true, source); assert.match(r.warning, /STALE/); assert.match(r.warning, new RegExp(source)); assert(r.note.startsWith(r.warning), 'the note leads with the stale warning');
+    }
+    const unk = await Bridge.create({ store: null, router: Router, loadResearchIndex: async () => SYN_INDEX }).execute('research_route', { card: 1 }); assert.strictEqual(unk.index_source, 'UNKNOWN'); assert.strictEqual(unk.stale, null);
+    // a fail-closed answer from a cached copy is flagged as well
+    const bad = await Bridge.create({ store: null, router: Router, loadResearchIndex: async () => ({ text: '<html>x</html>', source: 'STALE_CACHE' }) }).execute('research_route', {}); assert.strictEqual(bad.index_loaded, false); assert.strictEqual(bad.stale, true); assert(bad.warning);
+    const doc = fs.readFileSync(path.join(ROOT, 'docs/working-memory/WORKING_MEMORY_B1_AGENT_READ_BRIDGE.md'), 'utf8');
+    for (const v of ['`NETWORK`', '`OFFLINE_CACHE`', '`STALE_CACHE`', '`UNKNOWN`']) assert(doc.includes(v), v + ' documented');
+  });
+  await T('unicode-total-count', 'body_md_total_chars counts Unicode code points, the same unit as the clipping contract', async () => {
+    const d = new SQL.Database(); const st = mkStore(d); must(await st.createProject({ project_id: 'ut', code: 'UT', name: 'UT' })); const b = makeBridge(st);
+    for (const [label, body] of [['emoji only', '😀'.repeat(5000)], ['mixed', ('ab😀').repeat(2000)], ['astral boundary', 'a'.repeat(3999) + '😀' + 'tail'.repeat(10)], ['cyrillic', 'я'.repeat(4500)]]) {
+      const it = must(await st.createItem({ project_id: 'ut', title: label, body_md: body, provenance_class: 'USER_NOTE' })); const g = (await b.execute('wm_get', { work_id: it.work_id })).item;
+      const cps = [...body].length; assert(cps > 4000, label); assert.strictEqual(g.body_md_total_chars, cps, label + ': total must be code points, not UTF-16 units (' + body.length + ')'); assert.strictEqual([...g.body_md].length, 4001, label + ' (4000 + ellipsis)'); assert(g.truncated_fields.includes('body_md'));
+    }
+    const small = must(await st.createItem({ project_id: 'ut', title: 'small', body_md: '😀'.repeat(100), provenance_class: 'USER_NOTE' })); const sg = (await b.execute('wm_get', { work_id: small.work_id })).item; assert(!('body_md_total_chars' in sg)); assert.strictEqual(sg.body_md, '😀'.repeat(100));
+  });
+  await T('orientation-source-roles-explicit', 'orientation source_pointers declares included_roles [PRIMARY,NAVIGATION]; total/truncated refer to those roles only; wm_project_sources discovers every role', async () => {
+    const d = new SQL.Database(); const st = mkStore(d); const b = makeBridge(st);
+    must(await st.createProject({ project_id: 'sr', code: 'SR', name: 'SR' })); must(await st.createProject({ project_id: 'sr-ev', code: 'SREV', name: 'only evidence' }));
+    for (const [id, role] of [['p', 'PRIMARY'], ['n', 'NAVIGATION'], ['e', 'EVIDENCE'], ['c', 'CONTEXT'], ['r', 'REFERENCE']]) must(await st.createSource({ source_id: 'sr-' + id, project_id: 'sr', surface: 'LOCAL', role, title: role.toLowerCase(), locator: 'local://' + id }));
+    must(await st.createSource({ source_id: 'sr-only-ev', project_id: 'sr-ev', surface: 'LOCAL', role: 'EVIDENCE', title: 'evidence only', locator: 'local://only-ev' }));
+    const o = await b.execute('wm_orientation', { project: 'SR' }); const sp = o.source_pointers;
+    assert.deepStrictEqual(sp.included_roles, ['PRIMARY', 'NAVIGATION']); assert.strictEqual(sp.full_source_discovery, 'wm_project_sources');
+    assert.deepStrictEqual(sp.items.map(i => i.role), ['PRIMARY', 'NAVIGATION']); assert.strictEqual(sp.total, 2); assert.strictEqual(sp.truncated, false);
+    const ev = (await b.execute('wm_orientation', { project: 'SREV' })).source_pointers; assert.deepStrictEqual(ev.included_roles, ['PRIMARY', 'NAVIGATION']); assert.deepStrictEqual(ev.items, []); assert.strictEqual(ev.total, 0);
+    const all = await b.execute('wm_project_sources', { project: 'SR' }); assert.strictEqual(all.total, 5); assert.deepStrictEqual(all.items.map(i => i.role), ['PRIMARY', 'NAVIGATION', 'CONTEXT', 'EVIDENCE', 'REFERENCE'].sort((x, y) => ({ PRIMARY: 0, NAVIGATION: 1 }[x] ?? 9) - ({ PRIMARY: 0, NAVIGATION: 1 }[y] ?? 9) || 0));
+    assert.strictEqual((await b.execute('wm_project_sources', { project: 'SREV' })).items[0].locator, 'local://only-ev');
+    assert.match(Bridge.TOOLS_SPEC.find(t => t.name === 'wm_orientation').description, /PRIMARY \+ NAVIGATION roles only; use wm_project_sources/);
+    assert.match(fs.readFileSync(path.join(ROOT, 'docs/working-memory/WORKING_MEMORY_B1_AGENT_READ_BRIDGE.md'), 'utf8'), /included_roles/);
+  });
+
+  // ── research network reliability (service worker + page loader) ──
+  await T('sw-research-timeout', 'a stalled research-index fetch is aborted after RESEARCH_FETCH_TIMEOUT_MS (shorter than the page budget) and falls back to the cached copy, else 504', async () => {
+    const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8'); const swMs = Number(/RESEARCH_FETCH_TIMEOUT_MS = (\d+)/.exec(swSrc)[1]); const pageMs = Number(/WIZ_RESEARCH_FETCH_TIMEOUT_MS = (\d+)/.exec(INDEX_HTML)[1]);
+    assert(swMs >= 1000 && swMs < pageMs, `SW budget (${swMs}) must be bounded and shorter than the page budget (${pageMs})`);
+    for (const mode of ['hang', 'hang-body']) {
+      const w = makeSw(); w.seed(IB('GOOD')); w.net.mode = mode;
+      const { ev } = w.start(); await new Promise(r => setImmediate(r)); assert(w.timers.some(t => !t.cleared && t.ms === swMs), mode + ': the timeout must be armed'); assert(w.net.lastInit && w.net.lastInit.signal, 'fetch must carry an abort signal');
+      w.expire(); const res = await ev.p;
+      assert.strictEqual(res.status, 200, mode); assert.strictEqual(await res.text(), IB('GOOD')); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), 'sw-offline-cache', mode);
+      const n = makeSw(); n.net.mode = mode; const s2 = n.start(); await new Promise(r => setImmediate(r)); n.expire(); assert.strictEqual((await s2.ev.p).status, 504, mode + ' without a cache fails closed');
+    }
+    const ok = makeSw(); const run = await ok.fire(); await Promise.all(run.waits); assert(ok.timers.every(t => t.cleared), 'the timer is cleared after a normal response');
+  });
+  await T('sw-research-cache-poisoning', 'an HTTP 200 that is not the research index (captive portal / proxy page) never replaces the last known-good cached copy', async () => {
+    const html = '<!doctype html><html><body>Please sign in to the Wi-Fi</body></html>';
+    const w = makeSw(); w.seed(IB('GOOD'));
+    for (const body of [html, '', '{"error":"upstream"}', 'STATUS: `RESEARCH_INDEX_ONLY` but no section C', '## C. only a section, no marker']) {
+      w.net.status = 200; w.net.body = body; const { res, waits } = await w.fire(); await Promise.all(waits);
+      assert.strictEqual(await res.text(), IB('GOOD'), 'a valid cached copy is served instead of the bogus 200: ' + JSON.stringify(body.slice(0, 30))); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), 'sw-stale-cache');
+      assert.strictEqual(await w.cache().get(w.IDX).clone().text(), IB('GOOD'), 'the good cached copy must not be overwritten');
+    }
+    // no cached copy: the body is passed through (the strict parser fails closed) but is NOT cached
+    const n = makeSw(); n.net.body = html; const r2 = await n.fire(); await Promise.all(r2.waits); assert.strictEqual(await r2.res.text(), html); assert.strictEqual(n.cache() && n.cache().has(n.IDX), false, 'bogus 200 must never be cached');
+    assert.strictEqual((await makeBridge(null, html).execute('research_route', {})).parse_status, 'NOT_AN_EVIDENCE_INDEX');
+    // a valid index still wins and is cached; fresh network > cache
+    w.net.body = IB('NEWER'); const ok = await w.fire(); await Promise.all(ok.waits); assert.strictEqual(await ok.res.text(), IB('NEWER')); assert.strictEqual(ok.res.headers.get('X-Eiti-Served-From'), null); assert.strictEqual(await w.cache().get(w.IDX).clone().text(), IB('NEWER'));
+    // 404/410 still not masked; 5xx / transport failure still allowed to use the valid copy
+    w.net.status = 404; w.net.body = 'gone'; const nf = await w.fire(); await Promise.all(nf.waits); assert.strictEqual(nf.res.status, 404); assert.strictEqual(w.cache().has(w.IDX), false);
+  });
+  await T('page-loader-timeout', 'the page-side research index loader has its own time budget (body included), maps the SW flags to index_source, and a timeout fails closed', async () => {
+    const vm = require('node:vm'); const a = INDEX_HTML.indexOf('const WIZ_RESEARCH_FETCH_TIMEOUT_MS'), b2 = INDEX_HTML.indexOf('async function executeAgentTool(name, args) {');
+    assert(a > 0 && b2 > a, 'loader source found'); const src = INDEX_HTML.slice(a, b2);
+    const run = mode => { const timers = []; const win = { ResearchRouter: Router };
+      const ctx = { window: win, AbortController, setTimeout: (fn, ms) => { const t = { fn, ms, cleared: false }; timers.push(t); return t; }, clearTimeout: t => { t.cleared = true; },
+        fetch: async (u, init) => {
+          if (mode === 'hang') return new Promise((_, rej) => init.signal.addEventListener('abort', () => rej(new TypeError('aborted'))));
+          const body = mode === 'hang-body' ? () => new Promise((_, rej) => init.signal.addEventListener('abort', () => rej(new TypeError('aborted')))) : async () => SYN_INDEX;
+          const headers = new Headers(); if (mode === 'offline') headers.set(Router.OFFLINE_HEADER, Router.OFFLINE_VALUE); if (mode === 'stale') headers.set(Router.OFFLINE_HEADER, Router.STALE_VALUE);
+          return { ok: mode !== 'http500', status: mode === 'http500' ? 500 : 200, headers, text: body }; } };
+      vm.createContext(ctx); vm.runInContext(src + '\nthis.loader = wizResearchIndexLoader; this.budget = WIZ_RESEARCH_FETCH_TIMEOUT_MS;', ctx); return { ctx, timers, win }; };
+    const swMs = Number(/RESEARCH_FETCH_TIMEOUT_MS = (\d+)/.exec(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8'))[1]);
+    for (const [mode, source] of [['network', 'NETWORK'], ['offline', 'OFFLINE_CACHE'], ['stale', 'STALE_CACHE']]) { const { ctx, timers } = run(mode); const r = await ctx.loader(); assert.strictEqual(r.source, source); assert.strictEqual(r.text, SYN_INDEX); assert(timers.every(t => t.cleared), 'timer cleared'); assert(ctx.budget > swMs); }
+    assert.strictEqual(await run('http500').ctx.loader(), null);
+    for (const mode of ['hang', 'hang-body']) {
+      const { ctx, timers } = run(mode); const p = ctx.loader(); await new Promise(r => setImmediate(r)); const t = timers.find(x => !x.cleared); assert(t && t.ms === ctx.budget, mode + ': budget armed'); t.cleared = true; t.fn();
+      await assert.rejects(p, /aborted/); assert(timers.every(x => x.cleared), 'timer cleared after the abort');
+      const routed = await Router.routeWithLoader(() => Promise.reject(new TypeError('aborted')), { query: 'x' });   // what the bridge does with the rejection
+      assert.strictEqual(routed.index_loaded, false); assert.strictEqual(routed.parse_status, 'FETCH_FAILED'); assert(!routed.cards);
+    }
+  });
+
   await T('docs', 'AGENT_START_HERE keeps history and documents both planes', async () => {
     const d = fs.readFileSync(path.join(ROOT, 'AGENT_START_HERE.md'), 'utf8');
     for (const s of ['DEFAULT_RUNTIME_MODE        = WORKING', 'WORKING_MEMORY != RESEARCH_INDEX', 'RESEARCH_INDEX != RUNTIME_AUTHORITY', 'RESEARCH_RESULT != USER_DECISION', 'MEMORY_CONTINUITY != RESEARCH_EVIDENCE_INDEX', 'PR #28'])
@@ -910,5 +1104,6 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
   });
 
   console.log(`\n${passed}/${passed + failed} tests passed.`);
+  completed = true;
   process.exit(failed ? 1 : 0);
 })();

@@ -43,12 +43,16 @@
     return text.length > max ? { text: text.slice(0, max) + '…', truncated: true } : { text, truncated: false };
   }
 
-  // Top-level authority contract, parsed from the SOURCE text (never inferred, never normalised):
-  // only the header block (everything before the first "## " heading) is read, one flag per line:
-  //   STATUS: `RESEARCH_INDEX_ONLY`   CANON: `NO`   RUNTIME_AUTHORITY: `NO`   PRIMARY_EVIDENCE: `NO`   ("KEY=VALUE" also accepted)
-  // Card bodies are NOT scanned (a card's own "PRIMARY_EVIDENCE:" field is not an authority flag).
+  // Top-level authority contract, parsed from the SOURCE text (never inferred, never normalised).
+  // Only the header block (everything before the first "## " heading) is read, with STRICT one-flag-per-line syntax:
+  //   STATUS: `RESEARCH_INDEX_ONLY`   CANON: `NO`   RUNTIME_AUTHORITY: `NO`   PRIMARY_EVIDENCE: `NO`   ("KEY=VALUE" per line also accepted)
+  // Each required key must be declared EXACTLY ONCE (an identical duplicate is a violation, not tolerated).
+  // Combined single-line forms, inline mentions of a flag inside other prose, ambiguous values and any other
+  // alternative header form are violations and fail closed. Card bodies are NOT scanned (a card's own
+  // "PRIMARY_EVIDENCE:" field is not an authority flag).
   const AUTHORITY_REQUIRED = Object.freeze({ STATUS: 'RESEARCH_INDEX_ONLY', CANON: 'NO', RUNTIME_AUTHORITY: 'NO', PRIMARY_EVIDENCE: 'NO' });
   const AUTHORITY_KEYS = Object.freeze(Object.keys(AUTHORITY_REQUIRED));
+  const INLINE_FLAG = /\b(STATUS|CANON|RUNTIME_AUTHORITY|PRIMARY_EVIDENCE)\s*[:=]\s*`?([A-Za-z0-9_]*)/g;
 
   function parseAuthorityContract(markdown) {
     const found = {}; for (const k of AUTHORITY_KEYS) found[k] = [];
@@ -60,19 +64,20 @@
         if (!new RegExp('^' + key + '\\s*[:=]').test(line)) continue;
         declaredHere = true;
         const m = new RegExp('^' + key + '\\s*[:=]\\s*`?([A-Za-z0-9_]+)`?\\s*\\\\?\\s*$').exec(line);
-        if (m) found[key].push(m[1]); else { found[key].push('<ambiguous>'); problems.push(key + ': ambiguous declaration "' + line.trim().slice(0, 80) + '"'); }
+        if (m) found[key].push(m[1]); else { found[key].push('<ambiguous>'); problems.push(key + ': ambiguous or non-conforming declaration "' + line.trim().slice(0, 80) + '"'); }
       }
-      if (!declaredHere) {   // inline KEY=VALUE declarations elsewhere in the header block count too (so a contradiction cannot hide in prose)
-        for (const m of line.matchAll(/\b(STATUS|CANON|RUNTIME_AUTHORITY|PRIMARY_EVIDENCE)=`?([A-Za-z0-9_]+)`?/g)) found[m[1]].push(m[2]);
-      }
+      if (declaredHere) continue;
+      // Not a flag line: any flag mentioned inline (combined single-line form, or inside prose) is itself a violation.
+      for (const m of line.matchAll(INLINE_FLAG)) { found[m[1]].push(m[2] || '<inline>'); problems.push(m[1] + ': inline/combined declaration not allowed (one flag per line)'); }
     }
     for (const key of AUTHORITY_KEYS) {
       const values = found[key], distinct = [...new Set(values)];
       if (!values.length) problems.push(key + ': missing');
       else if (distinct.length > 1) problems.push(key + ': conflicting declarations (' + distinct.join(' vs ') + ')');
+      else if (values.length > 1) problems.push(key + ': duplicate declaration (' + values.length + ' occurrences; exactly one required)');
       else if (distinct[0] !== AUTHORITY_REQUIRED[key] && distinct[0] !== '<ambiguous>') problems.push(key + ': declared ' + distinct[0] + ', required ' + AUTHORITY_REQUIRED[key]);
     }
-    const declared = {}; for (const key of AUTHORITY_KEYS) declared[key] = [...new Set(found[key])].length === 1 ? found[key][0] : null;
+    const declared = {}; for (const key of AUTHORITY_KEYS) declared[key] = found[key].length === 1 ? found[key][0] : null;
     return { valid: problems.length === 0, problems, found, declared };
   }
 

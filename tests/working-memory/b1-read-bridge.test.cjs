@@ -61,6 +61,7 @@ function forbiddenSnapshot(db) {
   return JSON.stringify([r.length ? r[0].values : [], rows]);
 }
 function makeBridge(store, md) { return Bridge.create({ store, router: Router, loadResearchIndex: async () => (md === undefined ? INDEX_MD : md) }); }
+const AUTH_REQUIRED = { STATUS: 'RESEARCH_INDEX_ONLY', CANON: 'NO', RUNTIME_AUTHORITY: 'NO', PRIMARY_EVIDENCE: 'NO' };
 const AUTH_HEADER = ['STATUS: `RESEARCH_INDEX_ONLY`\\', 'CANON: `NO`\\', 'RUNTIME_AUTHORITY: `NO`\\', 'PRIMARY_EVIDENCE: `NO`\\'];
 // Synthetic Evidence-Index fixture: parser semantics are tested here, not against the mutable live index.
 const SYN_INDEX = [
@@ -410,8 +411,8 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     const r = await makeBridge(null, withHeader(AUTH_HEADER)).execute('research_route', { card: 1 });
     assert.strictEqual(r.index_loaded, true); assert.strictEqual(r.parse_status, 'OK'); assert.strictEqual(r.header, Router.HEADER);
     assert.deepStrictEqual(r.authority_contract, { valid: true, declared: { STATUS: 'RESEARCH_INDEX_ONLY', CANON: 'NO', RUNTIME_AUTHORITY: 'NO', PRIMARY_EVIDENCE: 'NO' } });
-    // alternative accepted spelling: KEY=VALUE without backticks; identical duplicates are not contradictions
-    const alt = ['STATUS=RESEARCH_INDEX_ONLY', 'CANON=NO', 'RUNTIME_AUTHORITY=NO', 'PRIMARY_EVIDENCE=NO', 'CANON: `NO`'];
+    // the only other accepted spelling is still one flag per line: KEY=VALUE without backticks
+    const alt = ['STATUS=RESEARCH_INDEX_ONLY', 'CANON=NO', 'RUNTIME_AUTHORITY=NO', 'PRIMARY_EVIDENCE=NO'];
     assert.strictEqual((await makeBridge(null, withHeader(alt)).execute('research_route', {})).index_loaded, true);
     // flags are read from the header block only: a card's own "PRIMARY_EVIDENCE: YES" field is not an authority flag
     const yesCard = ['### 1. SYN-YESFIELD', '', 'STATUS: Closed.\\', 'EXECUTION_VERDICT: Run complete.\\', 'PRIMARY_EVIDENCE: YES', ''].join('\n');
@@ -443,6 +444,30 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     await assertAuthFail(withHeader(AUTH_HEADER.map(l => l.startsWith('CANON:') ? 'CANON: `NO` (mostly)' : l)), 'ambiguous value', /CANON: ambiguous/);
     await assertAuthFail(withHeader(AUTH_HEADER.map(l => l.startsWith('PRIMARY_EVIDENCE:') ? 'PRIMARY_EVIDENCE: `NO` or `YES`\\' : l)), 'ambiguous value 2', /PRIMARY_EVIDENCE: ambiguous/);
   });
+  for (const key of ['STATUS', 'CANON', 'RUNTIME_AUTHORITY', 'PRIMARY_EVIDENCE'])
+    await T('authority-duplicate-' + key.toLowerCase(), `identical duplicate ${key} declaration fails closed (exactly one declaration per key)`, async () => {
+      const line = AUTH_HEADER.find(l => l.startsWith(key + ':'));
+      await assertAuthFail(withHeader([...AUTH_HEADER, line]), key + ' duplicated (same spelling)', new RegExp(key + ': duplicate declaration \\(2 occurrences'));
+      await assertAuthFail(withHeader([line, ...AUTH_HEADER]), key + ' duplicated first', new RegExp(key + ': duplicate declaration'));
+      await assertAuthFail(withHeader([...AUTH_HEADER, `${key}=${AUTH_REQUIRED[key]}`]), key + ' duplicated (= spelling)', new RegExp(key + ': duplicate declaration'));
+      await assertAuthFail(withHeader([...AUTH_HEADER, line, line]), key + ' triplicated', new RegExp(key + ': duplicate declaration \\(3 occurrences'));
+    });
+  await T('authority-strict-one-flag-per-line', 'combined single-line / inline / alternative header forms are NOT supported and fail closed', async () => {
+    const flagless = AUTH_HEADER.filter(l => l.startsWith('STATUS:'));
+    // combined single-line syntax, with or without a separate STATUS line
+    await assertAuthFail(withHeader([...flagless, 'CANON=NO RUNTIME_AUTHORITY=NO PRIMARY_EVIDENCE=NO']), 'combined flags line', /ambiguous or non-conforming|inline\/combined declaration not allowed/);
+    await assertAuthFail(withHeader(['RESEARCH_INDEX_ONLY CANON=NO RUNTIME_AUTHORITY=NO PRIMARY_EVIDENCE=NO']), 'all-in-one combined line', /STATUS: missing/);
+    await assertAuthFail(withHeader(['STATUS: `RESEARCH_INDEX_ONLY` CANON=NO RUNTIME_AUTHORITY=NO PRIMARY_EVIDENCE=NO']), 'combined after STATUS on one line', /ambiguous or non-conforming/);
+    await assertAuthFail(withHeader(['CANON=NO RUNTIME_AUTHORITY=NO', ...AUTH_HEADER.filter(l => !/^(CANON|RUNTIME_AUTHORITY):/.test(l))]), 'combined pair', /CANON: ambiguous or non-conforming/);
+    // even a CONSISTENT inline mention in prose is a second declaration -> fail closed (no silent tolerance)
+    await assertAuthFail(withHeader([...AUTH_HEADER, 'NOTE: this index is CANON=NO and RUNTIME_AUTHORITY: NO.']), 'consistent inline mention', /inline\/combined declaration not allowed/);
+    // alternative / unknown header forms: bold, table, list, key without separator, different keys
+    for (const alt of [['**STATUS**: `RESEARCH_INDEX_ONLY`', '**CANON**: `NO`', '**RUNTIME_AUTHORITY**: `NO`', '**PRIMARY_EVIDENCE**: `NO`'],
+      ['| CANON | NO |', '| RUNTIME_AUTHORITY | NO |', '| PRIMARY_EVIDENCE | NO |', '| STATUS | RESEARCH_INDEX_ONLY |'],
+      ['- STATUS: `RESEARCH_INDEX_ONLY`', '- CANON: `NO`', '- RUNTIME_AUTHORITY: `NO`', '- PRIMARY_EVIDENCE: `NO`'],
+      ['AUTHORITY: `NO`', 'PURPOSE: a RESEARCH_INDEX_ONLY layer.']])
+      await assertAuthFail(withHeader(alt), 'alternative form ' + alt[0], /missing|inline\/combined declaration not allowed/);
+  });
   await T('authority-then-malformed-card', 'G: valid authority contract + malformed card still fails closed', async () => {
     for (const bad of ['### 1. SYN-EMPTY\n', '### 1. SYN-PARTIAL\n\nSTATUS: Closed.\\\n']) {
       const r = await makeBridge(null, withHeader(AUTH_HEADER, bad)).execute('research_route', {});
@@ -461,6 +486,11 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
       await assertAuthFail(tampered, 'real index with ' + key + '=YES', new RegExp(key + ': declared YES'));
     }
     await assertAuthFail(INDEX_MD.replace(/^CANON: `NO`\\?\n/m, ''), 'real index without CANON', /CANON: missing/);
+    for (const key of ['STATUS', 'CANON', 'RUNTIME_AUTHORITY', 'PRIMARY_EVIDENCE']) {
+      assert.strictEqual(a.found[key].length, 1, 'real index declares ' + key + ' exactly once');
+      const dup = INDEX_MD.replace(new RegExp('^(' + key + ': `[A-Z_]+`\\\\?\\n)', 'm'), '$1$1'); assert.notStrictEqual(dup, INDEX_MD);
+      await assertAuthFail(dup, 'real index with duplicated ' + key, new RegExp(key + ': duplicate declaration'));
+    }
   });
 
   // ── Repair round 3: bounded collection outputs + source role order ──

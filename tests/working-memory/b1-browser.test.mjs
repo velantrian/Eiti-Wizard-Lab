@@ -111,6 +111,16 @@ try {
   assert.equal(unified.blankWithCard.matched, 1); assert.equal(unified.blankAlone.code, 'VALIDATION'); assert.equal(unified.bridgeExists, true, 'research_route did not create/use the shared bridge');
   const scoped = await page.evaluate(async () => JSON.parse(await executeAgentTool('wm_list', { projectId: 'B1-BROWSER' })));
   assert.equal(scoped.code, 'VALIDATION', 'a typoed scope argument must not return unscoped data'); assert(!('items' in scoped));
+  // blank scope fails closed through the real dispatcher; research.available is true because the router is loaded
+  for (const [tool, args] of [['wm_list', { project: '' }], ['wm_list', { project: '   ' }], ['wm_list', { project_id: '' }], ['wm_search', { query: 'Browser', project: '' }], ['wm_orientation', { project_id: '  ' }]]) {
+    const r = await page.evaluate(async (t, a) => JSON.parse(await executeAgentTool(t, a)), tool, args);
+    assert.equal(r.code, 'VALIDATION', tool + JSON.stringify(args) + ' must fail closed'); assert(!('items' in r) && !('in_progress' in r));
+  }
+  const avail = await page.evaluate(async () => JSON.parse(await executeAgentTool('wm_orientation', {})).research);
+  assert.deepEqual(avail, { available: true, loaded: false, entrypoint: 'docs/research/EXPERIMENT_EVIDENCE_INDEX.md' });
+  const invalidNoIo = await page.evaluate(async () => { let fetches = 0; const real = window.fetch; window.fetch = function (...a) { fetches++; return real.apply(this, a); };
+    try { const out = []; for (const a of ['text', { card: '11' }, { query: '' }, { card: 1, query: 'x' }, { cardd: 1 }]) out.push(JSON.parse(await executeAgentTool('research_route', a)).code); return { out, fetches }; } finally { window.fetch = real; } });
+  assert.deepEqual(invalidNoIo.out, ['VALIDATION', 'VALIDATION', 'VALIDATION', 'VALIDATION', 'VALIDATION']); assert.equal(invalidNoIo.fetches, 0, 'invalid research_route requests must not touch the network');
   const oriented = await page.evaluate(async () => JSON.parse(await executeAgentTool('wm_orientation', { project_id: 'b1-browser' })));
   assert.equal(oriented.scope.project_id, 'b1-browser'); assert.deepEqual(oriented.source_pointers.included_roles, ['PRIMARY', 'NAVIGATION']); assert.equal(oriented.projects.total, 1);
 

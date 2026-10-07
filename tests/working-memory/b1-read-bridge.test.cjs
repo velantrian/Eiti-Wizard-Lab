@@ -68,8 +68,9 @@ function forbiddenSnapshot(db) {
   return JSON.stringify([r.length ? r[0].values : [], rows]);
 }
 function makeBridge(store, md) { return Bridge.create({ store, router: Router, loadResearchIndex: async () => (md === undefined ? INDEX_MD : md) }); }
-// A minimal body that passes the service worker's "looks like the research index" check before it may be cached.
-const IB = label => ['# Index', '', 'STATUS: `RESEARCH_INDEX_ONLY`\\', '', '## C. Experiment line index', '', label, ''].join('\n');
+// A fully valid (strict contract) research index; the service worker admits only documents that pass the router's validator.
+const IB = label => ['# Index', '', 'STATUS: `RESEARCH_INDEX_ONLY`\\', 'CANON: `NO`\\', 'RUNTIME_AUTHORITY: `NO`\\', 'PRIMARY_EVIDENCE: `NO`\\', '', '## C. Experiment line index', '',
+  '### 1. ' + label, '', 'STATUS: Closed.\\', 'EXECUTION_VERDICT: Run complete.\\', 'PRIMARY_EVIDENCE: raw.', '', '## D. Map', ''].join('\n');
 const AUTH_REQUIRED = { STATUS: 'RESEARCH_INDEX_ONLY', CANON: 'NO', RUNTIME_AUTHORITY: 'NO', PRIMARY_EVIDENCE: 'NO' };
 const AUTH_HEADER = ['STATUS: `RESEARCH_INDEX_ONLY`\\', 'CANON: `NO`\\', 'RUNTIME_AUTHORITY: `NO`\\', 'PRIMARY_EVIDENCE: `NO`\\'];
 // Synthetic Evidence-Index fixture: parser semantics are tested here, not against the mutable live index.
@@ -279,7 +280,8 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
       async match(req) { for (const c of store.values()) { const hit = c.get(typeof req === 'string' ? req : req.url); if (hit) return hit.clone(); } return undefined; },
       async keys() { return [...store.keys()]; }, async delete(k) { return store.delete(k); } };
     const ctx = { self: { addEventListener: (n, f) => { listeners[n] = f; }, skipWaiting() {}, clients: { claim() {}, matchAll: async () => [] }, registration: {} },
-      caches: cachesApi, fetch: async () => { netCalls++; if (!netUp) throw new TypeError('offline'); return new Response(netBody, { status: 200 }); }, Response, Headers, Request, URL, console, AbortController, setTimeout: () => 0, clearTimeout() {} };
+      caches: cachesApi, fetch: async () => { netCalls++; if (!netUp) throw new TypeError('offline'); return new Response(netBody, { status: 200 }); }, Response, Headers, Request, URL, console, AbortController, setTimeout: () => 0, clearTimeout() {},
+      importScripts: () => vm.runInContext(fs.readFileSync(path.join(ROOT, 'research-router.js'), 'utf8'), ctx) };
     vm.createContext(ctx); vm.runInContext(src, ctx);
     const name = src.match(/const CACHE_NAME = '([^']+)'/)[1]; assert.notStrictEqual(name, 'eiti-wizard-lab-v1.8.10-wm0'); assert.match(name, /^eiti-wizard-lab-/);
     const assets = src.slice(src.indexOf('STATIC_ASSETS'), src.indexOf('];')); for (const f of ['working-memory.js', 'wm-agent-read.js', 'research-router.js']) assert(assets.includes("'/" + f + "'"), f);
@@ -821,7 +823,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     for (const args of ['text', ['a'], 7]) await bad('wm_list', args, 'non-object args');
     assert.strictEqual((await b.execute('wm_list', null)).ok === undefined, true); assert.strictEqual((await b.execute('wm_list', undefined)).items.length, 3);
     // blank optional filters are absent, not errors
-    assert.strictEqual((await b.execute('wm_list', { status: '', thread: '  ', project: '' })).items.length, 3);
+    assert.strictEqual((await b.execute('wm_list', { status: '', thread: '  ' })).items.length, 3);   // blank optional FILTERS are absent; a blank SCOPE is rejected (see blank-scope-fails-closed)
   });
   await T('unicode-safe-clipping', 'agent-facing clipping is code-point safe: an emoji exactly across the cap is kept whole, never split into a lone surrogate', async () => {
     const d = new SQL.Database(); const st = mkStore(d); const b = makeBridge(st);
@@ -853,7 +855,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
   });
 
   // ── Service worker: Research Index fallback policy (mocked runtime) ──
-  const makeSw = () => {
+  const makeSw = opts => {
     const vm = require('node:vm'); const src = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
     const caches = new Map(), listeners = {}; const net = { mode: 'ok', status: 200, body: IB('FRESH'), calls: 0 }; const timers = [];
     const cachesApi = { async open(name) { if (!caches.has(name)) caches.set(name, new Map()); const c = caches.get(name);
@@ -865,7 +867,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
         if (net.mode === 'hang') return new Promise((_, rej) => init.signal.addEventListener('abort', () => rej(new TypeError('aborted'))));
         if (net.mode === 'hang-body') return { status: 200, headers: new Headers(), text: () => new Promise((_, rej) => init.signal.addEventListener('abort', () => rej(new TypeError('aborted')))) };
         return new Response(net.status === 204 ? null : net.body, { status: net.status, headers: net.headers }); },
-      Response, Headers, Request, URL, console, AbortController,
+      Response, Headers, Request, URL, console, AbortController, importScripts: opts && opts.noRouter ? () => { throw new Error('NetworkError: router script unavailable'); } : () => vm.runInContext(fs.readFileSync(path.join(ROOT, 'research-router.js'), 'utf8'), ctx),
       setTimeout: (fn, ms) => { const t = { fn, ms, cleared: false }; timers.push(t); return t; }, clearTimeout: t => { if (t) t.cleared = true; } };
     vm.createContext(ctx); vm.runInContext(src, ctx);
     const name = src.match(/const CACHE_NAME = '([^']+)'/)[1]; const IDX = 'http://127.0.0.1:1/Eiti-Wizard-Lab/docs/research/EXPERIMENT_EVIDENCE_INDEX.md';
@@ -892,14 +894,14 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
   });
   await T('sw-research-404-no-stale', 'research index: 404/410 (authoritative removal) is NOT masked by an old cache and evicts it; other 4xx pass through untouched', async () => {
     for (const status of [404, 410]) {
-      const w = makeSw(); w.seed('OLD-INDEX'); w.net.status = status; w.net.body = 'GONE';
+      const w = makeSw(); w.seed(IB('OLD-INDEX')); w.net.status = status; w.net.body = 'GONE';
       const { res, waits } = await w.fire(); await Promise.all(waits);
       assert.strictEqual(res.status, status); assert.strictEqual(await res.text(), 'GONE'); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), null, status + ' served the stale cache');
       assert.strictEqual(w.cache().has(w.IDX), false, status + ' did not evict the stale copy');
       w.net.mode = 'down'; const off = await w.fire(); assert.strictEqual(off.res.status, 504, 'after removal even offline must not resurrect the old index');
     }
     for (const status of [401, 403, 429]) {
-      const w = makeSw(); w.seed('OLD-INDEX'); w.net.status = status; w.net.body = 'DENIED'; const { res, waits } = await w.fire(); await Promise.all(waits);
+      const w = makeSw(); w.seed(IB('OLD-INDEX')); w.net.status = status; w.net.body = 'DENIED'; const { res, waits } = await w.fire(); await Promise.all(waits);
       assert.strictEqual(res.status, status); assert.strictEqual(w.cache().has(w.IDX), true, status + ' must not evict'); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), null);
     }
   });
@@ -1085,6 +1087,133 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     }
   });
 
+  // ═══ Final frozen round ═══
+  await T('blank-scope-fails-closed', 'a PRESENT project / project_id must be a non-blank string: blank, whitespace, null, non-string -> VALIDATION (never "all projects"); omitting both stays valid', async () => {
+    const d = new SQL.Database(); const st = mkStore(d); const b = makeBridge(st);
+    must(await st.createProject({ project_id: 'bs-a', code: 'BSA', name: 'A' })); must(await st.createProject({ project_id: 'bs-b', code: 'BSB', name: 'B' }));
+    must(await st.createItem({ project_id: 'bs-a', title: 'bs alpha', provenance_class: 'USER_NOTE' })); must(await st.createItem({ project_id: 'bs-b', title: 'bs beta', provenance_class: 'USER_NOTE' }));
+    must(await st.createSource({ source_id: 'bs-src', project_id: 'bs-a', surface: 'LOCAL', role: 'PRIMARY', title: 's', locator: 'local://s' }));
+    const blanks = ['', ' ', '   ', '\t', '\n', ' \t\n ', null, 0, 5, false, {}, []];
+    const tools = [['wm_orientation', {}], ['wm_list', {}], ['wm_search', { query: 'bs' }], ['wm_project_sources', {}]];
+    for (const [tool, base] of tools) for (const key of ['project', 'project_id']) for (const v of blanks) {
+      const r = await b.execute(tool, Object.assign({}, base, { [key]: v }));
+      assert.strictEqual(r.ok, false, `${tool} ${key}=${JSON.stringify(v)} must fail closed`); assert.strictEqual(r.code, 'VALIDATION', `${tool} ${key}=${JSON.stringify(v)}`); assert.match(r.error, /non-empty, non-whitespace string/);
+      assert(!('items' in r) && !('in_progress' in r) && !('projects' in r), `${tool} ${key}=${JSON.stringify(v)} leaked data`);
+    }
+    // blank in one alias + valid in the other is still a present blank scope
+    for (const args of [{ project: '', project_id: 'bs-a' }, { project: 'bs-a', project_id: '  ' }, { project: 'BSA', project_id: null }]) assert.strictEqual((await b.execute('wm_list', args)).code, 'VALIDATION', JSON.stringify(args));
+    // the four examples of the report, verbatim
+    for (const [tool, args] of [['wm_list', { project: '' }], ['wm_list', { project: '   ' }], ['wm_list', { project_id: '' }], ['wm_search', { query: 'a', project: '' }]]) assert.strictEqual((await b.execute(tool, args)).code, 'VALIDATION', tool + JSON.stringify(args));
+    // omitted scope = all projects (valid); undefined counts as omitted; real values still scope; unknown still NOT_FOUND; conflicts still VALIDATION
+    assert.strictEqual((await b.execute('wm_list', {})).items.length, 2); assert.strictEqual((await b.execute('wm_list', { project: undefined })).items.length, 2); assert.strictEqual((await b.execute('wm_orientation', {})).scope, 'ALL_PROJECTS');
+    assert.strictEqual((await b.execute('wm_search', { query: 'bs' })).items.length, 2); assert.strictEqual((await b.execute('wm_list', { project: 'BSA' })).items.length, 1); assert.strictEqual((await b.execute('wm_list', { project_id: 'bs-b' })).items.length, 1);
+    assert.strictEqual((await b.execute('wm_list', { project: 'nope' })).code, 'NOT_FOUND'); assert.strictEqual((await b.execute('wm_list', { project: 'BSA', project_id: 'bs-b' })).code, 'VALIDATION');
+    assert.strictEqual((await b.execute('wm_project_sources', { project_id: 'bs-a' })).items.length, 1); assert.strictEqual((await b.execute('wm_project_sources', {})).code, 'VALIDATION');
+  });
+  await T('research-available-accurate', 'wm_orientation.research.available reflects the real router availability; loaded stays false', async () => {
+    const d = new SQL.Database(); const st = mkStore(d); must(await st.createProject({ project_id: 'ra', code: 'RA', name: 'RA' }));
+    const withRouter = await Bridge.create({ store: st, router: Router }).execute('wm_orientation', {}); assert.deepStrictEqual(withRouter.research, { available: true, loaded: false, entrypoint: Router.INDEX_PATH });
+    const saved = globalThis.ResearchRouter; delete globalThis.ResearchRouter;   // in Node the bridge would otherwise fall back to the global router
+    try {
+      const without = await Bridge.create({ store: st, router: null }).execute('wm_orientation', {}); assert.deepStrictEqual(without.research, { available: false, loaded: false, entrypoint: Router.INDEX_PATH });
+      const broken = await Bridge.create({ store: st, router: {} }).execute('wm_orientation', {}); assert.strictEqual(broken.research.available, false);
+      const route = await Bridge.create({ store: st, router: null }).execute('research_route', {}); assert.strictEqual(route.parse_status, 'ROUTER_UNAVAILABLE');   // consistent with available:false
+    } finally { globalThis.ResearchRouter = saved; }
+    assert.strictEqual((await Bridge.create({ store: st }).execute('wm_orientation', {})).research.available, true, 'global router present -> available');
+  });
+  await T('arg-validation-before-io', 'invalid research_route requests fail BEFORE the loader / network is called (LOADER_CALLS = 0); valid ones call it exactly once', async () => {
+    const invalid = [['non-object string', 'text'], ['non-object array', [1]], ['non-object number', 7], ['non-object boolean', true], ['unknown key', { cardd: 1 }], ['unknown key with valid card', { card: 1, projectId: 'x' }],
+      ['card string', { card: '11' }], ['card zero', { card: 0 }], ['card negative', { card: -2 }], ['card fraction', { card: 1.5 }], ['card NaN', { card: NaN }], ['card object', { card: {} }],
+      ['line string', { line: '3' }], ['line zero', { line: 0 }], ['card + line conflict', { card: 1, line: 2 }], ['card + non-blank query', { card: 1, query: 'x' }], ['line + non-blank query', { line: 1, query: 'x' }],
+      ['blank query no card', { query: '' }], ['whitespace query no card', { query: '   \t' }], ['non-string query', { query: 5 }], ['non-string query with card', { card: 1, query: 5 }], ['query object', { query: {} }]];
+    for (const [label, args] of invalid) {
+      let calls = 0; const loader = async () => { calls++; return INDEX_MD; };
+      const viaRouter = await Router.routeWithLoader(loader, args); const viaBridge = await Bridge.create({ store: null, router: Router, loadResearchIndex: loader }).execute('research_route', args);
+      for (const [path2, r] of [['router', viaRouter], ['bridge', viaBridge]]) { assert.strictEqual(r.ok, false, label + ' ' + path2); assert.strictEqual(r.code, 'VALIDATION', label + ' ' + path2); assert.strictEqual(r.plane, 'RESEARCH'); }
+      assert.strictEqual(calls, 0, label + ': LOADER_CALLS must be 0, was ' + calls);
+      assert.strictEqual(Router.route(INDEX_MD, args).code, 'VALIDATION', label + ' (route)'); assert.strictEqual(Router.preflightArgs(args).error.code, 'VALIDATION', label + ' (preflight)');
+    }
+    // valid requests do reach the loader, once; blank query WITH a card is valid
+    for (const [label, args, expectMatched] of [['card', { card: 1 }, 1], ['line alias', { line: 2 }, 1], ['card + blank query', { card: 1, query: '' }, 1], ['card + whitespace query', { card: 3, query: '  ' }, 1], ['query', { query: 'syn' }, undefined], ['overview', {}, undefined], ['null args', null, undefined], ['undefined args', undefined, undefined]]) {
+      let calls = 0; const loader = async () => { calls++; return SYN_INDEX; }; const r = await Router.routeWithLoader(loader, args);
+      assert.strictEqual(calls, 1, label + ': a valid request calls the loader exactly once'); assert.strictEqual(r.index_loaded, true, label); if (expectMatched !== undefined) assert.strictEqual(r.matched, expectMatched, label);
+    }
+    // the preflight is a pure function of the arguments (no index, loader or I/O) and its allowed set is the tool's declared set + line
+    assert.deepStrictEqual(Router.preflightArgs({ card: 4, query: '' }), { cardNumber: 4, query: null }); assert.deepStrictEqual(Router.preflightArgs({ query: ' x ' }), { cardNumber: null, query: ' x ' });
+    assert.deepStrictEqual(Router.ALLOWED_ARGS.slice().sort(), [...Object.keys(Bridge.TOOLS_SPEC.find(t => t.name === 'research_route').parameters.properties), 'line'].sort());
+    // a throwing / hanging loader is never reached for an invalid request
+    assert.strictEqual((await Router.routeWithLoader(() => { throw new Error('loader must not run'); }, { card: '1' })).code, 'VALIDATION');
+  });
+  await T('index-source-docs-current', 'no documentation lists index_source values without STALE_CACHE; the canonical set is NETWORK / OFFLINE_CACHE / STALE_CACHE / UNKNOWN', async () => {
+    const files = ['AGENT_START_HERE.md', 'docs/working-memory/WORKING_MEMORY_B1_AGENT_READ_BRIDGE.md'].concat(fs.readdirSync(path.join(ROOT, 'docs/working-memory')).filter(f => f.endsWith('.md')).map(f => 'docs/working-memory/' + f));
+    for (const f of new Set(files)) { const text = fs.readFileSync(path.join(ROOT, f), 'utf8');
+      for (const [i, line] of text.split('\n').entries()) if (/OFFLINE_CACHE|`UNKNOWN`/.test(line) && /`NETWORK`/.test(line)) { assert(/STALE_CACHE/.test(line), `${f}:${i + 1} lists index_source values without STALE_CACHE: ${line.slice(0, 120)}`); }
+    }
+    const doc = fs.readFileSync(path.join(ROOT, 'docs/working-memory/WORKING_MEMORY_B1_AGENT_READ_BRIDGE.md'), 'utf8');
+    assert(/`index_source` is `NETWORK`, `OFFLINE_CACHE`, `STALE_CACHE` or `UNKNOWN`/.test(doc), 'surface section lists the canonical four');
+    assert(/index_source[^\n]*`NETWORK`[^\n]*`OFFLINE_CACHE`[^\n]*`STALE_CACHE`[^\n]*`UNKNOWN`/.test(doc.slice(doc.indexOf('index_source` / staleness'))), 'contract section lists the canonical four');
+    // code and docs agree on the set
+    const src = ['research-router.js', 'index.html'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n'); for (const v of ['NETWORK', 'OFFLINE_CACHE', 'STALE_CACHE']) assert(src.includes("'" + v + "'"), v + ' produced by code');
+  });
+
+  // ── Last-known-good research cache: strict admission, validated fallbacks ──
+  const GOOD = IB('GOOD');
+  const brokenVariants = {   // each LOOKS like the index (marker + section C) but fails the strict contract
+    'unsupported card content (stray bullet)': IB('BAD').replace('PRIMARY_EVIDENCE: raw.', 'PRIMARY_EVIDENCE: raw.\n- NOTES: a stray bullet'),
+    'continuation line': IB('BAD').replace('PRIMARY_EVIDENCE: raw.', 'PRIMARY_EVIDENCE: raw.\ncontinued on the next line'),
+    'duplicate field in a card': IB('BAD').replace('STATUS: Closed.\\', 'STATUS: Closed.\\\nSTATUS: Reopened.\\'),
+    'missing required field': IB('BAD').replace('EXECUTION_VERDICT: Run complete.\\\n', ''),
+    'authority CANON=YES': IB('BAD').replace('CANON: `NO`', 'CANON: `YES`'),
+    'authority flag missing': IB('BAD').replace('RUNTIME_AUTHORITY: `NO`\\\n', ''),
+    'authority duplicated': IB('BAD').replace('CANON: `NO`\\', 'CANON: `NO`\\\nCANON: `NO`\\'),
+    'duplicate card number': IB('BAD').replace('## D. Map', '### 1. SECOND\n\nSTATUS: s\\\nEXECUTION_VERDICT: e\\\nPRIMARY_EVIDENCE: p\n\n## D. Map'),
+    'header only, no cards': IB('BAD').slice(0, IB('BAD').indexOf('### 1.')) + '## D. Map\n',
+  };
+  const swAdmits = async (w, body) => { w.net.status = 200; w.net.body = body; const { res, waits } = await w.fire(); await Promise.all(waits); return { res, cached: w.cache() && w.cache().has(w.IDX) ? await w.cache().get(w.IDX).clone().text() : null }; };
+  await T('sw-strict-cache-admission', 'the service worker admits a network 200 into the cache ONLY if the router\'s strict validator accepts it (same function, same verdict as the router)', async () => {
+    assert(/ResearchRouter\.validateResearchIndex/.test(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8'))); assert(!/looksLikeResearchIndex/.test(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8')), 'no weaker second definition of a valid index');
+    const corpus = Object.assign({ 'valid minimal index': GOOD, 'live index': INDEX_MD, 'captive portal html': '<!doctype html><html>Sign in</html>', 'empty': '', 'json': '{"e":1}' }, brokenVariants);
+    for (const [label, body] of Object.entries(corpus)) {
+      const verdict = Router.validateResearchIndex(body).ok; const w = makeSw(); const { res, cached } = await swAdmits(w, body);   // no prior cache
+      assert.strictEqual(cached !== null, verdict, `${label}: SW admission (${cached !== null}) must equal router validity (${verdict})`);
+      assert.strictEqual(await res.text(), body, label + ': with no valid cache the body is passed through (the router then fails closed)');
+      assert.strictEqual((await makeBridge(null, body).execute('research_route', { card: 1 })).index_loaded, verdict, label + ': router verdict');
+    }
+    const live = makeSw(); await swAdmits(live, INDEX_MD); assert.strictEqual(live.cache().get(live.IDX) && await live.cache().get(live.IDX).clone().text(), INDEX_MD, 'the real index is admitted verbatim');
+  });
+  await T('sw-malformed-200-keeps-last-known-good', 'A/B/E: a malformed / unsupported-content / captive 200 never replaces a valid cached copy; the old copy is served flagged STALE_CACHE-style (sw-stale-cache)', async () => {
+    const corpus = Object.assign({ 'captive portal html': '<!doctype html><html>Sign in to the Wi-Fi</html>', 'empty body': '', 'json error': '{"error":"upstream"}' }, brokenVariants);
+    for (const [label, body] of Object.entries(corpus)) {
+      const w = makeSw(); w.seed(GOOD); const { res, cached } = await swAdmits(w, body);
+      assert.strictEqual(await res.text(), GOOD, label + ': the old valid copy must be served'); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), 'sw-stale-cache', label); assert.strictEqual(cached, GOOD, label + ': the cache must be unchanged');
+      // and end to end: what the router sees is explicitly stale and valid
+      const viaPage = await Bridge.create({ store: null, router: Router, loadResearchIndex: async () => ({ text: GOOD, source: 'STALE_CACHE' }) }).execute('research_route', { card: 1 });
+      assert.strictEqual(viaPage.stale, true); assert.match(viaPage.warning, /STALE/);
+    }
+    // D: a valid, different network index replaces the cache normally (fresh network > cache)
+    const w = makeSw(); w.seed(GOOD); const NEW = IB('NEWER'); const { res, cached } = await swAdmits(w, NEW);
+    assert.strictEqual(await res.text(), NEW); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), null); assert.strictEqual(cached, NEW);
+  });
+  await T('sw-invalid-cache-not-served', 'C: a malformed cached copy is never treated as known-good: not served as fallback (offline / timeout / 5xx / malformed 200) and nothing malformed is served as research', async () => {
+    const badCache = brokenVariants['unsupported card content (stray bullet)'];
+    for (const mode of ['down', 'hang']) {
+      const w = makeSw(); w.seed(badCache); w.net.mode = mode; const { ev } = w.start(); await new Promise(r => setImmediate(r)); if (mode === 'hang') w.expire(); const res = await ev.p;
+      assert.strictEqual(res.status, 504, mode + ': an invalid cache must not be served'); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), null);
+    }
+    const w5 = makeSw(); w5.seed(badCache); w5.net.status = 503; w5.net.body = 'down'; const r5 = await w5.fire(); assert.strictEqual(r5.res.status, 503); assert.strictEqual(r5.res.headers.get('X-Eiti-Served-From'), null);
+    // malformed cache + malformed network 200 -> the malformed network body is passed through un-flagged and the ROUTER fails closed on it (never served as research)
+    const wc = makeSw(); wc.seed(badCache); const bad200 = brokenVariants['authority CANON=YES']; const { res, cached } = await swAdmits(wc, bad200);
+    assert.strictEqual(res.headers.get('X-Eiti-Served-From'), null); assert.strictEqual(await res.text(), bad200); assert.strictEqual(cached, badCache, 'the old malformed copy is not replaced by the new malformed one');
+    for (const body of [bad200, badCache]) { const r = await makeBridge(null, body).execute('research_route', { card: 1 }); assert.strictEqual(r.index_loaded, false); assert(!r.cards); assert(['AUTHORITY_CONTRACT_INVALID', 'UNSUPPORTED_CARD_CONTENT'].includes(r.parse_status)); }
+    // a valid cache next to a transport failure is still served (flagged), proving the check is validity, not "never serve the cache"
+    const wv = makeSw(); wv.seed(GOOD); wv.net.mode = 'down'; const rv = await wv.fire(); assert.strictEqual(await rv.res.text(), GOOD); assert.strictEqual(rv.res.headers.get('X-Eiti-Served-From'), 'sw-offline-cache');
+  });
+  await T('sw-validator-unavailable-fails-closed', 'if the router script cannot be imported the service worker admits nothing and trusts no cached copy', async () => {
+    const w = makeSw({ noRouter: true }); w.seed(GOOD);
+    const { res, cached } = await swAdmits(w, IB('NEWER')); assert.strictEqual(await res.text(), IB('NEWER')); assert.strictEqual(cached, GOOD, 'nothing is admitted without the validator');
+    w.net.mode = 'down'; assert.strictEqual((await w.fire()).res.status, 504, 'the cached copy is not trusted without the validator');
+  });
+
   await T('docs', 'AGENT_START_HERE keeps history and documents both planes', async () => {
     const d = fs.readFileSync(path.join(ROOT, 'AGENT_START_HERE.md'), 'utf8');
     for (const s of ['DEFAULT_RUNTIME_MODE        = WORKING', 'WORKING_MEMORY != RESEARCH_INDEX', 'RESEARCH_INDEX != RUNTIME_AUTHORITY', 'RESEARCH_RESULT != USER_DECISION', 'MEMORY_CONTINUITY != RESEARCH_EVIDENCE_INDEX', 'PR #28'])
@@ -1100,7 +1229,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     assert(/when runtime Working Memory is available/i.test(seq) && /Repository agent: runtime Working Memory is not available/.test(seq), 'wm_orientation only where runtime WM exists');
     assert(/only when the task requires research/i.test(seq) && /primary evidence/.test(seq) && /CONSISTENCY/.test(seq));
     assert(!/\bold sequence|Fresh-agent sequence/.test(d), 'no second start sequence');
-    for (const s2 of ['FINAL_MODEL_MIXED_ANSWER_ENFORCEMENT = NOT_IMPLEMENTED', 'FRESH_MODEL_BEHAVIOR = NOT_RUN', 'MALFORMED_CARDS', '`STATUS`, `EXECUTION_VERDICT` and `PRIMARY_EVIDENCE`', 'PARTIAL_INDEX_ACCEPTANCE = NOT_ALLOWED_IN_B1', 'matched_card_numbers', 'omitted_card_numbers', 'limit_clamped', 'sw-stale-cache', 'UNSUPPORTED_CARD_CONTENT', '`project_limit`', 'code points']) assert(b1.includes(s2), s2);
+    for (const s2 of ['FINAL_MODEL_MIXED_ANSWER_ENFORCEMENT = NOT_IMPLEMENTED', 'FRESH_MODEL_BEHAVIOR = NOT_RUN', 'MALFORMED_CARDS', '`STATUS`, `EXECUTION_VERDICT` and `PRIMARY_EVIDENCE`', 'PARTIAL_INDEX_ACCEPTANCE = NOT_ALLOWED_IN_B1', 'matched_card_numbers', 'omitted_card_numbers', 'limit_clamped', 'sw-stale-cache', 'UNSUPPORTED_CARD_CONTENT', '`project_limit`', 'code points', 'validateResearchIndex', 'Blank scope fails closed', 'preflightArgs', '`research: { available, loaded: false']) assert(b1.includes(s2), s2);
   });
 
   console.log(`\n${passed}/${passed + failed} tests passed.`);

@@ -19,7 +19,7 @@
   const WORKING_NOTICE = 'WORKING plane (Wm wm_*, NON_CANON). Operational state only; not research evidence, not Canon. ' +
     'MODEL_PROPOSAL/MODEL_SUMMARY items are not user decisions.';
 
-  const PROJECT_PROPS = { project: { type: 'string', description: 'project_id or code' }, project_id: { type: 'string', description: 'alias of project (project_id or code); if both are given they must name the same project' } };
+  const PROJECT_PROPS = { project: { type: 'string', description: 'project_id or code' }, project_id: { type: 'string', description: 'alias of project (project_id or code); if both are given they must name the same project. A supplied blank value is rejected (omit the argument for all projects)' } };
   const LIMIT_NOTE = 'integer >= 1; above the max it is clamped and reported in limit_clamped; invalid values are rejected';
   const TOOLS_SPEC = Object.freeze([
     { name: 'wm_orientation', description: 'WORKING MEMORY (read-only): bounded startup/resume view — current, in_progress, open, blocked, unknown, next actions, recent completed, projects {items,total,truncated}, source pointers (PRIMARY + NAVIGATION roles only; use wm_project_sources for every registered source). Call first when resuming work in a fresh session. Scope with project / project_id (never silently unscoped). Does not load research.',
@@ -185,8 +185,16 @@
     }
     // project / project_id are aliases: both accepted, conflicting values are a VALIDATION error, an unknown
     // project is NOT_FOUND — a scope argument is never silently ignored.
+    // A scope key that is PRESENT must carry a non-blank string: `project: ""` / `"   "` / null is VALIDATION, never "all projects".
+    // (Omitting both keys is the only way to ask for all projects.)
+    function readScope(args, key) {
+      if (!Object.prototype.hasOwnProperty.call(args, key) || args[key] === undefined) return undefined;
+      const v = args[key];
+      if (typeof v !== 'string' || !v.trim()) throw validation(key + ' must be a non-empty, non-whitespace string when supplied (got ' + JSON.stringify(v) + '); omit it to cover all projects');
+      return v;
+    }
     function resolveScope(args, projects) {
-      const byProject = readString(args, 'project'), byId = readString(args, 'project_id');
+      const byProject = readScope(args, 'project'), byId = readScope(args, 'project_id');
       const a = byProject ? resolveProject(byProject, projects) : null, b = byId ? resolveProject(byId, projects) : null;
       if (a && b && a.project_id !== b.project_id) throw validation('project and project_id refer to different projects (' + a.project_id + ' vs ' + b.project_id + '); give one');
       return a || b;
@@ -238,7 +246,7 @@
           included_roles: INCLUDED_POINTER_ROLES.slice(), full_source_discovery: 'wm_project_sources',
           per_project_cap: SOURCE_POINTERS_PER_PROJECT, total_cap: SOURCE_POINTERS_TOTAL, omitted_project_ids: omitted,
           order: 'PRIMARY before NAVIGATION, then title' },
-        research: { available: true, loaded: false, entrypoint: RESEARCH_ENTRYPOINT },
+        research: { available: !!(router && typeof router.route === 'function'), loaded: false, entrypoint: RESEARCH_ENTRYPOINT },   // available = the router script is really loaded
       };
     }
 

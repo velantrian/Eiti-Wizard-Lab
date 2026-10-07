@@ -109,6 +109,10 @@ try {
   let mode = 'html200'; const sockets = new Set();
   const ctl = http.createServer((req, res) => {
     if (mode === 'hang') return;   // accept the request, never answer
+    if (mode === 'badedit') {   // the REAL index with one parse-breaking edit (a stray bullet inside a card): looks like the index, fails the strict contract
+      const real = fs.readFileSync(idxPath, 'utf8'); const broken = real.replace(/^(NOTES: .*)$/m, '$1\n- a stray bullet that breaks the card grammar');
+      res.writeHead(200, { 'Content-Type': 'text/markdown' }); res.end(broken); return;
+    }
     if (mode === 'html200') { res.writeHead(200, { 'Content-Type': 'text/html' }); res.end('<html><body>Please sign in to the Wi-Fi</body></html>'); return; }
     if (mode === '503') { res.writeHead(503); res.end('upstream down'); return; }
     if (mode === '404') { res.writeHead(404); res.end('gone'); return; }
@@ -121,6 +125,9 @@ try {
     mode = 'html200'; let r = await route(page, { card: 1 });
     good(r); assert.equal(r.index_source, 'STALE_CACHE'); assert.equal(r.stale, true); assert.match(r.warning, /STALE/);
     console.log('PASS  captive-portal 200 does not poison the cache; the good copy is served and marked STALE_CACHE');
+    mode = 'badedit'; r = await route(page, { card: 1 });
+    good(r); assert.equal(r.index_source, 'STALE_CACHE'); assert.equal(r.stale, true); assert.match(r.warning, /STALE/);
+    console.log('PASS  a parse-breaking edit of the real index (200) does not replace the last-known-good cache; the old valid copy is served stale');
     mode = '503'; r = await route(page, { card: 1 }); good(r); assert.equal(r.index_source, 'STALE_CACHE'); assert.equal(r.stale, true);
     console.log('PASS  5xx falls back to the cached index and is marked STALE_CACHE');
     mode = 'hang'; const t0 = Date.now(); r = await route(page, { card: 1 }); const took = Date.now() - t0;

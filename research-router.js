@@ -169,55 +169,83 @@
   }
 
   const isPositiveInteger = v => typeof v === 'number' && Number.isInteger(v) && v >= 1;
+  const ALLOWED_ARGS = Object.freeze(['query', 'card', 'line']);   // `line` is an alias of `card`
+
+  // Pure argument preflight: decides whether a request is valid WITHOUT touching the network, the index or any loader.
+  // Returns { error } (a VALIDATION response) or { cardNumber, query } (query is null when absent/blank-with-card).
+  function preflightArgs(args) {
+    if (args == null) args = {};
+    if (typeof args !== 'object' || Array.isArray(args)) return { error: validation('arguments must be an object') };
+    const unknown = Object.keys(args).filter(k => !ALLOWED_ARGS.includes(k));
+    if (unknown.length) return { error: validation('Unknown argument(s) for research_route: ' + unknown.join(', ') + '. Allowed: ' + ALLOWED_ARGS.join(', ') + '. Nothing was executed.') };
+    const hasCard = args.card != null, hasLine = args.line != null;
+    if (args.query != null && typeof args.query !== 'string') return { error: validation('query must be a string.') };
+    const hasQuery = typeof args.query === 'string' && args.query.trim() !== '';   // a blank optional query is ABSENT ...
+    for (const [name, present] of [['card', hasCard], ['line', hasLine]]) if (present && !isPositiveInteger(args[name])) return { error: validation(name + ' must be a positive integer research card number (a number, not a string).') };
+    if (hasCard && hasLine && args.card !== args.line) return { error: validation('Provide either card or line (alias), not conflicting values.') };
+    const cardNumber = hasCard ? args.card : hasLine ? args.line : null;
+    if (cardNumber != null && hasQuery) return { error: validation('Provide either card/line or query, not both.') };
+    // ... but a blank query with no card is no routing request at all
+    if (args.query != null && !hasQuery && cardNumber == null) return { error: validation('query must be a non-empty string; omit it for the overview, or give card.') };
+    return { cardNumber, query: hasQuery ? args.query : null };
+  }
+
+  // THE strict document-validity contract of the Research Index, as ONE pure function. The router serves cards only from
+  // a document that passes it, and the service worker admits a network 200 into the last-known-good cache (and serves a
+  // cached fallback) only if it passes the SAME function. Gates, in order: index marker + section C -> authority contract
+  // -> cards parsed -> unique card numbers -> required card fields -> no unsupported/unrecognised/duplicate card content.
+  // Returns { ok:true, authority, cards } or { ok:false, parseStatus, reasons, extra }.
+  function validateResearchIndex(markdown) {
+    if (!looksLikeIndex(markdown)) {
+      const unavailable = markdown == null || markdown === '';
+      return { ok: false, parseStatus: unavailable ? 'INDEX_UNAVAILABLE' : 'NOT_AN_EVIDENCE_INDEX', reasons: [unavailable ? 'index text could not be obtained' : 'body lacks the RESEARCH_INDEX_ONLY marker or the "## C." section'], extra: {} };
+    }
+    const authority = parseAuthorityContract(markdown);
+    if (!authority.valid) {
+      return { ok: false, parseStatus: 'AUTHORITY_CONTRACT_INVALID', reasons: authority.problems.slice(0, MAX_ISSUES_REPORTED), withholdHeader: true,
+        extra: { authority_contract: { valid: false, required: Object.assign({}, AUTHORITY_REQUIRED), found: authority.found, problems: authority.problems.slice(0, MAX_ISSUES_REPORTED) } } };
+    }
+    const cards = parseCards(markdown);
+    if (!cards.length) return { ok: false, parseStatus: 'NO_CARDS_PARSED', reasons: ['header found but no "### N. title" cards were parsed under "## C."'], extra: {} };
+    const seen = new Map(); for (const c of cards) seen.set(c.number, (seen.get(c.number) || 0) + 1);
+    const duplicated = [...seen].filter(([, n]) => n > 1);
+    if (duplicated.length) {
+      return { ok: false, parseStatus: 'DUPLICATE_CARD_NUMBER', reasons: duplicated.slice(0, MAX_ISSUES_REPORTED).map(([num, n]) => 'card number ' + num + ' appears ' + n + ' times'),
+        extra: { duplicate_card_numbers: duplicated.slice(0, MAX_ISSUES_REPORTED).map(([num]) => num) } };
+    }
+    const malformed = cards.map(c => ({ card_number: c.number, missing: REQUIRED_FIELDS.filter(k => !(c.fields[k] && c.fields[k].trim())) })).filter(m => m.missing.length);
+    if (malformed.length) {
+      return { ok: false, parseStatus: 'MALFORMED_CARDS', reasons: malformed.slice(0, MAX_MALFORMED_REPORTED).map(m => 'card ' + m.card_number + ': missing ' + m.missing.join(', ')),
+        extra: { malformed_total: malformed.length, malformed_cards: malformed.slice(0, MAX_MALFORMED_REPORTED), required_fields: REQUIRED_FIELDS.slice() } };
+    }
+    const unsupported = cards.filter(c => c.issues.length).map(c => ({ card_number: c.number, issues: c.issues.slice(0, 3) }));
+    if (unsupported.length) {
+      return { ok: false, parseStatus: 'UNSUPPORTED_CARD_CONTENT',
+        reasons: unsupported.slice(0, MAX_ISSUES_REPORTED).map(u => 'card ' + u.card_number + ': ' + u.issues.map(i => i.kind + (i.field ? ' ' + i.field : '')).join(', ')),
+        extra: { unsupported_cards: unsupported.slice(0, MAX_ISSUES_REPORTED), unsupported_total: unsupported.length } };
+    }
+    return { ok: true, authority, cards };
+  }
 
   function route(markdown, args, meta) {
-    args = args || {}; meta = meta || {};
+    meta = meta || {};
+    const pre = preflightArgs(args);
+    if (pre.error) return pre.error;
+    const cardNumber = pre.cardNumber, hasQuery = pre.query !== null;
     const base = { plane: 'RESEARCH', header: HEADER, notice: NOTICE, entrypoint: INDEX_PATH, read_only: true, promoted_to_working: false,
       index_source: meta.source || 'UNKNOWN' };
     // A cached fallback (OFFLINE_CACHE / STALE_CACHE) must never look like fresh navigation.
     base.stale = base.index_source === 'NETWORK' ? false : (base.index_source === 'OFFLINE_CACHE' || base.index_source === 'STALE_CACHE') ? true : null;
     if (base.stale === true) base.warning = 'STALE: this research navigation comes from a cached copy of the index (' + base.index_source + '), not a fresh network read; it may not reflect the current index. Say so when relying on it.';
-    // card = research CARD number (not a filesystem line number); `line` is accepted only as an alias of card.
-    const hasCard = args.card != null, hasLine = args.line != null;
-    if (args.query != null && typeof args.query !== 'string') return validation('query must be a string.');
-    const hasQuery = typeof args.query === 'string' && args.query.trim() !== '';   // a blank optional query is ABSENT ...
-    for (const [name, present] of [['card', hasCard], ['line', hasLine]]) if (present && !isPositiveInteger(args[name])) return validation(name + ' must be a positive integer research card number (a number, not a string).');
-    if (hasCard && hasLine && args.card !== args.line) return validation('Provide either card or line (alias), not conflicting values.');
-    const cardNumber = hasCard ? args.card : hasLine ? args.line : null;
-    if (cardNumber != null && hasQuery) return validation('Provide either card/line or query, not both.');
-    // ... but a blank query with no card is no routing request at all
-    if (args.query != null && !hasQuery && cardNumber == null) return validation('query must be a non-empty string; omit it for the overview, or give card.');
 
-    if (!looksLikeIndex(markdown)) {
-      const unavailable = markdown == null || markdown === '';
-      return failClosed(base, unavailable ? (meta.error ? 'FETCH_FAILED' : 'INDEX_UNAVAILABLE') : 'NOT_AN_EVIDENCE_INDEX',
-        [unavailable ? 'index text could not be obtained' : 'body lacks the RESEARCH_INDEX_ONLY marker or the "## C." section']);
+    const verdict = validateResearchIndex(markdown);
+    if (!verdict.ok) {
+      let status = verdict.parseStatus;
+      if (status === 'INDEX_UNAVAILABLE' && meta.error) status = 'FETCH_FAILED';
+      if (verdict.withholdHeader) delete base.header;   // the router's own header claim is withheld for a document that contradicts it
+      return failClosed(base, status, verdict.reasons, verdict.extra);
     }
-    const authority = parseAuthorityContract(markdown);
-    if (!authority.valid) {
-      delete base.header;   // the router's own header claim is withheld for a document that contradicts it
-      return failClosed(base, 'AUTHORITY_CONTRACT_INVALID', authority.problems.slice(0, MAX_ISSUES_REPORTED),
-        { authority_contract: { valid: false, required: Object.assign({}, AUTHORITY_REQUIRED), found: authority.found, problems: authority.problems.slice(0, MAX_ISSUES_REPORTED) } });
-    }
-    const cards = parseCards(markdown);
-    if (!cards.length) return failClosed(base, 'NO_CARDS_PARSED', ['header found but no "### N. title" cards were parsed under "## C."']);
-    const seen = new Map(); for (const c of cards) seen.set(c.number, (seen.get(c.number) || 0) + 1);
-    const duplicated = [...seen].filter(([, n]) => n > 1);
-    if (duplicated.length) {
-      return failClosed(base, 'DUPLICATE_CARD_NUMBER', duplicated.slice(0, MAX_ISSUES_REPORTED).map(([num, n]) => 'card number ' + num + ' appears ' + n + ' times'),
-        { duplicate_card_numbers: duplicated.slice(0, MAX_ISSUES_REPORTED).map(([num]) => num) });
-    }
-    const malformed = cards.map(c => ({ card_number: c.number, missing: REQUIRED_FIELDS.filter(k => !(c.fields[k] && c.fields[k].trim())) })).filter(m => m.missing.length);
-    if (malformed.length) {
-      return failClosed(base, 'MALFORMED_CARDS', malformed.slice(0, MAX_MALFORMED_REPORTED).map(m => 'card ' + m.card_number + ': missing ' + m.missing.join(', ')),
-        { malformed_total: malformed.length, malformed_cards: malformed.slice(0, MAX_MALFORMED_REPORTED), required_fields: REQUIRED_FIELDS.slice() });
-    }
-    const unsupported = cards.filter(c => c.issues.length).map(c => ({ card_number: c.number, issues: c.issues.slice(0, 3) }));
-    if (unsupported.length) {
-      return failClosed(base, 'UNSUPPORTED_CARD_CONTENT',
-        unsupported.slice(0, MAX_ISSUES_REPORTED).map(u => 'card ' + u.card_number + ': ' + u.issues.map(i => i.kind + (i.field ? ' ' + i.field : '')).join(', ')),
-        { unsupported_cards: unsupported.slice(0, MAX_ISSUES_REPORTED), unsupported_total: unsupported.length });
-    }
+    const authority = verdict.authority, cards = verdict.cards;
     Object.assign(base, { index_loaded: true, parse_status: 'OK', total_cards: cards.length, authority_contract: { valid: true, declared: authority.declared } });
 
     const numbers = list => ({ numbers: list.slice(0, MAX_NUMBERS), truncated: list.length > MAX_NUMBERS });
@@ -230,7 +258,7 @@
     let matches;
     if (cardNumber != null) matches = cards.filter(c => c.number === cardNumber);
     else {
-      const terms = args.query.trim().toLowerCase().split(/\s+/);
+      const terms = pre.query.trim().toLowerCase().split(/\s+/);
       matches = cards.filter(c => {
         const hay = (c.title + '\n' + SEARCH_KEYS.map(k => c.fields[k] || '').join('\n')).toLowerCase();
         return terms.every(t => hay.includes(t));
@@ -258,6 +286,8 @@
 
   // Loader may return a string or { text, source }; failures degrade to pointer-only, never throw.
   async function routeWithLoader(loader, args) {
+    const pre = preflightArgs(args);   // a request known to be invalid fails BEFORE the loader / network is touched
+    if (pre.error) return pre.error;
     let text = null, source = 'UNKNOWN', error = false;
     if (typeof loader === 'function') {
       try {
@@ -269,5 +299,5 @@
     return route(text, args, { source, error });
   }
 
-  return Object.freeze({ INDEX_PATH, HEADER, NOTICE, FIELD_KEYS, REQUIRED_FIELDS, AUTHORITY_REQUIRED, parseAuthorityContract, clipCodePoints, MAX_CARDS, OFFLINE_HEADER, OFFLINE_VALUE, STALE_VALUE, looksLikeIndex, parseCards, route, routeWithLoader });
+  return Object.freeze({ INDEX_PATH, HEADER, NOTICE, FIELD_KEYS, REQUIRED_FIELDS, ALLOWED_ARGS, AUTHORITY_REQUIRED, parseAuthorityContract, validateResearchIndex, preflightArgs, clipCodePoints, MAX_CARDS, OFFLINE_HEADER, OFFLINE_VALUE, STALE_VALUE, looksLikeIndex, parseCards, route, routeWithLoader });
 });

@@ -6,8 +6,14 @@ const RESEARCH_INDEX_PATH = BASE_PATH + '/docs/research/EXPERIMENT_EVIDENCE_INDE
 // Network budget for the research index. Must stay SHORTER than the page-side budget in index.html (wizResearchIndexLoader)
 // so a stalled connection reaches the cached fallback before the page gives up.
 const RESEARCH_FETCH_TIMEOUT_MS = 4000;
-// Minimal check before an index-like 200 may be cached (the strict parser in research-router.js remains the authority).
-const looksLikeResearchIndex = text => typeof text === 'string' && /RESEARCH_INDEX_ONLY/.test(text) && /^## C\. /m.test(text);
+// ONE definition of "a valid Research Index": the strict document contract of research-router.js (authority contract, unique
+// cards, required fields, no unsupported card content, ...). The SAME function gates what may enter the last-known-good cache
+// and what a cached fallback may serve; the router applies it again before serving any card. If the router script cannot be
+// loaded nothing is admitted and no cached copy is trusted (fail closed). research-router.js is precached, and as an imported
+// script it is part of the service-worker update check.
+try { importScripts(BASE_PATH + '/research-router.js'); } catch (_) { /* validator unavailable: fail closed below */ }
+const isValidResearchIndex = text => typeof ResearchRouter !== 'undefined' && typeof ResearchRouter.validateResearchIndex === 'function' &&
+  typeof text === 'string' && ResearchRouter.validateResearchIndex(text).ok === true;
 
 const STATIC_ASSETS = [
   BASE_PATH + '/',
@@ -98,22 +104,28 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Research Index — online-first (exact path only): a fresh, valid network copy always beats the cache.
-  //  - 200 that looks like the index -> served and cached (the write is held open with event.waitUntil)
-  //  - 200 that does NOT look like the index (captive portal / proxy / CDN error page) -> NEVER cached, never overwrites the
-  //    last known-good copy; a valid cached copy is served instead (flagged sw-stale-cache), else the body is passed through
-  //    (the page-side parser then fails closed)
-  //  - transport failure or timeout (RESEARCH_FETCH_TIMEOUT_MS) -> valid cached copy flagged sw-offline-cache, else 504
-  //  - 5xx -> valid cached copy flagged sw-stale-cache, else the 5xx response
+  // Research Index — online-first (exact path only): a fresh, STRICTLY valid network copy always beats the cache.
+  //  - 200 that passes the strict index validation -> served and cached (the write is held open with event.waitUntil)
+  //  - 200 that does NOT pass it (captive portal / proxy page / a malformed or parse-breaking edit) -> NEVER cached, never overwrites
+  //    the last known-good copy; a cached copy that itself passes the strict validation is served instead (flagged sw-stale-cache),
+  //    else the body is passed through so the router (same validator) fails closed with its precise parse_status
+  //  - transport failure or timeout (RESEARCH_FETCH_TIMEOUT_MS) -> a strictly valid cached copy flagged sw-offline-cache, else 504
+  //  - 5xx -> a strictly valid cached copy flagged sw-stale-cache, else the 5xx response
   //  - 404/410 (authoritative removal) and other 4xx -> passed through; the cached copy is evicted on 404/410
-  // The strict parser (research-router.js) stays the runtime authority. Not precached; not runtime authority.
+  // A cached copy is validated before it is served: a malformed old cache is never treated as known-good.
+  // Not precached; not runtime authority.
   if (url.pathname === RESEARCH_INDEX_PATH) {
     const flagged = (cached, value) => {
       const headers = new Headers(cached.headers);
       headers.set('X-Eiti-Served-From', value);
       return new Response(cached.body, { status: cached.status, statusText: cached.statusText, headers });
     };
-    const cachedIndex = value => caches.open(CACHE_NAME).then(cache => cache.match(request)).then(cached => (cached ? flagged(cached, value) : null));
+    const cachedIndex = async value => {
+      const cached = await caches.open(CACHE_NAME).then(cache => cache.match(request));
+      if (!cached) return null;
+      const text = await cached.clone().text();
+      return isValidResearchIndex(text) ? flagged(cached, value) : null;
+    };
     event.respondWith((async () => {
       let response, text = null;
       const controller = new AbortController();
@@ -126,7 +138,7 @@ self.addEventListener('fetch', event => {
       } finally { clearTimeout(timer); }
       if (response.status === 200) {
         const headers = new Headers({ 'Content-Type': response.headers.get('Content-Type') || 'text/markdown; charset=utf-8' });
-        if (looksLikeResearchIndex(text)) {
+        if (isValidResearchIndex(text)) {
           event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(request, new Response(text, { status: 200, headers }))).catch(() => {}));
           return new Response(text, { status: 200, headers });
         }

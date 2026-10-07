@@ -43,6 +43,19 @@
   <!-- working-memory-agent-read-bridge-v0.1 (B1): read-only wm_* tools + research router (pointer only) -->
   <script src="research-router.js"></script>
   <script src="wm-agent-read.js"></script>
+  <!-- B1-DEVICE-01: TEST-ONLY entry point. Inert unless the URL carries ?b1device=1, so the normal UI is unchanged.
+       `h` is the first 12 hex chars of the SHA-256 of the harness file: a new build is a new URL, so the service worker's
+       cache-first static rule can never serve a stale harness. (tests/working-memory/b1-device-harness.test.cjs keeps it in sync.) -->
+  <script>
+    (function () {
+      try {
+        if (new URLSearchParams(location.search).get('b1device') !== '1') return;
+        var s = document.createElement('script');
+        s.src = 'b1-device-harness.js?h=ee6a1d2db764';
+        document.head.appendChild(s);
+      } catch (_) {}
+    })();
+  </script>
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">

@@ -24,6 +24,10 @@
     'Fields are verbatim from the index; no verdict is derived. Navigation search over the current index only, not an exhaustive scientific search.';
   const FIELD_KEYS = Object.freeze(['EXPERIMENT_ID / NAME', 'QUESTION', 'STATUS', 'EXECUTION_VERDICT',
     'WHAT_IT_DOES_NOT_PROVE', 'OPEN_FINDING', 'PRIMARY_EVIDENCE', 'GITHUB_REF']);
+  // Minimal card contract: a recognised "### N. title" heading is a valid card only if these fields are present and
+  // non-empty. Any card that fails it makes the whole index fail closed (pointer-only), never a partial "OK".
+  const REQUIRED_FIELDS = Object.freeze(['STATUS', 'EXECUTION_VERDICT', 'PRIMARY_EVIDENCE']);
+  const MAX_MALFORMED_REPORTED = 10;
   const LIST_KEYS = Object.freeze(['STATUS', 'EXECUTION_VERDICT', 'OPEN_FINDING', 'PRIMARY_EVIDENCE']);
   const SEARCH_KEYS = Object.freeze(['EXPERIMENT_ID / NAME', 'QUESTION', 'STATUS', 'EXECUTION_VERDICT', 'OPEN_FINDING', 'PRIMARY_EVIDENCE']);
   const CARD_FIELD_CHARS = 400;   // per field in a card view
@@ -110,6 +114,12 @@
       return Object.assign(base, { index_loaded: false, parse_status: 'NO_CARDS_PARSED',
         note: 'Index header found but no research cards were parsed (layout may have changed); open ' + INDEX_PATH + ' directly. Nothing was inferred.' });
     }
+    const malformed = cards.map(c => ({ card_number: c.number, missing: REQUIRED_FIELDS.filter(k => !(c.fields[k] && c.fields[k].trim())) })).filter(m => m.missing.length);
+    if (malformed.length) {
+      return Object.assign(base, { index_loaded: false, parse_status: 'MALFORMED_CARDS', malformed_total: malformed.length,
+        malformed_cards: malformed.slice(0, MAX_MALFORMED_REPORTED), required_fields: REQUIRED_FIELDS.slice(),
+        note: 'One or more card headings lack the required non-empty fields (' + REQUIRED_FIELDS.join(', ') + '); the index is not trusted. Open ' + INDEX_PATH + ' directly. Nothing was inferred.' });
+    }
     Object.assign(base, { index_loaded: true, parse_status: 'OK', total_cards: cards.length });
 
     if (cardNumber == null && !hasQuery) {
@@ -143,5 +153,5 @@
     return route(text, args, { source, error });
   }
 
-  return Object.freeze({ INDEX_PATH, HEADER, NOTICE, FIELD_KEYS, OFFLINE_HEADER, OFFLINE_VALUE, looksLikeIndex, parseCards, route, routeWithLoader });
+  return Object.freeze({ INDEX_PATH, HEADER, NOTICE, FIELD_KEYS, REQUIRED_FIELDS, OFFLINE_HEADER, OFFLINE_VALUE, looksLikeIndex, parseCards, route, routeWithLoader });
 });

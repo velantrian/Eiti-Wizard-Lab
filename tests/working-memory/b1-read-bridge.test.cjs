@@ -356,6 +356,39 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     assert.strictEqual(thrown.index_loaded, false); assert.strictEqual(thrown.parse_status, 'FETCH_FAILED'); assert(!thrown.cards);
     const ok = await synBridge().execute('research_route', { query: 'zzz' }); assert.strictEqual(ok.index_loaded, true); assert.strictEqual(ok.parse_status, 'OK'); assert.strictEqual(ok.matched, 0);
   });
+  await T('router-malformed-card', 'malformed card heading fails the whole index closed (index_loaded=false, MALFORMED_CARDS, pointer-only); valid minimal card and real cards still parse', async () => {
+    const wrap = body => ['# Synthetic', '', 'STATUS: `RESEARCH_INDEX_ONLY`\\', '', '## C. Experiment line index', '', body, '## D. Map', ''].join('\n');
+    const good = ['### 1. SYN-GOOD', '', 'STATUS: Closed.\\', 'EXECUTION_VERDICT: Run complete.\\', 'PRIMARY_EVIDENCE: raw-good.', ''].join('\n');
+    const cases = {
+      'heading-only card': ['### 2. SYN-EMPTY', ''].join('\n'),
+      'heading + irrelevant text': ['### 2. SYN-PROSE', '', 'Some free prose that is not a field.', 'STATUSLESS: not a field either.', 'Another paragraph mentioning NOT_RUN and PASS.', ''].join('\n'),
+      'partially malformed (missing EXECUTION_VERDICT)': ['### 2. SYN-PARTIAL', '', 'STATUS: Closed.\\', 'PRIMARY_EVIDENCE: raw.', ''].join('\n'),
+      'empty field value': ['### 2. SYN-EMPTYVAL', '', 'STATUS:\\', 'EXECUTION_VERDICT: Run complete.\\', 'PRIMARY_EVIDENCE: raw.', ''].join('\n'),
+      'whitespace-only field value': ['### 2. SYN-WS', '', 'STATUS: Closed.\\', 'EXECUTION_VERDICT:    \\', 'PRIMARY_EVIDENCE: raw.', ''].join('\n'),
+      'only optional fields present': ['### 2. SYN-OPT', '', 'QUESTION: Q?\\', 'OPEN_FINDING: none.\\', 'EXPERIMENT_ID / NAME: SYN-OPT.', ''].join('\n'),
+    };
+    for (const [label, card] of Object.entries(cases)) {
+      for (const args of [{}, { card: 1 }, { card: 2 }, { query: 'closed' }]) {            // even a valid sibling card is not served from a malformed index
+        const r = await makeBridge(null, wrap(good + '\n' + card)).execute('research_route', args);
+        assert.strictEqual(r.index_loaded, false, label); assert.strictEqual(r.parse_status, 'MALFORMED_CARDS', label);
+        assert.strictEqual(r.entrypoint, Router.INDEX_PATH); assert(!r.cards && !('matched' in r) && !('total_cards' in r), label + ' leaked cards');
+        assert.strictEqual(r.malformed_cards[0].card_number, 2, label); assert(r.malformed_cards[0].missing.length >= 1);
+        assert.deepStrictEqual(r.required_fields, ['STATUS', 'EXECUTION_VERDICT', 'PRIMARY_EVIDENCE']); assert.strictEqual(r.promoted_to_working, false);
+        assert(!/PASS|FAIL/.test(JSON.stringify(r.malformed_cards)));
+      }
+    }
+    const heading = (await makeBridge(null, wrap(['### 1. SYN-ONLY', ''].join('\n'))).execute('research_route', {}));
+    assert.strictEqual(heading.index_loaded, false); assert.deepStrictEqual(heading.malformed_cards[0].missing, ['STATUS', 'EXECUTION_VERDICT', 'PRIMARY_EVIDENCE']);
+    assert.strictEqual((await makeBridge(null, wrap(good + '\n' + cases['partially malformed (missing EXECUTION_VERDICT)'])).execute('research_route', {})).malformed_cards[0].missing.join(), 'EXECUTION_VERDICT');
+    // valid minimal card: only the three required fields; everything else is null (absent), never invented
+    const min = await makeBridge(null, wrap(good)).execute('research_route', { card: 1 });
+    assert.strictEqual(min.index_loaded, true); assert.strictEqual(min.parse_status, 'OK'); assert.strictEqual(min.cards[0].STATUS, 'Closed.');
+    assert.strictEqual(min.cards[0].QUESTION, null); assert.strictEqual(min.cards[0].OPEN_FINDING, null); assert.strictEqual((await makeBridge(null, wrap(good)).execute('research_route', {})).total_cards, 1);
+    // existing real cards still satisfy the contract
+    const real = Router.parseCards(INDEX_MD); assert(real.length > 0);
+    for (const c of real) for (const k of Router.REQUIRED_FIELDS) assert((c.fields[k] || '').trim(), `real card ${c.number} lacks ${k}`);
+    assert.strictEqual((await ex('research_route', {})).parse_status, 'OK');
+  });
   await T('router-source-metadata', 'loader may report NETWORK / OFFLINE_CACHE source; reported as index_source', async () => {
     const b = Bridge.create({ store: null, router: Router, loadResearchIndex: async () => ({ text: SYN_INDEX, source: 'OFFLINE_CACHE' }) });
     assert.strictEqual((await b.execute('research_route', {})).index_source, 'OFFLINE_CACHE');
@@ -429,6 +462,8 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     for (const s of ['DEFAULT_RUNTIME_MODE        = WORKING', 'WORKING_MEMORY != RESEARCH_INDEX', 'RESEARCH_INDEX != RUNTIME_AUTHORITY', 'RESEARCH_RESULT != USER_DECISION', 'MEMORY_CONTINUITY != RESEARCH_EVIDENCE_INDEX', 'PR #28'])
       assert(d.includes(s), s);
     assert(INDEX_MD.includes('RESEARCH_INDEX_ONLY') && INDEX_MD.includes('CANON: `NO`'));
+    const b1 = fs.readFileSync(path.join(ROOT, 'docs/working-memory/WORKING_MEMORY_B1_AGENT_READ_BRIDGE.md'), 'utf8');
+    for (const s2 of ['FINAL_MODEL_MIXED_ANSWER_ENFORCEMENT = NOT_IMPLEMENTED', 'FRESH_MODEL_BEHAVIOR = NOT_RUN', 'MALFORMED_CARDS', '`STATUS`, `EXECUTION_VERDICT` and `PRIMARY_EVIDENCE`']) assert(b1.includes(s2), s2);
   });
 
   console.log(`\n${passed}/${passed + failed} tests passed.`);

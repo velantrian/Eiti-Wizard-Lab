@@ -49,6 +49,11 @@ try {
   page.on('pageerror', error => pageErrors.push(String(error.message || error)));
 
   // ── 1a. old client: baseline SW + cache, no bridge ──
+  // A genuine RETURNING client already has the app version stored; on a first visit index.html deletes every
+  // eiti-wizard-lab-* cache while the service worker is installing (version-bump cleanup), which would race this test.
+  const appVersion = tree => fs.readFileSync(path.join(tree, 'index.html'), 'utf8').match(/APP_VERSION\s*=\s*['"]([^'"]+)['"]/)[1];
+  assert.equal(appVersion(oldTree), appVersion(newTree), 'APP_VERSION changed: that path wipes caches and is a different scenario');
+  await page.evaluateOnNewDocument(v => { try { localStorage.setItem('wiz_lab_app_version', v); } catch (_) {} }, appVersion(oldTree));
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForFunction(() => window._wizDB && window.WmStore, { timeout: 30000 });
   await page.evaluate(() => navigator.serviceWorker.ready);

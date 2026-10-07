@@ -61,9 +61,10 @@ function forbiddenSnapshot(db) {
   return JSON.stringify([r.length ? r[0].values : [], rows]);
 }
 function makeBridge(store, md) { return Bridge.create({ store, router: Router, loadResearchIndex: async () => (md === undefined ? INDEX_MD : md) }); }
+const AUTH_HEADER = ['STATUS: `RESEARCH_INDEX_ONLY`\\', 'CANON: `NO`\\', 'RUNTIME_AUTHORITY: `NO`\\', 'PRIMARY_EVIDENCE: `NO`\\'];
 // Synthetic Evidence-Index fixture: parser semantics are tested here, not against the mutable live index.
 const SYN_INDEX = [
-  '# Synthetic Index', '', 'STATUS: `RESEARCH_INDEX_ONLY`\\', 'CANON: `NO`', '', '## A. Source authority', '', 'text', '', '## C. Experiment line index', '',
+  '# Synthetic Index', '', ...AUTH_HEADER, 'LAST_VERIFIED: `2026-10-06`', '', '## A. Source authority', '', 'text', '', '## C. Experiment line index', '',
   '### 1. SYN-ALPHA', '', 'EXPERIMENT_ID / NAME: SYN-ALPHA.\\', 'QUESTION: Does alpha hold?\\', 'STATUS: Closed; labels such as `NOT_PRESENT` are allowed.\\',
   'EXECUTION_VERDICT: Run complete; one output label was `NOT_PRESENT`.\\', 'OPEN_FINDING: none.\\', 'PRIMARY_EVIDENCE: raw-alpha.', '',
   '### 2. SYN-BETA', '', 'EXPERIMENT_ID / NAME: SYN-BETA.\\', 'QUESTION: Beta?\\', 'STATUS: Capture recorded complete; labels pending.\\',
@@ -103,7 +104,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     assert.strictEqual((await ex('constructor', {})).code, 'UNKNOWN_TOOL');
   });
   await T('projects', 'wm_list_projects returns registered projects', async () => {
-    const r = await ex('wm_list_projects'); assert.deepStrictEqual(r.projects.map(p => p.code), ['FIRN-B1', 'OTHER']);
+    const r = await ex('wm_list_projects'); assert.deepStrictEqual(r.items.map(p => p.code), ['FIRN-B1', 'OTHER']); assert.strictEqual(r.total, 2); assert.strictEqual(r.truncated, false);
   });
   await T('list', 'wm_list: status/type/thread filters, project by id or code, archived excluded by default, bounded', async () => {
     assert.deepStrictEqual((await ex('wm_list', { project: 'FIRN-B1', status: 'BLOCKED' })).items.map(i => i.work_id), [ids.blk]);
@@ -118,9 +119,9 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
   });
   await T('get', 'wm_get returns item + linked sources (locator preserved) + explicit relations only', async () => {
     const g = await ex('wm_get', { work_id: ids.prog });
-    assert.strictEqual(g.item.status, 'IN_PROGRESS'); assert.strictEqual(g.sources.length, 1);
-    assert.strictEqual(g.sources[0].locator, 'github://synthetic/firn#main'); assert.strictEqual(g.sources[0].is_primary, true);
-    assert.deepStrictEqual(g.relations.map(r => [r.from_work_id, r.relation_type, r.to_work_id]), [[ids.blk, 'BLOCKED_BY', ids.prog]]);
+    assert.strictEqual(g.item.status, 'IN_PROGRESS'); assert.strictEqual(g.sources.items.length, 1);
+    assert.strictEqual(g.sources.items[0].locator, 'github://synthetic/firn#main'); assert.strictEqual(g.sources.items[0].is_primary, true);
+    assert.deepStrictEqual(g.relations.items.map(r => [r.from_work_id, r.relation_type, r.to_work_id]), [[ids.blk, 'BLOCKED_BY', ids.prog]]);
     assert.strictEqual((await ex('wm_get', { work_id: 'FIRN-B1-9999' })).found, false);
   });
   await T('search', 'wm_search reuses deterministic precedence (id > exact title > title > tag > summary > body)', async () => {
@@ -132,12 +133,12 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     assert.deepStrictEqual(await ex('wm_search', { query: 'graphiti' }), await ex('wm_search', { query: 'graphiti' }));
   });
   await T('related', 'wm_related returns explicit relations only (no inferred edges)', async () => {
-    const r = await ex('wm_related', { work_id: ids.prog }); assert.strictEqual(r.inferred_edges, false); assert.strictEqual(r.relations.length, 1);
-    assert.strictEqual((await ex('wm_related', { work_id: ids.cur })).relations.length, 0);
+    const r = await ex('wm_related', { work_id: ids.prog }); assert.strictEqual(r.inferred_edges, false); assert.strictEqual(r.items.length, 1); assert.strictEqual(r.total, 1); assert.strictEqual(r.truncated, false);
+    assert.strictEqual((await ex('wm_related', { work_id: ids.cur })).items.length, 0);
   });
   await T('sources', 'wm_project_sources returns surface/role/locator and does not fetch', async () => {
     const r = await ex('wm_project_sources', { project: 'FIRN-B1' });
-    assert.strictEqual(r.fetched, false); assert.deepStrictEqual(r.sources.map(s => [s.surface, s.role, s.locator]).sort(),
+    assert.strictEqual(r.fetched, false); assert.deepStrictEqual(r.items.map(s => [s.surface, s.role, s.locator]).sort(),
       [['GITHUB', 'PRIMARY', 'github://synthetic/firn#main'], ['NOTION', 'NAVIGATION', 'notion://synthetic/firn']]);
     assert.strictEqual((await ex('wm_project_sources', {})).ok, false);
   });
@@ -183,8 +184,8 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     assert.deepStrictEqual(await b2.execute('wm_orientation', { project: 'FIRN-B1' }), await ex('wm_orientation', { project: 'FIRN-B1' }));
     const o = await b2.execute('wm_orientation', { project: 'FIRN-B1' });
     assert.deepStrictEqual([o.in_progress[0].title, o.blocked[0].title, o.unknown[0].title, o.next_actions[0].next_action], ['In-flight task', 'Blocked task', 'Unknown thing', 'Finish parser']);
-    assert.strictEqual((await b2.execute('wm_related', { work_id: ids.blk })).relations.length, 1);
-    assert.strictEqual((await b2.execute('wm_get', { work_id: ids.prog })).sources[0].locator, 'github://synthetic/firn#main');
+    assert.strictEqual((await b2.execute('wm_related', { work_id: ids.blk })).items.length, 1);
+    assert.strictEqual((await b2.execute('wm_get', { work_id: ids.prog })).sources.items[0].locator, 'github://synthetic/firn#main');
   });
 
   // ── Repair round 1: wrong-answer fixes ──
@@ -222,7 +223,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     assert.strictEqual(o.source_pointers.items[0].source_id, 'prim'); assert.strictEqual(o.source_pointers.items.length, 3);
     assert.deepStrictEqual(o.source_pointers.items.map(i => i.role), ['PRIMARY', 'NAVIGATION', 'NAVIGATION']);
     assert.strictEqual(o.source_pointers.total, 5); assert.strictEqual(o.source_pointers.truncated, true); assert(o.source_pointers.items.every(i => i.project_id === 'sp'));
-    const ps = await makeBridge(st).execute('wm_project_sources', { project: 'SP' }); assert.strictEqual(ps.sources[0].source_id, 'prim'); assert.strictEqual(ps.sources.length, 6);
+    const ps = await makeBridge(st).execute('wm_project_sources', { project: 'SP' }); assert.strictEqual(ps.items[0].source_id, 'prim'); assert.strictEqual(ps.items.length, 6); assert.strictEqual(ps.total, 6); assert.strictEqual(ps.truncated, false);
   });
   await T('source-pointer-truncation-flag', 'multi-project source pointers: explicit total/truncated and omitted project ids; no silent loss', async () => {
     const d = new SQL.Database(); const st = mkStore(d);
@@ -251,7 +252,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     assert(JSON.stringify(o).length < 9000, 'orientation size ' + JSON.stringify(o).length);
     const g = await b.execute('wm_get', { work_id: item.work_id });
     assert(g.item.body_md.length <= 4001); assert(g.item.truncated_fields.includes('body_md')); assert.strictEqual(g.item.body_md_total_chars, 10000);
-    assert.strictEqual(g.sources[0].locator, locator);
+    assert.strictEqual(g.sources.items[0].locator, locator);
     const short = must(await st.createItem({ project_id: 'bt', title: 'short', body_md: 'tiny', provenance_class: 'USER_NOTE' }));
     const gs = await b.execute('wm_get', { work_id: short.work_id }); assert.strictEqual(gs.item.body_md, 'tiny'); assert.deepStrictEqual(gs.item.truncated_fields, []);
     const afterShort = allWm(d); await b.execute('wm_orientation'); await b.execute('wm_get', { work_id: item.work_id });
@@ -348,7 +349,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
   await T('router-parse-fail-closed', 'non-index body / zero-card parse / fetch failure -> index_loaded=false with pointer only; valid index with no match stays loaded', async () => {
     const html = '<!doctype html><html><body>404 fallback</body></html>';
     for (const [md, status] of [[html, 'NOT_AN_EVIDENCE_INDEX'], ['# Some other doc\nSTATUS: whatever', 'NOT_AN_EVIDENCE_INDEX'], [null, 'INDEX_UNAVAILABLE'], ['', 'INDEX_UNAVAILABLE'],
-      ['STATUS: `RESEARCH_INDEX_ONLY`\n\n## C. Experiment line index\n\n(layout changed)\n', 'NO_CARDS_PARSED']]) {
+      [AUTH_HEADER.join('\n') + '\n\n## C. Experiment line index\n\n(layout changed)\n', 'NO_CARDS_PARSED']]) {
       const r = await makeBridge(null, md).execute('research_route', { query: 'NOT_RUN' });
       assert.strictEqual(r.index_loaded, false, String(md)); assert.strictEqual(r.parse_status, status); assert.strictEqual(r.entrypoint, Router.INDEX_PATH); assert(!r.cards && !('matched' in r));
     }
@@ -357,7 +358,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     const ok = await synBridge().execute('research_route', { query: 'zzz' }); assert.strictEqual(ok.index_loaded, true); assert.strictEqual(ok.parse_status, 'OK'); assert.strictEqual(ok.matched, 0);
   });
   await T('router-malformed-card', 'malformed card heading fails the whole index closed (index_loaded=false, MALFORMED_CARDS, pointer-only); valid minimal card and real cards still parse', async () => {
-    const wrap = body => ['# Synthetic', '', 'STATUS: `RESEARCH_INDEX_ONLY`\\', '', '## C. Experiment line index', '', body, '## D. Map', ''].join('\n');
+    const wrap = body => ['# Synthetic', '', ...AUTH_HEADER, '', '## C. Experiment line index', '', body, '## D. Map', ''].join('\n');
     const good = ['### 1. SYN-GOOD', '', 'STATUS: Closed.\\', 'EXECUTION_VERDICT: Run complete.\\', 'PRIMARY_EVIDENCE: raw-good.', ''].join('\n');
     const cases = {
       'heading-only card': ['### 2. SYN-EMPTY', ''].join('\n'),
@@ -389,6 +390,124 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     for (const c of real) for (const k of Router.REQUIRED_FIELDS) assert((c.fields[k] || '').trim(), `real card ${c.number} lacks ${k}`);
     assert.strictEqual((await ex('research_route', {})).parse_status, 'OK');
   });
+  // ── Repair round 3: authority contract (validated from the SOURCE text, before any card is parsed) ──
+  const withHeader = (header, cards) => ['# Synthetic', '', ...header, '', '## C. Experiment line index', '', cards === undefined ? SYN_CARD : cards, '## D. Map', ''].join('\n');
+  const SYN_CARD = ['### 1. SYN-AUTH', '', 'STATUS: Closed.\\', 'EXECUTION_VERDICT: Run complete.\\', 'PRIMARY_EVIDENCE: raw-auth.', ''].join('\n');
+  const swap = (key, value) => AUTH_HEADER.map(l => l.startsWith(key + ':') ? `${key}: \`${value}\`\\` : l);
+  const drop = key => AUTH_HEADER.filter(l => !l.startsWith(key + ':'));
+  const assertAuthFail = async (md, label, expectProblem) => {
+    for (const args of [{}, { card: 1 }, { query: 'closed' }]) {
+      const r = await makeBridge(null, md).execute('research_route', args);
+      assert.strictEqual(r.index_loaded, false, label); assert.strictEqual(r.parse_status, 'AUTHORITY_CONTRACT_INVALID', label);
+      assert(!r.cards && !('matched' in r) && !('total_cards' in r), label + ' leaked cards'); assert.strictEqual(r.entrypoint, Router.INDEX_PATH);
+      assert(!('header' in r), label + ': the NO-contract header must not be asserted over a contradicting document');
+      assert.strictEqual(r.authority_contract.valid, false); assert.deepStrictEqual(r.authority_contract.required, { STATUS: 'RESEARCH_INDEX_ONLY', CANON: 'NO', RUNTIME_AUTHORITY: 'NO', PRIMARY_EVIDENCE: 'NO' });
+      assert(r.authority_contract.problems.length >= 1 && (!expectProblem || r.authority_contract.problems.some(x => expectProblem.test(x))), label + ' ' + JSON.stringify(r.authority_contract.problems));
+      assert.strictEqual(r.promoted_to_working, false);
+    }
+  };
+  await T('authority-valid', 'A: exact authority contract parsed from the source text -> loaded; declared values come from the document', async () => {
+    const r = await makeBridge(null, withHeader(AUTH_HEADER)).execute('research_route', { card: 1 });
+    assert.strictEqual(r.index_loaded, true); assert.strictEqual(r.parse_status, 'OK'); assert.strictEqual(r.header, Router.HEADER);
+    assert.deepStrictEqual(r.authority_contract, { valid: true, declared: { STATUS: 'RESEARCH_INDEX_ONLY', CANON: 'NO', RUNTIME_AUTHORITY: 'NO', PRIMARY_EVIDENCE: 'NO' } });
+    // alternative accepted spelling: KEY=VALUE without backticks; identical duplicates are not contradictions
+    const alt = ['STATUS=RESEARCH_INDEX_ONLY', 'CANON=NO', 'RUNTIME_AUTHORITY=NO', 'PRIMARY_EVIDENCE=NO', 'CANON: `NO`'];
+    assert.strictEqual((await makeBridge(null, withHeader(alt)).execute('research_route', {})).index_loaded, true);
+    // flags are read from the header block only: a card's own "PRIMARY_EVIDENCE: YES" field is not an authority flag
+    const yesCard = ['### 1. SYN-YESFIELD', '', 'STATUS: Closed.\\', 'EXECUTION_VERDICT: Run complete.\\', 'PRIMARY_EVIDENCE: YES', ''].join('\n');
+    const y = await makeBridge(null, withHeader(AUTH_HEADER, yesCard)).execute('research_route', { card: 1 });
+    assert.strictEqual(y.index_loaded, true); assert.strictEqual(y.cards[0].PRIMARY_EVIDENCE, 'YES');
+  });
+  for (const key of ['CANON', 'RUNTIME_AUTHORITY', 'PRIMARY_EVIDENCE'])
+    await T('authority-' + key.toLowerCase() + '-yes', `${key}=YES fails closed (not normalised to NO, no cards served)`, async () => {
+      await assertAuthFail(withHeader(swap(key, 'YES')), key + '=YES', new RegExp(key + ': declared YES, required NO'));
+      await assertAuthFail(withHeader(AUTH_HEADER.map(l => l.startsWith(key + ':') ? `${key}=YES` : l)), key + '=YES (= form)', new RegExp(key + ': declared YES'));
+    });
+  await T('authority-missing-flags', 'E: each missing required authority flag fails closed (nothing inferred)', async () => {
+    for (const key of ['STATUS', 'CANON', 'RUNTIME_AUTHORITY', 'PRIMARY_EVIDENCE']) {
+      // keep the RESEARCH_INDEX_ONLY marker in prose so the failure is attributed to the contract, not to "not an index"
+      await assertAuthFail(withHeader([...drop(key), 'PURPOSE: a RESEARCH_INDEX_ONLY navigation layer.']), 'missing ' + key, new RegExp(key + ': missing'));
+    }
+    await assertAuthFail(withHeader(['PURPOSE: a RESEARCH_INDEX_ONLY navigation layer.']), 'all missing', /missing/);
+    // flags that appear only after the first "## " heading do not satisfy the contract
+    const late = ['# Synthetic', '', 'PURPOSE: a RESEARCH_INDEX_ONLY layer.', '', '## A. Authority', '', ...AUTH_HEADER, '', '## C. Experiment line index', '', SYN_CARD, '## D. Map', ''].join('\n');
+    await assertAuthFail(late, 'flags below the header block', /missing/);
+  });
+  await T('authority-conflicting', 'F: duplicate contradictory / ambiguous / non-exact declarations fail closed', async () => {
+    await assertAuthFail(withHeader([...AUTH_HEADER, 'CANON: `YES`\\']), 'CANON NO then YES', /CANON: conflicting declarations/);
+    await assertAuthFail(withHeader(['CANON: `YES`\\', ...AUTH_HEADER]), 'CANON YES then NO', /CANON: conflicting declarations/);
+    await assertAuthFail(withHeader([...AUTH_HEADER, 'RUNTIME_AUTHORITY=YES']), 'RUNTIME_AUTHORITY NO then =YES', /RUNTIME_AUTHORITY: conflicting/);
+    await assertAuthFail(withHeader([...AUTH_HEADER, 'STATUS: `SOMETHING_ELSE`\\']), 'STATUS conflict', /STATUS: conflicting/);
+    await assertAuthFail(withHeader([...AUTH_HEADER, 'NOTE: this index is CANON=YES for now']), 'inline contradiction hidden in prose', /CANON: conflicting/);
+    await assertAuthFail(withHeader(swap('CANON', 'no')), 'lowercase value is not normalised', /CANON: declared no/);
+    await assertAuthFail(withHeader(AUTH_HEADER.map(l => l.startsWith('CANON:') ? 'CANON: `NO` (mostly)' : l)), 'ambiguous value', /CANON: ambiguous/);
+    await assertAuthFail(withHeader(AUTH_HEADER.map(l => l.startsWith('PRIMARY_EVIDENCE:') ? 'PRIMARY_EVIDENCE: `NO` or `YES`\\' : l)), 'ambiguous value 2', /PRIMARY_EVIDENCE: ambiguous/);
+  });
+  await T('authority-then-malformed-card', 'G: valid authority contract + malformed card still fails closed', async () => {
+    for (const bad of ['### 1. SYN-EMPTY\n', '### 1. SYN-PARTIAL\n\nSTATUS: Closed.\\\n']) {
+      const r = await makeBridge(null, withHeader(AUTH_HEADER, bad)).execute('research_route', {});
+      assert.strictEqual(r.index_loaded, false); assert.strictEqual(r.parse_status, 'MALFORMED_CARDS'); assert(!r.cards);
+    }
+    // authority is checked BEFORE cards: an invalid contract wins over everything else
+    const both = await makeBridge(null, withHeader(swap('CANON', 'YES'), '### 1. SYN-EMPTY\n')).execute('research_route', {});
+    assert.strictEqual(both.parse_status, 'AUTHORITY_CONTRACT_INVALID');
+  });
+  await T('authority-real-index', 'H: committed real index passes the authority contract; tampered copies of it fail closed', async () => {
+    const a = Router.parseAuthorityContract(INDEX_MD); assert.strictEqual(a.valid, true, JSON.stringify(a.problems));
+    assert.deepStrictEqual(a.declared, { STATUS: 'RESEARCH_INDEX_ONLY', CANON: 'NO', RUNTIME_AUTHORITY: 'NO', PRIMARY_EVIDENCE: 'NO' });
+    const r = await ex('research_route', {}); assert.strictEqual(r.index_loaded, true); assert.strictEqual(r.parse_status, 'OK'); assert.strictEqual(r.authority_contract.valid, true);
+    for (const key of ['CANON', 'RUNTIME_AUTHORITY', 'PRIMARY_EVIDENCE']) {
+      const tampered = INDEX_MD.replace(new RegExp('^' + key + ': `NO`', 'm'), key + ': `YES`'); assert.notStrictEqual(tampered, INDEX_MD);
+      await assertAuthFail(tampered, 'real index with ' + key + '=YES', new RegExp(key + ': declared YES'));
+    }
+    await assertAuthFail(INDEX_MD.replace(/^CANON: `NO`\\?\n/m, ''), 'real index without CANON', /CANON: missing/);
+  });
+
+  // ── Repair round 3: bounded collection outputs + source role order ──
+  await T('bounded-collections', 'wm_list_projects / wm_project_sources / wm_get sources+relations / wm_related are bounded with items,total,truncated (nothing dropped silently; DB untouched)', async () => {
+    const d = new SQL.Database(); const st = mkStore(d); const b = makeBridge(st);
+    for (let i = 0; i < 60; i++) must(await st.createProject({ project_id: 'bp' + i, code: 'BP' + String(i).padStart(2, '0'), name: 'P' + i }));
+    const hubProject = 'bp0';
+    for (let i = 0; i < 60; i++) must(await st.createSource({ source_id: 'bs' + String(i).padStart(2, '0'), project_id: hubProject, surface: 'LOCAL', role: 'NAVIGATION', title: 'A nav ' + String(i).padStart(2, '0'), locator: 'local://bs/' + i }));
+    must(await st.createSource({ source_id: 'bprim', project_id: hubProject, surface: 'GITHUB', role: 'PRIMARY', title: 'Z primary', locator: 'github://synthetic/prim' }));
+    const hub = must(await st.createItem({ project_id: hubProject, title: 'hub', provenance_class: 'USER_NOTE' }));
+    for (let i = 0; i < 25; i++) must(await st.addItemSource({ work_id: hub.work_id, source_id: 'bs' + String(i).padStart(2, '0'), is_primary: 0 }));
+    must(await st.addItemSource({ work_id: hub.work_id, source_id: 'bprim', is_primary: 0 }));
+    for (let i = 0; i < 60; i++) { const o = must(await st.createItem({ project_id: hubProject, title: 'other ' + i, provenance_class: 'USER_NOTE' }));
+      must(await st.addRelation(i % 2 ? { from_work_id: o.work_id, to_work_id: hub.work_id, relation_type: 'RELATED_TO' } : { from_work_id: hub.work_id, to_work_id: o.work_id, relation_type: 'DEPENDS_ON' })); }
+    const before = allWm(d);
+    const shape = (r, total, len, trunc, label) => { assert.strictEqual(r.items.length, len, label + ' items'); assert.strictEqual(r.total, total, label + ' total'); assert.strictEqual(r.truncated, trunc, label + ' truncated'); };
+    shape(await b.execute('wm_list_projects'), 60, 20, true, 'projects default');
+    shape(await b.execute('wm_list_projects', { limit: 5 }), 60, 5, true, 'projects limit 5');
+    shape(await b.execute('wm_list_projects', { limit: 1000 }), 60, 50, true, 'projects capped at 50');
+    shape(await b.execute('wm_project_sources', { project: 'bp0' }), 61, 20, true, 'project_sources default');
+    shape(await b.execute('wm_project_sources', { project: 'bp0', limit: 50 }), 61, 50, true, 'project_sources max');
+    const g = await b.execute('wm_get', { work_id: hub.work_id });
+    shape(g.sources, 26, 10, true, 'get sources default'); shape(g.relations, 60, 20, true, 'get relations default');
+    const g2 = await b.execute('wm_get', { work_id: hub.work_id, sources_limit: 50, relations_limit: 50 });
+    shape(g2.sources, 26, 26, false, 'get sources raised'); shape(g2.relations, 60, 50, true, 'get relations raised');
+    const rel = await b.execute('wm_related', { work_id: hub.work_id }); shape(rel, 60, 20, true, 'related default'); assert.strictEqual(rel.inferred_edges, false);
+    shape(await b.execute('wm_related', { work_id: hub.work_id, limit: 3 }), 60, 3, true, 'related limit 3');
+    assert.strictEqual(allWm(d), before, 'read tools mutated wm_*'); assert.strictEqual(d.exec('SELECT count(*) FROM wm_relations')[0].values[0][0], 60);
+    // small collections are complete and not flagged
+    const small = await makeBridge(store).execute('wm_list_projects'); assert.strictEqual(small.truncated, false); assert.strictEqual(small.total, small.items.length);
+  });
+  await T('wm-get-source-role-order', 'wm_get orders sources by ROLE (PRIMARY before NAVIGATION), not by item-link is_primary; is_primary is preserved as link metadata', async () => {
+    const d = new SQL.Database(); const st = mkStore(d); must(await st.createProject({ project_id: 'ro', code: 'RO', name: 'RO' }));
+    must(await st.createSource({ source_id: 'nav', project_id: 'ro', surface: 'NOTION', role: 'NAVIGATION', title: 'A nav', locator: 'notion://nav' }));
+    must(await st.createSource({ source_id: 'prim', project_id: 'ro', surface: 'GITHUB', role: 'PRIMARY', title: 'Z primary', locator: 'github://prim' }));
+    must(await st.createSource({ source_id: 'ctx', project_id: 'ro', surface: 'WEB', role: 'CONTEXT', title: '0 context', locator: 'https://example.org/ctx' }));
+    const it = must(await st.createItem({ project_id: 'ro', title: 'item', provenance_class: 'USER_NOTE' }));
+    must(await st.addItemSource({ work_id: it.work_id, source_id: 'nav', is_primary: 1 }));
+    must(await st.addItemSource({ work_id: it.work_id, source_id: 'prim', is_primary: 0 }));
+    must(await st.addItemSource({ work_id: it.work_id, source_id: 'ctx', is_primary: 0 }));
+    assert.deepStrictEqual(st.listItemSources(it.work_id).map(x => x.source_id)[0], 'nav', 'precondition: link-primary ordering puts NAVIGATION first');
+    const g = await makeBridge(st).execute('wm_get', { work_id: it.work_id });
+    assert.deepStrictEqual(g.sources.items.map(x => x.source_id), ['prim', 'nav', 'ctx']);
+    assert.deepStrictEqual(g.sources.items.map(x => [x.role, x.is_primary]), [['PRIMARY', false], ['NAVIGATION', true], ['CONTEXT', false]]);
+    assert.deepStrictEqual((await makeBridge(st).execute('wm_project_sources', { project: 'RO' })).items.map(x => x.source_id), ['prim', 'nav', 'ctx']);
+  });
+
   await T('router-source-metadata', 'loader may report NETWORK / OFFLINE_CACHE source; reported as index_source', async () => {
     const b = Bridge.create({ store: null, router: Router, loadResearchIndex: async () => ({ text: SYN_INDEX, source: 'OFFLINE_CACHE' }) });
     assert.strictEqual((await b.execute('research_route', {})).index_source, 'OFFLINE_CACHE');

@@ -43,6 +43,39 @@
     return text.length > max ? { text: text.slice(0, max) + '…', truncated: true } : { text, truncated: false };
   }
 
+  // Top-level authority contract, parsed from the SOURCE text (never inferred, never normalised):
+  // only the header block (everything before the first "## " heading) is read, one flag per line:
+  //   STATUS: `RESEARCH_INDEX_ONLY`   CANON: `NO`   RUNTIME_AUTHORITY: `NO`   PRIMARY_EVIDENCE: `NO`   ("KEY=VALUE" also accepted)
+  // Card bodies are NOT scanned (a card's own "PRIMARY_EVIDENCE:" field is not an authority flag).
+  const AUTHORITY_REQUIRED = Object.freeze({ STATUS: 'RESEARCH_INDEX_ONLY', CANON: 'NO', RUNTIME_AUTHORITY: 'NO', PRIMARY_EVIDENCE: 'NO' });
+  const AUTHORITY_KEYS = Object.freeze(Object.keys(AUTHORITY_REQUIRED));
+
+  function parseAuthorityContract(markdown) {
+    const found = {}; for (const k of AUTHORITY_KEYS) found[k] = [];
+    const problems = [];
+    for (const line of String(markdown || '').split(/\r?\n/)) {
+      if (/^## /.test(line)) break;
+      let declaredHere = false;
+      for (const key of AUTHORITY_KEYS) {
+        if (!new RegExp('^' + key + '\\s*[:=]').test(line)) continue;
+        declaredHere = true;
+        const m = new RegExp('^' + key + '\\s*[:=]\\s*`?([A-Za-z0-9_]+)`?\\s*\\\\?\\s*$').exec(line);
+        if (m) found[key].push(m[1]); else { found[key].push('<ambiguous>'); problems.push(key + ': ambiguous declaration "' + line.trim().slice(0, 80) + '"'); }
+      }
+      if (!declaredHere) {   // inline KEY=VALUE declarations elsewhere in the header block count too (so a contradiction cannot hide in prose)
+        for (const m of line.matchAll(/\b(STATUS|CANON|RUNTIME_AUTHORITY|PRIMARY_EVIDENCE)=`?([A-Za-z0-9_]+)`?/g)) found[m[1]].push(m[2]);
+      }
+    }
+    for (const key of AUTHORITY_KEYS) {
+      const values = found[key], distinct = [...new Set(values)];
+      if (!values.length) problems.push(key + ': missing');
+      else if (distinct.length > 1) problems.push(key + ': conflicting declarations (' + distinct.join(' vs ') + ')');
+      else if (distinct[0] !== AUTHORITY_REQUIRED[key] && distinct[0] !== '<ambiguous>') problems.push(key + ': declared ' + distinct[0] + ', required ' + AUTHORITY_REQUIRED[key]);
+    }
+    const declared = {}; for (const key of AUTHORITY_KEYS) declared[key] = [...new Set(found[key])].length === 1 ? found[key][0] : null;
+    return { valid: problems.length === 0, problems, found, declared };
+  }
+
   // A fetched body is only treated as the Evidence Index if it carries the index header and section C.
   function looksLikeIndex(markdown) {
     return typeof markdown === 'string' && /RESEARCH_INDEX_ONLY/.test(markdown) && /^## C\. /m.test(markdown);
@@ -109,6 +142,13 @@
       return Object.assign(base, { index_loaded: false, parse_status: markdown == null || markdown === '' ? (meta.error ? 'FETCH_FAILED' : 'INDEX_UNAVAILABLE') : 'NOT_AN_EVIDENCE_INDEX',
         note: 'Index could not be read as the Evidence Index; open ' + INDEX_PATH + ' directly. Nothing was inferred.' });
     }
+    const authority = parseAuthorityContract(markdown);
+    if (!authority.valid) {
+      delete base.header;   // the router's own header claim is withheld for a document that contradicts it
+      return Object.assign(base, { index_loaded: false, parse_status: 'AUTHORITY_CONTRACT_INVALID',
+        authority_contract: { valid: false, required: Object.assign({}, AUTHORITY_REQUIRED), found: authority.found, problems: authority.problems.slice(0, 10) },
+        note: 'The document does not carry the required top-level authority contract (' + AUTHORITY_KEYS.map(k => k + '=' + AUTHORITY_REQUIRED[k]).join(', ') + '); nothing was served or normalised. Open ' + INDEX_PATH + ' directly.' });
+    }
     const cards = parseCards(markdown);
     if (!cards.length) {
       return Object.assign(base, { index_loaded: false, parse_status: 'NO_CARDS_PARSED',
@@ -120,7 +160,7 @@
         malformed_cards: malformed.slice(0, MAX_MALFORMED_REPORTED), required_fields: REQUIRED_FIELDS.slice(),
         note: 'One or more card headings lack the required non-empty fields (' + REQUIRED_FIELDS.join(', ') + '); the index is not trusted. Open ' + INDEX_PATH + ' directly. Nothing was inferred.' });
     }
-    Object.assign(base, { index_loaded: true, parse_status: 'OK', total_cards: cards.length });
+    Object.assign(base, { index_loaded: true, parse_status: 'OK', total_cards: cards.length, authority_contract: { valid: true, declared: authority.declared } });
 
     if (cardNumber == null && !hasQuery) {
       return Object.assign(base, { cards: cards.slice(0, MAX_LIST).map(listEntry), truncated: cards.length > MAX_LIST,
@@ -153,5 +193,5 @@
     return route(text, args, { source, error });
   }
 
-  return Object.freeze({ INDEX_PATH, HEADER, NOTICE, FIELD_KEYS, REQUIRED_FIELDS, OFFLINE_HEADER, OFFLINE_VALUE, looksLikeIndex, parseCards, route, routeWithLoader });
+  return Object.freeze({ INDEX_PATH, HEADER, NOTICE, FIELD_KEYS, REQUIRED_FIELDS, AUTHORITY_REQUIRED, parseAuthorityContract, OFFLINE_HEADER, OFFLINE_VALUE, looksLikeIndex, parseCards, route, routeWithLoader });
 });

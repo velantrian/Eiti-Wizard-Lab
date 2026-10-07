@@ -15,20 +15,20 @@
   const RESEARCH_ENTRYPOINT = 'docs/research/EXPERIMENT_EVIDENCE_INDEX.md';
   const UNRESOLVED = Object.freeze(['OPEN', 'IN_PROGRESS', 'BLOCKED', 'UNKNOWN']);
   const PRIORITY_ORDER = Object.freeze({ P0: 0, P1: 1, P2: 2, P3: 3, TAIL: 4 });
-  const BUCKET_LIMIT = 5, BUCKET_MAX = 10, LIST_DEFAULT = 20, LIST_MAX = 50;
+  const BUCKET_LIMIT = 5, BUCKET_MAX = 10, LIST_DEFAULT = 20, LIST_MAX = 50, SUB_DEFAULT = 10;
   const WORKING_NOTICE = 'WORKING plane (Wm wm_*, NON_CANON). Operational state only; not research evidence, not Canon. ' +
     'MODEL_PROPOSAL/MODEL_SUMMARY items are not user decisions.';
 
   const TOOLS_SPEC = Object.freeze([
     { name: 'wm_orientation', description: 'WORKING MEMORY (read-only): bounded startup/resume view — current, in_progress, open, blocked, unknown, next actions, recent completed, source pointers. Call first in a fresh session. Does not load research.',
       parameters: { type: 'object', properties: { project: { type: 'string', description: 'project_id or code (optional)' }, limit: { type: 'number', description: 'items per bucket (default 5, max 10)' } } } },
-    { name: 'wm_list_projects', description: 'WORKING MEMORY (read-only): list registered Working Memory projects.', parameters: { type: 'object', properties: {} } },
+    { name: 'wm_list_projects', description: 'WORKING MEMORY (read-only): list registered Working Memory projects (bounded: items/total/truncated).', parameters: { type: 'object', properties: { limit: { type: 'number', description: 'default 20, max 50' } } } },
     { name: 'wm_list', description: 'WORKING MEMORY (read-only): list work items. Filters: project, status, type, priority, thread, includeArchived, limit. Archived excluded by default.',
       parameters: { type: 'object', properties: { project: { type: 'string' }, status: { type: 'string' }, type: { type: 'string' }, priority: { type: 'string' }, thread: { type: 'string' }, includeArchived: { type: 'boolean' }, limit: { type: 'number' } } } },
-    { name: 'wm_get', description: 'WORKING MEMORY (read-only): one work item by work_id with linked sources and explicit relations only.', parameters: { type: 'object', properties: { work_id: { type: 'string' } }, required: ['work_id'] } },
+    { name: 'wm_get', description: 'WORKING MEMORY (read-only): one work item by work_id with linked sources (PRIMARY role first) and explicit relations only; sources/relations are bounded as {items,total,truncated}.', parameters: { type: 'object', properties: { work_id: { type: 'string' }, sources_limit: { type: 'number' }, relations_limit: { type: 'number' } }, required: ['work_id'] } },
     { name: 'wm_search', description: 'WORKING MEMORY (read-only): deterministic search (exact WORK_ID > exact title > title contains > tag > summary > body). No embeddings.', parameters: { type: 'object', properties: { query: { type: 'string' }, project: { type: 'string' }, includeArchived: { type: 'boolean' }, limit: { type: 'number' } }, required: ['query'] } },
-    { name: 'wm_related', description: 'WORKING MEMORY (read-only): explicit wm_relations of a work item only; no inferred edges.', parameters: { type: 'object', properties: { work_id: { type: 'string' } }, required: ['work_id'] } },
-    { name: 'wm_project_sources', description: 'WORKING MEMORY (read-only): where to look for a project\'s detailed source (surface, role, locator). Does not fetch the source.', parameters: { type: 'object', properties: { project: { type: 'string' } }, required: ['project'] } },
+    { name: 'wm_related', description: 'WORKING MEMORY (read-only): explicit wm_relations of a work item only; no inferred edges (bounded: items/total/truncated).', parameters: { type: 'object', properties: { work_id: { type: 'string' }, limit: { type: 'number' } }, required: ['work_id'] } },
+    { name: 'wm_project_sources', description: 'WORKING MEMORY (read-only): where to look for a project\'s detailed source (surface, role, locator; PRIMARY role first; bounded: items/total/truncated). Does not fetch the source.', parameters: { type: 'object', properties: { project: { type: 'string' }, limit: { type: 'number' } }, required: ['project'] } },
     { name: 'research_route', description: 'RESEARCH PLANE pointer (read-only; independent of Working Memory): route into docs/research/EXPERIMENT_EVIDENCE_INDEX.md. No args = overview; card = research CARD number (not a file line); query = case-insensitive substring terms over title/name/question/status/verdict/open finding/primary evidence (e.g. NOT_RUN, BLOCKED, TCE). Give card OR query, not both. Returns verbatim index fields as pointers; no verdict is derived. Research is NOT working state and never a user decision.', parameters: { type: 'object', properties: { query: { type: 'string' }, card: { type: 'number', description: 'research card number' } } } },
   ].map(t => Object.freeze(t)));
   const TOOL_NAMES = Object.freeze(TOOLS_SPEC.map(t => t.name));
@@ -108,6 +108,12 @@
     const text = boundFields(s, [['title', CAPS.title], ['note', CAPS.note]], truncated_fields);
     return { source_id: s.source_id, project_id: s.project_id, surface: s.surface, role: s.role, title: text.title, locator: s.locator, revision: s.revision, note: text.note, truncated_fields };
   }
+  // Bounded collection envelope: never drops records silently (total + truncated are explicit).
+  function bounded(all, limit, view) {
+    return { items: all.slice(0, limit).map(view), total: all.length, truncated: all.length > limit };
+  }
+  const relationView = r => ({ relation_id: r.relation_id, from_work_id: r.from_work_id, to_work_id: r.to_work_id, relation_type: r.relation_type });
+
   const REQUIRED_STORE_METHODS = Object.freeze(['listItems', 'listProjects', 'listSources', 'listItemSources', 'listRelations', 'getItem', 'searchItems']);
   function unavailable(reason) {
     const e = new Error(reason); e.code = 'WORKING_MEMORY_UNAVAILABLE'; return e;
@@ -205,6 +211,7 @@
       return { plane: 'WORKING', notice: WORKING_NOTICE, items: all.slice(0, limit).map(compact), total: all.length, truncated: all.length > limit, archived_included: filters.includeArchived };
     }
     function get(args) {
+      args = args || {};
       requireStore();
       const item = store.getItem(args && args.work_id);
       if (!item) return { plane: 'WORKING', found: false, work_id: args && args.work_id };
@@ -213,9 +220,11 @@
       view.body_md = body.text; view.tags_json = tags.text;
       if (body.truncated) { view.truncated_fields.push('body_md'); view.body_md_total_chars = item.body_md.length; }
       if (tags.truncated) view.truncated_fields.push('tags_json');
+      // Source ROLE precedence (PRIMARY before NAVIGATION), not item-link is_primary ordering; is_primary stays as link metadata.
+      const sources = store.listItemSources(item.work_id).sort(bySourcePrecedence);
       return { plane: 'WORKING', notice: WORKING_NOTICE, found: true, item: view,
-        sources: store.listItemSources(item.work_id).map(src => Object.assign(sourcePointer(src), { is_primary: !!src.is_primary })),
-        relations: store.listRelations(item.work_id).map(r => ({ relation_id: r.relation_id, from_work_id: r.from_work_id, to_work_id: r.to_work_id, relation_type: r.relation_type })) };
+        sources: bounded(sources, cap(args.sources_limit, SUB_DEFAULT, LIST_MAX), src => Object.assign(sourcePointer(src), { is_primary: !!src.is_primary })),
+        relations: bounded(store.listRelations(item.work_id), cap(args.relations_limit, LIST_DEFAULT, LIST_MAX), relationView) };
     }
     function search(args) {
       args = args || {};
@@ -228,18 +237,19 @@
         items: hits.slice(0, limit).map(compact), returned: Math.min(hits.length, limit), truncated: hits.length > limit };
     }
     function related(args) {
+      args = args || {};
       requireStore();
-      const item = store.getItem(args && args.work_id);
-      if (!item) return { plane: 'WORKING', found: false, work_id: args && args.work_id };
-      return { plane: 'WORKING', found: true, work_id: item.work_id, inferred_edges: false,
-        relations: store.listRelations(item.work_id).map(r => ({ relation_id: r.relation_id, from_work_id: r.from_work_id, to_work_id: r.to_work_id, relation_type: r.relation_type })) };
+      const item = store.getItem(args.work_id);
+      if (!item) return { plane: 'WORKING', found: false, work_id: args.work_id };
+      return Object.assign({ plane: 'WORKING', found: true, work_id: item.work_id, inferred_edges: false },
+        bounded(store.listRelations(item.work_id), cap(args.limit, LIST_DEFAULT, LIST_MAX), relationView));
     }
     function projectSources(args) {
       requireStore();
       const project = resolveProject(args && (args.project || args.project_id));
       if (!project) { const e = new Error('project is required'); e.code = 'VALIDATION'; throw e; }
-      return { plane: 'WORKING', project_id: project.project_id, code: project.code, fetched: false,
-        sources: store.listSources(project.project_id).sort(bySourcePrecedence).map(sourcePointer) };
+      return Object.assign({ plane: 'WORKING', project_id: project.project_id, code: project.code, fetched: false },
+        bounded(store.listSources(project.project_id).sort(bySourcePrecedence), cap(args.limit, LIST_DEFAULT, LIST_MAX), sourcePointer));
     }
     async function researchRoute(args) {
       if (!router) return { plane: 'RESEARCH', index_loaded: false, parse_status: 'ROUTER_UNAVAILABLE', entrypoint: RESEARCH_ENTRYPOINT, note: 'Research router unavailable; open the entrypoint directly.' };
@@ -247,7 +257,7 @@
     }
 
     const HANDLERS = { wm_orientation: orientation,
-      wm_list_projects: () => { requireStore(); return { plane: 'WORKING', projects: store.listProjects().map(projectView) }; },
+      wm_list_projects: args => { requireStore(); return Object.assign({ plane: 'WORKING' }, bounded(store.listProjects(), cap(args && args.limit, LIST_DEFAULT, LIST_MAX), projectView)); },
       wm_list: list, wm_get: get, wm_search: search, wm_related: related, wm_project_sources: projectSources, research_route: researchRoute };
 
     // Returns a JSON-serialisable object; never throws (errors become { ok:false }).

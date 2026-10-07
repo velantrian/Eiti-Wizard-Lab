@@ -70,7 +70,7 @@ try {
   assert.equal(first.out.wm_orientation.research.loaded, false);
   assert.equal(first.out.wm_orientation.blocked[0].title, 'Browser blocked');
   assert.equal(first.out.wm_orientation.in_progress[0].next_action, 'Continue browser step');
-  assert.equal(first.out.wm_project_sources.sources[0].locator, 'local://synthetic/b1');
+  assert.equal(first.out.wm_project_sources.items[0].locator, 'local://synthetic/b1');
   assert.equal(first.fp, fpBefore, 'read tools mutated wm_*');
   const route = await page.evaluate(async () => JSON.parse(await executeAgentTool('research_route', { query: 'NOT_RUN' })));
   assert.equal(route.plane, 'RESEARCH'); assert.equal(route.promoted_to_working, false);

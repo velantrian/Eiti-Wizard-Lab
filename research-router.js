@@ -45,7 +45,9 @@
 
   // Top-level authority contract, parsed from the SOURCE text (never inferred, never normalised).
   // Only the header block (everything before the first "## " heading) is read, with STRICT one-flag-per-line syntax:
-  //   STATUS: `RESEARCH_INDEX_ONLY`   CANON: `NO`   RUNTIME_AUTHORITY: `NO`   PRIMARY_EVIDENCE: `NO`   ("KEY=VALUE" per line also accepted)
+  //   A. colon form  KEY: `VALUE`  (exactly one space; BOTH backticks mandatory)   e.g.  CANON: `NO`
+  //   B. equals form KEY=VALUE     (no spaces, no backticks)                         e.g.  CANON=NO
+  // Everything else is rejected, e.g.  KEY: VALUE   KEY: `VALUE   KEY: VALUE`   KEY : VALUE   KEY:`VALUE`   KEY=`VALUE`   KEY = VALUE
   // Each required key must be declared EXACTLY ONCE (an identical duplicate is a violation, not tolerated).
   // Combined single-line forms, inline mentions of a flag inside other prose, ambiguous values and any other
   // alternative header form are violations and fail closed. Card bodies are NOT scanned (a card's own
@@ -63,7 +65,9 @@
       for (const key of AUTHORITY_KEYS) {
         if (!new RegExp('^' + key + '\\s*[:=]').test(line)) continue;
         declaredHere = true;
-        const m = new RegExp('^' + key + '\\s*[:=]\\s*`?([A-Za-z0-9_]+)`?\\s*\\\\?\\s*$').exec(line);
+        // Exactly two accepted forms (optional trailing markdown line-break backslash / whitespace only):
+        //   A. colon: "KEY: `VALUE`"  (single space, BOTH backticks)      B. equals: "KEY=VALUE"  (no spaces, no backticks)
+        const m = new RegExp('^' + key + ': `([A-Za-z0-9_]+)`\\\\?[ \\t]*$').exec(line) || new RegExp('^' + key + '=([A-Za-z0-9_]+)\\\\?[ \\t]*$').exec(line);
         if (m) found[key].push(m[1]); else { found[key].push('<ambiguous>'); problems.push(key + ': ambiguous or non-conforming declaration "' + line.trim().slice(0, 80) + '"'); }
       }
       if (declaredHere) continue;

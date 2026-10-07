@@ -452,6 +452,37 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
       await assertAuthFail(withHeader([...AUTH_HEADER, `${key}=${AUTH_REQUIRED[key]}`]), key + ' duplicated (= spelling)', new RegExp(key + ': duplicate declaration'));
       await assertAuthFail(withHeader([...AUTH_HEADER, line, line]), key + ' triplicated', new RegExp(key + ': duplicate declaration \\(3 occurrences'));
     });
+  // Exact syntax: A. "KEY: `VALUE`" (one space, both backticks)  or  B. "KEY=VALUE" (no spaces, no backticks). Nothing else.
+  const AUTH_KEYS = ['STATUS', 'CANON', 'RUNTIME_AUTHORITY', 'PRIMARY_EVIDENCE'];
+  const declare = (key, text) => AUTH_HEADER.map(l => l.startsWith(key + ':') ? text : l);
+  await T('authority-syntax-valid', 'valid syntax: KEY: `VALUE` and KEY=VALUE (per key, with/without trailing line-break backslash, mixed spellings)', async () => {
+    for (const key of AUTH_KEYS) {
+      const v = AUTH_REQUIRED[key];
+      for (const text of ['`' + v + '`', '`' + v + '`\\', '`' + v + '` ', v, v + '\\']) {
+        const line = text.startsWith('`') ? `${key}: ${text}` : `${key}=${text}`;
+        const r = await makeBridge(null, withHeader(declare(key, line))).execute('research_route', { card: 1 });
+        assert.strictEqual(r.index_loaded, true, JSON.stringify(line) + ' ' + JSON.stringify(r.authority_contract)); assert.strictEqual(r.parse_status, 'OK');
+        assert.strictEqual(r.authority_contract.declared[key], v);
+      }
+    }
+    const mixed = ['STATUS=RESEARCH_INDEX_ONLY', 'CANON: `NO`', 'RUNTIME_AUTHORITY=NO', 'PRIMARY_EVIDENCE: `NO`\\'];
+    assert.strictEqual((await makeBridge(null, withHeader(mixed)).execute('research_route', {})).index_loaded, true);
+  });
+  for (const key of AUTH_KEYS)
+    await T('authority-syntax-invalid-' + key.toLowerCase(), `${key}: non-contract syntax variants fail closed (unquoted, one backtick, spacing, stray text, quotes, backticked equals)`, async () => {
+      const v = AUTH_REQUIRED[key];
+      const bad = {
+        'unquoted colon': `${key}: ${v}`, 'opening backtick only': `${key}: \`${v}`, 'closing backtick only': `${key}: ${v}\``,
+        'space before colon': `${key} : ${v}`, 'space before colon + backticks': `${key} : \`${v}\``, 'no space after colon': `${key}:\`${v}\``,
+        'no space after colon, unquoted': `${key}:${v}`, 'two spaces after colon': `${key}:  \`${v}\``, 'doubled backticks': `${key}: \`\`${v}\`\``,
+        'trailing text': `${key}: \`${v}\` (mostly)`, 'trailing char': `${key}: \`${v}\`x`, 'single quotes': `${key}: '${v}'`, 'double quotes': `${key}: "${v}"`,
+        'backticked equals': `${key}=\`${v}\``, 'equals + opening backtick': `${key}=\`${v}`, 'spaced equals': `${key} = ${v}`, 'space after equals': `${key}= ${v}`,
+        'space before equals': `${key} =${v}`, 'colon+equals': `${key}:=${v}`, 'equals + trailing text': `${key}=${v} (final)`, 'tab after colon': `${key}:\t\`${v}\``,
+      };
+      for (const [label, line] of Object.entries(bad)) await assertAuthFail(withHeader(declare(key, line)), `${key} ${label}: ${JSON.stringify(line)}`);
+      // wrong-case key is not a declaration of the required key at all
+      await assertAuthFail(withHeader(declare(key, `${key.toLowerCase()}: \`${v}\``)), key + ' lowercase key', new RegExp(key + ': missing'));
+    });
   await T('authority-strict-one-flag-per-line', 'combined single-line / inline / alternative header forms are NOT supported and fail closed', async () => {
     const flagless = AUTH_HEADER.filter(l => l.startsWith('STATUS:'));
     // combined single-line syntax, with or without a separate STATUS line
@@ -494,6 +525,25 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
   });
 
   // ── Repair round 3: bounded collection outputs + source role order ──
+  await T('wm-get-adversarial-role-order', 'wm_get adversarial: link-primary NAVIGATION (is_primary=1) vs role PRIMARY (is_primary=0), many sources, deterministic tie-breakers, no dependence on link order', async () => {
+    const d = new SQL.Database(); const st = mkStore(d); must(await st.createProject({ project_id: 'ad', code: 'AD', name: 'AD' }));
+    const mk = async (id, role, title) => must(await st.createSource({ source_id: id, project_id: 'ad', surface: 'LOCAL', role, title, locator: 'local://' + id }));
+    await mk('nav-a', 'NAVIGATION', 'AAA first nav'); await mk('nav-b', 'NAVIGATION', 'BBB second nav');
+    await mk('prim-z', 'PRIMARY', 'ZZZ late primary'); await mk('prim-m', 'PRIMARY', 'MMM primary'); await mk('prim-m2', 'PRIMARY', 'MMM primary');   // same title -> source_id tie-break
+    await mk('ref', 'REFERENCE', '000 reference'); await mk('evid', 'EVIDENCE', '000 evidence');
+    const it = must(await st.createItem({ project_id: 'ad', title: 'adversarial item', provenance_class: 'USER_NOTE' }));
+    // link in the most hostile order: NAVIGATION first and primary-flagged, PRIMARY-role sources unflagged and linked last
+    for (const [id, flag] of [['nav-a', 1], ['ref', 0], ['evid', 0], ['nav-b', 0], ['prim-z', 0], ['prim-m2', 0], ['prim-m', 0]]) must(await st.addItemSource({ work_id: it.work_id, source_id: id, is_primary: flag }));
+    assert.strictEqual(st.listItemSources(it.work_id)[0].source_id, 'nav-a', 'precondition: link-primary order puts the NAVIGATION source first');
+    const g = await makeBridge(st).execute('wm_get', { work_id: it.work_id });
+    assert.deepStrictEqual(g.sources.items.map(x => x.source_id), ['prim-m', 'prim-m2', 'prim-z', 'nav-a', 'nav-b', 'evid', 'ref']);
+    assert.deepStrictEqual(g.sources.items.map(x => x.is_primary), [false, false, false, true, false, false, false], 'is_primary preserved as separate link metadata');
+    assert.strictEqual(g.sources.items[0].role, 'PRIMARY'); assert.strictEqual(g.sources.items.find(x => x.source_id === 'nav-a').role, 'NAVIGATION');
+    // the ordering is stable across reads and survives a smaller limit (PRIMARY is never cut in favour of the link-primary NAVIGATION)
+    const lim = await makeBridge(st).execute('wm_get', { work_id: it.work_id, sources_limit: 3 });
+    assert.deepStrictEqual(lim.sources.items.map(x => x.source_id), ['prim-m', 'prim-m2', 'prim-z']); assert.strictEqual(lim.sources.total, 7); assert.strictEqual(lim.sources.truncated, true);
+    assert.deepStrictEqual(await makeBridge(st).execute('wm_get', { work_id: it.work_id }), g, 'deterministic');
+  });
   await T('bounded-collections', 'wm_list_projects / wm_project_sources / wm_get sources+relations / wm_related are bounded with items,total,truncated (nothing dropped silently; DB untouched)', async () => {
     const d = new SQL.Database(); const st = mkStore(d); const b = makeBridge(st);
     for (let i = 0; i < 60; i++) must(await st.createProject({ project_id: 'bp' + i, code: 'BP' + String(i).padStart(2, '0'), name: 'P' + i }));

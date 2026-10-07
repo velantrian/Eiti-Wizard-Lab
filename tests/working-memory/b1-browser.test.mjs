@@ -111,6 +111,37 @@ try {
   assert.equal(unified.blankWithCard.matched, 1); assert.equal(unified.blankAlone.code, 'VALIDATION'); assert.equal(unified.bridgeExists, true, 'research_route did not create/use the shared bridge');
   const scoped = await page.evaluate(async () => JSON.parse(await executeAgentTool('wm_list', { projectId: 'B1-BROWSER' })));
   assert.equal(scoped.code, 'VALIDATION', 'a typoed scope argument must not return unscoped data'); assert(!('items' in scoped));
+  // Real dispatcher: falsy / non-object argument values are NOT coerced to {} — validation happens before init, fetch and store access.
+  const disp = await page.evaluate(async () => {
+    const counts = { fetch: 0, init: 0, store: 0 };
+    const realFetch = window.fetch; window.fetch = function (...a) { counts.fetch++; return realFetch.apply(this, a); };
+    const realInit = window.wizInitSQLite; window.wizInitSQLite = function (...a) { counts.init++; return realInit.apply(this, a); };
+    const realStore = window.WmStore; window.WmStore = new Proxy(realStore, { get(t, k) { const v = t[k]; if (typeof v === 'function') counts.store++; return v; } });
+    const call = async (tool, args, omit) => {
+      const before = Object.assign({}, counts); const raw = omit ? await executeAgentTool(tool) : await executeAgentTool(tool, args);
+      return { out: JSON.parse(raw), d: { fetch: counts.fetch - before.fetch, init: counts.init - before.init, store: counts.store - before.store } };
+    };
+    try {
+      const res = {}; const bads = { null: null, false: false, zero: 0, seven: 7, text: 'text', emptyArray: [], emptyString: '', true: true, array: [1] };
+      for (const tool of ['research_route', 'wm_list', 'wm_orientation', 'wm_search', 'wm_get', 'wm_list_projects', 'wm_related', 'wm_project_sources'])
+        for (const [k, v] of Object.entries(bads)) res[tool + ':' + k] = await call(tool, v);
+      res.omitted = await call('research_route', undefined, true); res.undef = await call('research_route', undefined); res.empty = await call('research_route', {});
+      res.wmOmitted = await call('wm_list', undefined, true); res.wmEmpty = await call('wm_list', {});
+      return res;
+    } finally { window.fetch = realFetch; window.wizInitSQLite = realInit; window.WmStore = realStore; }
+  });
+  let invalidFetches = 0, invalidChecked = 0;
+  for (const [key, r] of Object.entries(disp)) {
+    if (!/:/.test(key)) continue;
+    assert.equal(r.out.code, 'VALIDATION', key + ' must be VALIDATION (not coerced to {}): ' + JSON.stringify(r.out).slice(0, 160)); assert.match(r.out.error, /arguments must be an object, or omitted entirely/);
+    assert.equal(r.d.fetch, 0, key + ': FETCH_COUNT must be 0'); assert.equal(r.d.init, 0, key + ': no SQLite init'); assert.equal(r.d.store, 0, key + ': no store access');
+    assert(!('items' in r.out) && !('cards' in r.out) && !('in_progress' in r.out), key + ' returned data'); invalidFetches += r.d.fetch; invalidChecked++;
+  }
+  assert.equal(invalidChecked, 8 * 9); assert.equal(invalidFetches, 0);
+  for (const key of ['omitted', 'undef', 'empty']) { assert.equal(disp[key].out.index_loaded, true, key + ': omitted/empty args are a valid overview request'); assert(disp[key].d.fetch >= 1, key + ' fetches the index once'); assert.equal(disp[key].out.parse_status, 'OK'); }
+  for (const key of ['wmOmitted', 'wmEmpty']) { assert(Array.isArray(disp[key].out.items), key + ': valid wm_list'); assert(disp[key].d.store > 0, key + ' reaches the store'); }
+  console.log('PASS  real dispatcher: null / false / 0 / 7 / "text" / [] / "" / true are VALIDATION with FETCH_COUNT = 0 (research_route + every wm_* tool); omitted / {} still run');
+
   // blank scope fails closed through the real dispatcher; research.available is true because the router is loaded
   for (const [tool, args] of [['wm_list', { project: '' }], ['wm_list', { project: '   ' }], ['wm_list', { project_id: '' }], ['wm_search', { query: 'Browser', project: '' }], ['wm_orientation', { project_id: '  ' }]]) {
     const r = await page.evaluate(async (t, a) => JSON.parse(await executeAgentTool(t, a)), tool, args);

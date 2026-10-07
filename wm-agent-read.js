@@ -38,6 +38,20 @@
   // Any other argument name is a VALIDATION error: a typo such as projectId / include_archived / limt must never be silently ignored.
   const ALLOWED_ARGS = Object.freeze(Object.fromEntries(TOOLS_SPEC.map(t => [t.name,
     Object.freeze(new Set(Object.keys(t.parameters.properties).concat(t.name === 'research_route' ? ['line'] : [])))])));
+  const planeOf = name => (name === 'research_route' ? 'RESEARCH' : 'WORKING');
+  const isPlainObject = v => Object.prototype.toString.call(v) === '[object Object]';
+  const describe = v => (v === null ? 'null' : Array.isArray(v) ? 'an array' : typeof v === 'object' ? 'a non-plain object' : 'a ' + typeof v + ' (' + JSON.stringify(v) + ')');
+  // PURE structural preflight shared by bridge.execute and the in-app dispatcher: it runs before any loader, fetch, SQLite init or tool code.
+  // Runtime argument-object contract: `undefined` (genuinely omitted) means {}; null / number / boolean / string / array / non-plain object
+  // are VALIDATION; a plain object continues with unknown-key and tool-specific validation. Returns null when the call may proceed.
+  function preflightCall(name, args) {
+    if (!Object.prototype.hasOwnProperty.call(ALLOWED_ARGS, name)) return { ok: false, error: 'Unknown read tool: ' + name, code: 'UNKNOWN_TOOL' };
+    const plane = planeOf(name);
+    if (args !== undefined && !isPlainObject(args)) return { ok: false, plane, code: 'VALIDATION', error: 'arguments must be an object, or omitted entirely (got ' + describe(args) + '). Nothing was executed.' };
+    const unknown = Object.keys(args || {}).filter(k => !ALLOWED_ARGS[name].has(k));
+    if (unknown.length) return { ok: false, plane, code: 'VALIDATION', error: 'Unknown argument(s) for ' + name + ': ' + unknown.join(', ') + '. Allowed: ' + [...ALLOWED_ARGS[name]].join(', ') + '. Nothing was executed.' };
+    return null;
+  }
 
   // DIAGNOSTIC ONLY: not invoked at runtime and not acceptance evidence for model routing.
   // Routing authority in B1 = tool descriptions + GUIDANCE + explicit plane labels on every result.
@@ -319,13 +333,13 @@
     async function execute(name, args) {
       const fn = Object.prototype.hasOwnProperty.call(HANDLERS, name) ? HANDLERS[name] : null;
       if (!fn) return { ok: false, error: 'Unknown read tool: ' + name, code: 'UNKNOWN_TOOL' };
-      const plane = name === 'research_route' ? 'RESEARCH' : 'WORKING';
-      if (args != null && (typeof args !== 'object' || Array.isArray(args))) return { ok: false, plane, code: 'VALIDATION', error: 'arguments must be an object' };
-      const unknown = Object.keys(args || {}).filter(k => !ALLOWED_ARGS[name].has(k));
-      if (unknown.length) return { ok: false, plane, code: 'VALIDATION', error: 'Unknown argument(s) for ' + name + ': ' + unknown.join(', ') + '. Allowed: ' + [...ALLOWED_ARGS[name]].join(', ') + '. Nothing was executed.' };
+      const plane = planeOf(name);
+      const bad = preflightCall(name, args);   // before any store, loader or network access
+      if (bad) return bad;
+      if (args === undefined) args = {};
       const ctx = { clamped: {} };
       try {
-        const result = await fn(args || {}, ctx);
+        const result = await fn(args, ctx);
         if (Object.keys(ctx.clamped).length && result && typeof result === 'object') result.limit_clamped = ctx.clamped;   // explicit, never silent
         return result;
       } catch (error) {
@@ -335,5 +349,5 @@
     return Object.freeze({ execute, orientation, TOOL_NAMES });
   }
 
-  return Object.freeze({ DEFAULT_MODE, RESEARCH_ENTRYPOINT, TOOLS_SPEC, TOOL_NAMES, GUIDANCE, routeIntent, create });
+  return Object.freeze({ DEFAULT_MODE, RESEARCH_ENTRYPOINT, TOOLS_SPEC, TOOL_NAMES, GUIDANCE, routeIntent, preflightCall, create });
 });

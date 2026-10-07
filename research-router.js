@@ -174,8 +174,8 @@
   // Pure argument preflight: decides whether a request is valid WITHOUT touching the network, the index or any loader.
   // Returns { error } (a VALIDATION response) or { cardNumber, query } (query is null when absent/blank-with-card).
   function preflightArgs(args) {
-    if (args == null) args = {};
-    if (typeof args !== 'object' || Array.isArray(args)) return { error: validation('arguments must be an object') };
+    if (args === undefined) args = {};   // only a genuinely omitted argument object means {}; null / 0 / false / "" / [] are rejected
+    if (Object.prototype.toString.call(args) !== '[object Object]') return { error: validation('arguments must be an object, or omitted entirely. Nothing was executed.') };
     const unknown = Object.keys(args).filter(k => !ALLOWED_ARGS.includes(k));
     if (unknown.length) return { error: validation('Unknown argument(s) for research_route: ' + unknown.join(', ') + '. Allowed: ' + ALLOWED_ARGS.join(', ') + '. Nothing was executed.') };
     const hasCard = args.card != null, hasLine = args.line != null;

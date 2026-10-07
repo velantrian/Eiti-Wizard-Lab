@@ -6175,8 +6175,12 @@ async function wizResearchIndexLoader() {
   } finally { clearTimeout(timer); }
 }
 
+// B1 read tools validate their own argument contract (WmAgentRead.preflightCall / bridge.execute): ONLY a genuinely omitted
+// argument object (undefined) means {}. null / 0 / false / "" / [] must reach the bridge unchanged and are rejected there.
+// Legacy tools keep their historical `args || {}` normalisation.
+const WIZ_B1_READ_TOOLS = new Set(['wm_orientation', 'wm_list_projects', 'wm_list', 'wm_get', 'wm_search', 'wm_related', 'wm_project_sources', 'research_route']);
 async function executeAgentTool(name, args) {
-  args = args || {};
+  if (!WIZ_B1_READ_TOOLS.has(name)) args = args || {};
   try {
     switch (name) {
       case 'note_write': {
@@ -6398,6 +6402,9 @@ async function executeAgentTool(name, args) {
       case 'wm_orientation': case 'wm_list_projects': case 'wm_list': case 'wm_get': case 'wm_search':
       case 'wm_related': case 'wm_project_sources': {
         const isResearch = name === 'research_route';
+        // structural argument preflight FIRST: an invalid call never triggers SQLite init, a loader, a fetch or tool code
+        const bad = window.WmAgentRead && window.WmAgentRead.preflightCall(name, args);
+        if (bad) return JSON.stringify(bad);
         if (!isResearch) { try { await wizInitSQLite(); } catch (_) {} }
         if (!window.WmAgentRead) {
           return JSON.stringify(isResearch
@@ -6887,7 +6894,7 @@ ${window.WmAgentRead ? '\n' + window.WmAgentRead.GUIDANCE : ''}`;
         if (p.functionCall) toolCalls.push({
           id: 'gem_'+Math.random().toString(36).slice(2,9),
           name: p.functionCall.name,
-          args: p.functionCall.args || {}
+          args: p.functionCall.args === undefined ? {} : p.functionCall.args   // only an omitted args object means {}; a present falsy value is passed on and rejected by B1 tools
         });
       });
     }

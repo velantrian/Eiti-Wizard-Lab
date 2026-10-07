@@ -821,7 +821,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     await bad('wm_list', { thread: 5 }, 'numeric thread'); await bad('wm_list', { status: 5 }, 'numeric status'); await bad('wm_list', { project: 5 }, 'numeric project');
     assert.strictEqual((await b.execute('wm_list', { status: 'BOGUS' })).ok, false);
     for (const args of ['text', ['a'], 7]) await bad('wm_list', args, 'non-object args');
-    assert.strictEqual((await b.execute('wm_list', null)).ok === undefined, true); assert.strictEqual((await b.execute('wm_list', undefined)).items.length, 3);
+    assert.strictEqual((await b.execute('wm_list', null)).code, 'VALIDATION', 'null is NOT an omitted argument object'); assert.strictEqual((await b.execute('wm_list', undefined)).items.length, 3, 'undefined (omitted) = {}');
     // blank optional filters are absent, not errors
     assert.strictEqual((await b.execute('wm_list', { status: '', thread: '  ' })).items.length, 3);   // blank optional FILTERS are absent; a blank SCOPE is rejected (see blank-scope-fails-closed)
   });
@@ -983,8 +983,8 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     assert(!/wizInitSQLite/.test(block.slice(0, block.indexOf('if (!window.WmAgentRead)')).replace(/if \(!isResearch\) \{ try \{ await wizInitSQLite\(\); \} catch \(_\) \{\} \}/, '')), 'research_route must not require SQLite');
     // behavioural: bridge with a null store
     const b = makeBridge(null, SYN_INDEX);
-    for (const bad of ['text', [1, 2], 7, true]) for (const tool of Bridge.TOOL_NAMES) { const r = await b.execute(tool, bad); assert.strictEqual(r.ok, false, tool); assert.strictEqual(r.code, 'VALIDATION', tool); assert.match(r.error, /arguments must be an object/); assert.strictEqual(r.plane, tool === 'research_route' ? 'RESEARCH' : 'WORKING'); }
-    assert.strictEqual((await b.execute('research_route', { card: 1 })).index_loaded, true); assert.strictEqual((await b.execute('research_route')).index_loaded, true); assert.strictEqual((await b.execute('research_route', null)).index_loaded, true);
+    for (const bad of ['text', [1, 2], 7, true, null, false, 0, '', NaN, []]) for (const tool of Bridge.TOOL_NAMES) { const r = await b.execute(tool, bad); assert.strictEqual(r.ok, false, tool); assert.strictEqual(r.code, 'VALIDATION', tool); assert.match(r.error, /arguments must be an object/); assert.strictEqual(r.plane, tool === 'research_route' ? 'RESEARCH' : 'WORKING'); }
+    assert.strictEqual((await b.execute('research_route', { card: 1 })).index_loaded, true); assert.strictEqual((await b.execute('research_route')).index_loaded, true); assert.strictEqual((await b.execute('research_route', undefined)).index_loaded, true); assert.strictEqual((await b.execute('research_route', null)).code, 'VALIDATION');
     assert.strictEqual((await b.execute('wm_orientation')).code, 'WORKING_MEMORY_UNAVAILABLE');
     // one failure shape for an unavailable router: bridge-level, same fields as every other fail-closed response
     const savedRouter = globalThis.ResearchRouter; delete globalThis.ResearchRouter;   // in Node the bridge would otherwise fall back to the global router
@@ -1122,7 +1122,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     assert.strictEqual((await Bridge.create({ store: st }).execute('wm_orientation', {})).research.available, true, 'global router present -> available');
   });
   await T('arg-validation-before-io', 'invalid research_route requests fail BEFORE the loader / network is called (LOADER_CALLS = 0); valid ones call it exactly once', async () => {
-    const invalid = [['non-object string', 'text'], ['non-object array', [1]], ['non-object number', 7], ['non-object boolean', true], ['unknown key', { cardd: 1 }], ['unknown key with valid card', { card: 1, projectId: 'x' }],
+    const invalid = [['non-object string', 'text'], ['non-object array', [1]], ['non-object number', 7], ['non-object boolean', true], ['null', null], ['false', false], ['zero', 0], ['empty string', ''], ['NaN', NaN], ['empty array', []], ['function', () => ({})], ['Date', new Date(0)], ['Map', new Map()], ['unknown key', { cardd: 1 }], ['unknown key with valid card', { card: 1, projectId: 'x' }],
       ['card string', { card: '11' }], ['card zero', { card: 0 }], ['card negative', { card: -2 }], ['card fraction', { card: 1.5 }], ['card NaN', { card: NaN }], ['card object', { card: {} }],
       ['line string', { line: '3' }], ['line zero', { line: 0 }], ['card + line conflict', { card: 1, line: 2 }], ['card + non-blank query', { card: 1, query: 'x' }], ['line + non-blank query', { line: 1, query: 'x' }],
       ['blank query no card', { query: '' }], ['whitespace query no card', { query: '   \t' }], ['non-string query', { query: 5 }], ['non-string query with card', { card: 1, query: 5 }], ['query object', { query: {} }]];
@@ -1134,7 +1134,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
       assert.strictEqual(Router.route(INDEX_MD, args).code, 'VALIDATION', label + ' (route)'); assert.strictEqual(Router.preflightArgs(args).error.code, 'VALIDATION', label + ' (preflight)');
     }
     // valid requests do reach the loader, once; blank query WITH a card is valid
-    for (const [label, args, expectMatched] of [['card', { card: 1 }, 1], ['line alias', { line: 2 }, 1], ['card + blank query', { card: 1, query: '' }, 1], ['card + whitespace query', { card: 3, query: '  ' }, 1], ['query', { query: 'syn' }, undefined], ['overview', {}, undefined], ['null args', null, undefined], ['undefined args', undefined, undefined]]) {
+    for (const [label, args, expectMatched] of [['card', { card: 1 }, 1], ['line alias', { line: 2 }, 1], ['card + blank query', { card: 1, query: '' }, 1], ['card + whitespace query', { card: 3, query: '  ' }, 1], ['query', { query: 'syn' }, undefined], ['overview', {}, undefined], ['omitted args (undefined)', undefined, undefined]]) {
       let calls = 0; const loader = async () => { calls++; return SYN_INDEX; }; const r = await Router.routeWithLoader(loader, args);
       assert.strictEqual(calls, 1, label + ': a valid request calls the loader exactly once'); assert.strictEqual(r.index_loaded, true, label); if (expectMatched !== undefined) assert.strictEqual(r.matched, expectMatched, label);
     }
@@ -1214,6 +1214,41 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     w.net.mode = 'down'; assert.strictEqual((await w.fire()).res.status, 504, 'the cached copy is not trusted without the validator');
   });
 
+  // ═══ Final P1: runtime argument-object contract ═══
+  await T('bridge-args-contract', 'bridge.execute / preflightCall: undefined => {}; null, number, boolean, string, array, NaN, function, Date, Map => VALIDATION before any store/loader access; plain object continues', async () => {
+    let storeCalls = 0, loaderCalls = 0; const counted = {}; const base = { listProjects: () => [], listItems: () => [], listSources: () => [], listItemSources: () => [], listRelations: () => [], getItem: () => null, searchItems: () => [] };
+    for (const k of Object.keys(base)) counted[k] = (...a) => { storeCalls++; return base[k](...a); };
+    const b = Bridge.create({ store: counted, router: Router, loadResearchIndex: async () => { loaderCalls++; return SYN_INDEX; } });
+    const nonObjects = [['null', null], ['zero', 0], ['one', 1], ['NaN', NaN], ['false', false], ['true', true], ['empty string', ''], ['string', 'text'], ['empty array', []], ['array', [1]], ['function', () => ({})], ['Date', new Date(0)], ['Map', new Map()], ['Symbol', Symbol('x')]];
+    for (const tool of Bridge.TOOL_NAMES) for (const [label, bad] of nonObjects) {
+      const r = await b.execute(tool, bad); assert.strictEqual(r.ok, false, `${tool}(${label})`); assert.strictEqual(r.code, 'VALIDATION', `${tool}(${label})`); assert.match(r.error, /arguments must be an object, or omitted entirely/);
+      assert.strictEqual(r.plane, tool === 'research_route' ? 'RESEARCH' : 'WORKING'); assert(!('items' in r) && !('cards' in r) && !('item' in r) && !('index_loaded' in r), `${tool}(${label}) must not return data`);
+      assert.strictEqual(Bridge.preflightCall(tool, bad).code, 'VALIDATION', `preflightCall ${tool}(${label})`);
+    }
+    assert.strictEqual(storeCalls, 0, 'STORE_CALLS must be 0 for invalid argument objects'); assert.strictEqual(loaderCalls, 0, 'LOADER_CALLS must be 0 for invalid argument objects');
+    // omitted -> {} (valid); an empty plain object is valid; Object.create(null) is a plain object; both reach the tool
+    assert.strictEqual(Bridge.preflightCall('wm_list', undefined), null); assert.strictEqual(Bridge.preflightCall('wm_list', {}), null); assert.strictEqual(Bridge.preflightCall('wm_list', Object.create(null)), null);
+    for (const tool of ['wm_orientation', 'wm_list_projects', 'wm_list']) { const r = await b.execute(tool, undefined); assert.notStrictEqual(r.ok, false, tool + '(undefined) must run as {}'); assert.strictEqual((await b.execute(tool, {})).ok, undefined); }
+    assert(storeCalls > 0, 'valid calls do reach the store'); const before = loaderCalls;
+    assert.strictEqual((await b.execute('research_route', undefined)).index_loaded, true); assert.strictEqual((await b.execute('research_route', {})).index_loaded, true); assert.strictEqual(loaderCalls, before + 2, 'omitted / empty args load the index once each');
+    // a plain object still gets unknown-key and tool-specific validation
+    assert.strictEqual((await b.execute('wm_list', { projectId: 'x' })).code, 'VALIDATION'); assert.strictEqual(Bridge.preflightCall('wm_list', { projectId: 'x' }).code, 'VALIDATION'); assert.strictEqual(Bridge.preflightCall('nope', {}).code, 'UNKNOWN_TOOL');
+    // router-level direct callers follow the same contract
+    for (const [label, bad] of nonObjects.slice(0, 12)) { let calls = 0; const r = await Router.routeWithLoader(async () => { calls++; return SYN_INDEX; }, bad); assert.strictEqual(r.code, 'VALIDATION', 'router ' + label); assert.strictEqual(calls, 0, 'router ' + label); assert.strictEqual(Router.route(SYN_INDEX, bad).code, 'VALIDATION', 'route ' + label); }
+    assert.strictEqual((await Router.routeWithLoader(async () => SYN_INDEX, undefined)).index_loaded, true);
+  });
+  await T('dispatcher-no-falsy-coercion', 'the real dispatcher no longer turns falsy argument values into {} for B1 tools: validation precedes SQLite init / loader / fetch; legacy tools keep their normalisation', async () => {
+    const head = INDEX_HTML.slice(INDEX_HTML.indexOf('const WIZ_B1_READ_TOOLS'), INDEX_HTML.indexOf('    switch (name) {', INDEX_HTML.indexOf('async function executeAgentTool')));
+    assert(/new Set\(\[[^\]]*'research_route'[^\]]*\]\)/.test(head)); for (const t of Bridge.TOOL_NAMES) assert(head.includes("'" + t + "'"), t + ' in the B1 tool set');
+    assert(/if \(!WIZ_B1_READ_TOOLS\.has\(name\)\) args = args \|\| \{\};/.test(head), 'only legacy tools keep args || {}'); assert(!/^\s*args = args \|\| \{\};/m.test(head), 'no unconditional falsy coercion');
+    const block = INDEX_HTML.slice(INDEX_HTML.indexOf("      case 'research_route':\n      case 'wm_orientation'"), INDEX_HTML.indexOf("      case 'task_add': {"));
+    assert(block.indexOf('preflightCall(name, args)') > 0 && block.indexOf('preflightCall(name, args)') < block.indexOf('wizInitSQLite()'), 'structural preflight precedes SQLite init'); assert(block.indexOf('preflightCall(name, args)') < block.indexOf('.bridge.execute(name, args)'));
+    assert(/args: p\.functionCall\.args === undefined \? \{\} : p\.functionCall\.args/.test(INDEX_HTML), 'provider-parse step must not coerce falsy args either');
+    assert(!/functionCall\.args \|\| \{\}/.test(INDEX_HTML.slice(INDEX_HTML.indexOf('toolCalls.push({'))), 'no falsy coercion left in the Gemini call parser');
+    // every B1 tool's allowed set stays tied to its declared parameters
+    assert.strictEqual(Bridge.preflightCall('research_route', { line: 3 }), null);
+  });
+
   await T('docs', 'AGENT_START_HERE keeps history and documents both planes', async () => {
     const d = fs.readFileSync(path.join(ROOT, 'AGENT_START_HERE.md'), 'utf8');
     for (const s of ['DEFAULT_RUNTIME_MODE        = WORKING', 'WORKING_MEMORY != RESEARCH_INDEX', 'RESEARCH_INDEX != RUNTIME_AUTHORITY', 'RESEARCH_RESULT != USER_DECISION', 'MEMORY_CONTINUITY != RESEARCH_EVIDENCE_INDEX', 'PR #28'])
@@ -1229,7 +1264,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     assert(/when runtime Working Memory is available/i.test(seq) && /Repository agent: runtime Working Memory is not available/.test(seq), 'wm_orientation only where runtime WM exists');
     assert(/only when the task requires research/i.test(seq) && /primary evidence/.test(seq) && /CONSISTENCY/.test(seq));
     assert(!/\bold sequence|Fresh-agent sequence/.test(d), 'no second start sequence');
-    for (const s2 of ['FINAL_MODEL_MIXED_ANSWER_ENFORCEMENT = NOT_IMPLEMENTED', 'FRESH_MODEL_BEHAVIOR = NOT_RUN', 'MALFORMED_CARDS', '`STATUS`, `EXECUTION_VERDICT` and `PRIMARY_EVIDENCE`', 'PARTIAL_INDEX_ACCEPTANCE = NOT_ALLOWED_IN_B1', 'matched_card_numbers', 'omitted_card_numbers', 'limit_clamped', 'sw-stale-cache', 'UNSUPPORTED_CARD_CONTENT', '`project_limit`', 'code points', 'validateResearchIndex', 'Blank scope fails closed', 'preflightArgs', '`research: { available, loaded: false']) assert(b1.includes(s2), s2);
+    for (const s2 of ['FINAL_MODEL_MIXED_ANSWER_ENFORCEMENT = NOT_IMPLEMENTED', 'FRESH_MODEL_BEHAVIOR = NOT_RUN', 'MALFORMED_CARDS', '`STATUS`, `EXECUTION_VERDICT` and `PRIMARY_EVIDENCE`', 'PARTIAL_INDEX_ACCEPTANCE = NOT_ALLOWED_IN_B1', 'matched_card_numbers', 'omitted_card_numbers', 'limit_clamped', 'sw-stale-cache', 'UNSUPPORTED_CARD_CONTENT', '`project_limit`', 'code points', 'validateResearchIndex', 'Blank scope fails closed', 'preflightArgs', '`research: { available, loaded: false', 'falsy values are never coerced to `{}`', 'preflightCall']) assert(b1.includes(s2), s2);
   });
 
   console.log(`\n${passed}/${passed + failed} tests passed.`);

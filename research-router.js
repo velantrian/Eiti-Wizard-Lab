@@ -22,25 +22,38 @@
   const NOTICE = 'Research Plane pointer. Not working state, not a user decision, not Canon. ' +
     'A research candidate or result is never a working decision; verify claims at PRIMARY_EVIDENCE. ' +
     'Fields are verbatim from the index; no verdict is derived. Navigation search over the current index only, not an exhaustive scientific search.';
-  const FIELD_KEYS = Object.freeze(['EXPERIMENT_ID / NAME', 'QUESTION', 'STATUS', 'EXECUTION_VERDICT',
-    'WHAT_IT_DOES_NOT_PROVE', 'OPEN_FINDING', 'PRIMARY_EVIDENCE', 'GITHUB_REF']);
+  // Every named field of an index card (verbatim). Some cards carry several fields on ONE physical line; the
+  // INLINE_FOLLOWERS table lists which fields may follow a line-leading field on the same line.
+  const FIELD_KEYS = Object.freeze(['EXPERIMENT_ID / NAME', 'PROJECT', 'QUESTION', 'STATUS', 'EXECUTION_VERDICT', 'SCIENTIFIC_INTERPRETATION',
+    'WHAT_WAS_OBSERVED', 'WHAT_IT_SUPPORTS', 'WHAT_IT_DOES_NOT_PROVE', 'OPEN_FINDING', 'PRIMARY_EVIDENCE',
+    'GITHUB_REF', 'NOTION_REF', 'DRIVE_REF', 'NOTION_STATUS', 'DRIVE_STATUS', 'CONSISTENCY', 'LAST_VERIFIED', 'NOTES']);
+  const INLINE_FOLLOWERS = Object.freeze({ GITHUB_REF: ['NOTION_REF', 'DRIVE_REF'], NOTION_STATUS: ['DRIVE_STATUS', 'CONSISTENCY', 'LAST_VERIFIED'] });
   // Minimal card contract: a recognised "### N. title" heading is a valid card only if these fields are present and
   // non-empty. Any card that fails it makes the whole index fail closed (pointer-only), never a partial "OK".
   const REQUIRED_FIELDS = Object.freeze(['STATUS', 'EXECUTION_VERDICT', 'PRIMARY_EVIDENCE']);
   const MAX_MALFORMED_REPORTED = 10;
-  const LIST_KEYS = Object.freeze(['STATUS', 'EXECUTION_VERDICT', 'OPEN_FINDING', 'PRIMARY_EVIDENCE']);
+  const LIST_KEYS = Object.freeze(['STATUS', 'EXECUTION_VERDICT', 'OPEN_FINDING', 'PRIMARY_EVIDENCE', 'CONSISTENCY']);
   const SEARCH_KEYS = Object.freeze(['EXPERIMENT_ID / NAME', 'QUESTION', 'STATUS', 'EXECUTION_VERDICT', 'OPEN_FINDING', 'PRIMARY_EVIDENCE']);
-  const CARD_FIELD_CHARS = 400;   // per field in a card view
+  const CARD_FIELD_CHARS = 500;   // per field in a card view (code points)
   const LIST_FIELD_CHARS = 120;   // per field in the overview list
-  const MAX_CARDS = 5;
+  const MAX_CARDS = 3;
   const MAX_LIST = 30;
+  const MAX_NUMBERS = 200;        // card numbers listed per response (matched / omitted)
+  const MAX_ISSUES_REPORTED = 10;
   const OFFLINE_HEADER = 'X-Eiti-Served-From';
-  const OFFLINE_VALUE = 'sw-offline-cache';
+  const OFFLINE_VALUE = 'sw-offline-cache';   // transport failure: cached copy served
+  const STALE_VALUE = 'sw-stale-cache';       // transient server failure (5xx): cached copy served
 
+  // Clip to `max` Unicode CODE POINTS (never splits a surrogate pair); an ellipsis marks the cut.
+  function clipCodePoints(text, max) {
+    if (text.length <= max) return { text, truncated: false };   // UTF-16 length <= max implies <= max code points
+    let i = 0, count = 0;
+    while (i < text.length && count < max) { i += text.codePointAt(i) > 0xFFFF ? 2 : 1; count++; }
+    return i >= text.length ? { text, truncated: false } : { text: text.slice(0, i) + '…', truncated: true };
+  }
   function clip(value, max) {
     if (value == null) return { text: null, truncated: false };
-    const text = String(value).trim();
-    return text.length > max ? { text: text.slice(0, max) + '…', truncated: true } : { text, truncated: false };
+    return clipCodePoints(String(value).trim(), max);
   }
 
   // Top-level authority contract, parsed from the SOURCE text (never inferred, never normalised).
@@ -91,22 +104,35 @@
   }
 
   // Cards live under "## C." as "### N. TITLE" blocks; stop at the next "## " heading.
+  // Every named field is extracted (including several fields on one physical line, see INLINE_FOLLOWERS).
+  // Nothing meaningful is dropped silently: a non-blank card line that is not a recognised field, or a repeated
+  // field, is recorded in card.issues and makes the index fail closed (UNSUPPORTED_CARD_CONTENT).
+  const escapeRe = t => t.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
   function parseCards(markdown) {
     const lines = String(markdown || '').split(/\r?\n/);
     const cards = [];
     let inSectionC = false, card = null;
+    const put = (key, value) => {
+      if (key in card.fields) card.issues.push({ kind: 'DUPLICATE_FIELD', field: key });
+      else card.fields[key] = value.trim();
+    };
     for (const line of lines) {
       if (/^## /.test(line)) { inSectionC = /^## C\. /.test(line); card = null; continue; }
       if (!inSectionC) continue;
       const heading = /^### (\d+)\. (.+?)\s*$/.exec(line);
-      if (heading) { card = { number: Number(heading[1]), title: heading[2], fields: {} }; cards.push(card); continue; }
-      if (!card) continue;
-      for (const key of FIELD_KEYS) {
-        if (line.startsWith(key + ':')) {
-          if (!(key in card.fields)) card.fields[key] = line.slice(key.length + 1).replace(/\\\s*$/, '').trim();
-          break;
-        }
+      if (heading) { card = { number: Number(heading[1]), title: heading[2], fields: {}, issues: [] }; cards.push(card); continue; }
+      if (!card || !line.trim()) continue;
+      const key = FIELD_KEYS.find(k => line.startsWith(k + ':'));
+      if (!key) { card.issues.push({ kind: 'UNRECOGNIZED_LINE', snippet: line.trim().slice(0, 80) }); continue; }
+      const rest = line.slice(key.length + 1).replace(/\\\s*$/, '');
+      const marks = [];
+      for (const follower of INLINE_FOLLOWERS[key] || []) {
+        const m = new RegExp('(?:^|\\s)' + escapeRe(follower) + ':(?:\\s|$)').exec(rest);
+        if (m) marks.push({ key: follower, at: m.index, valueFrom: m.index + m[0].length });
       }
+      marks.sort((x, y) => x.at - y.at);
+      put(key, rest.slice(0, marks.length ? marks[0].at : rest.length));
+      marks.forEach((mk, i) => put(mk.key, rest.slice(mk.valueFrom, i + 1 < marks.length ? marks[i + 1].at : rest.length)));
     }
     return cards;
   }
@@ -134,46 +160,62 @@
     return { ok: false, code: 'VALIDATION', plane: 'RESEARCH', error: message };
   }
 
+  // Fail-closed (PARTIAL_INDEX_ACCEPTANCE = NOT_ALLOWED_IN_B1): the whole index is unavailable, no card is served,
+  // and the response carries diagnostics instead of instructing the (in-app) agent to perform an impossible action.
+  function failClosed(base, parseStatus, reasons, extra) {
+    return Object.assign(base, { index_loaded: false, parse_status: parseStatus, diagnostics: { reasons }, partial_index_acceptance: 'NOT_ALLOWED_IN_B1',
+      note: 'Fail-closed: the Evidence Index could not be trusted (' + parseStatus + '), so NO research cards are served and nothing was inferred. ' +
+        'Do not answer research questions from this call; tell the user research navigation is unavailable (parse_status above). `entrypoint` is the repository path of the index.' }, extra || {});
+  }
+
+  const isPositiveInteger = v => typeof v === 'number' && Number.isInteger(v) && v >= 1;
+
   function route(markdown, args, meta) {
     args = args || {}; meta = meta || {};
     const base = { plane: 'RESEARCH', header: HEADER, notice: NOTICE, entrypoint: INDEX_PATH, read_only: true, promoted_to_working: false,
       index_source: meta.source || 'UNKNOWN' };
-    // card = research CARD number (not a filesystem line number); `line` is accepted as an alias of card.
-    const hasCard = args.card != null && args.card !== '', hasLine = args.line != null && args.line !== '';
-    const hasQuery = typeof args.query === 'string' && args.query.trim() !== '';
-    if (hasCard && hasLine && Number(args.card) !== Number(args.line)) return validation('Provide either card or line (alias), not conflicting values.');
-    const cardNumber = hasCard ? Number(args.card) : hasLine ? Number(args.line) : null;
+    // card = research CARD number (not a filesystem line number); `line` is accepted only as an alias of card.
+    const hasCard = args.card != null, hasLine = args.line != null;
+    const hasQuery = args.query != null;
+    if (hasQuery && typeof args.query !== 'string') return validation('query must be a string.');
+    if (hasQuery && args.query.trim() === '') return validation('query must be a non-empty string; omit it for the overview.');
+    for (const [name, present] of [['card', hasCard], ['line', hasLine]]) if (present && !isPositiveInteger(args[name])) return validation(name + ' must be a positive integer research card number (a number, not a string).');
+    if (hasCard && hasLine && args.card !== args.line) return validation('Provide either card or line (alias), not conflicting values.');
+    const cardNumber = hasCard ? args.card : hasLine ? args.line : null;
     if (cardNumber != null && hasQuery) return validation('Provide either card/line or query, not both.');
-    if (cardNumber != null && !Number.isInteger(cardNumber)) return validation('card must be an integer research card number.');
-    if (args.query != null && typeof args.query !== 'string') return validation('query must be a string.');
 
     if (!looksLikeIndex(markdown)) {
-      return Object.assign(base, { index_loaded: false, parse_status: markdown == null || markdown === '' ? (meta.error ? 'FETCH_FAILED' : 'INDEX_UNAVAILABLE') : 'NOT_AN_EVIDENCE_INDEX',
-        note: 'Index could not be read as the Evidence Index; open ' + INDEX_PATH + ' directly. Nothing was inferred.' });
+      const unavailable = markdown == null || markdown === '';
+      return failClosed(base, unavailable ? (meta.error ? 'FETCH_FAILED' : 'INDEX_UNAVAILABLE') : 'NOT_AN_EVIDENCE_INDEX',
+        [unavailable ? 'index text could not be obtained' : 'body lacks the RESEARCH_INDEX_ONLY marker or the "## C." section']);
     }
     const authority = parseAuthorityContract(markdown);
     if (!authority.valid) {
       delete base.header;   // the router's own header claim is withheld for a document that contradicts it
-      return Object.assign(base, { index_loaded: false, parse_status: 'AUTHORITY_CONTRACT_INVALID',
-        authority_contract: { valid: false, required: Object.assign({}, AUTHORITY_REQUIRED), found: authority.found, problems: authority.problems.slice(0, 10) },
-        note: 'The document does not carry the required top-level authority contract (' + AUTHORITY_KEYS.map(k => k + '=' + AUTHORITY_REQUIRED[k]).join(', ') + '); nothing was served or normalised. Open ' + INDEX_PATH + ' directly.' });
+      return failClosed(base, 'AUTHORITY_CONTRACT_INVALID', authority.problems.slice(0, MAX_ISSUES_REPORTED),
+        { authority_contract: { valid: false, required: Object.assign({}, AUTHORITY_REQUIRED), found: authority.found, problems: authority.problems.slice(0, MAX_ISSUES_REPORTED) } });
     }
     const cards = parseCards(markdown);
-    if (!cards.length) {
-      return Object.assign(base, { index_loaded: false, parse_status: 'NO_CARDS_PARSED',
-        note: 'Index header found but no research cards were parsed (layout may have changed); open ' + INDEX_PATH + ' directly. Nothing was inferred.' });
-    }
+    if (!cards.length) return failClosed(base, 'NO_CARDS_PARSED', ['header found but no "### N. title" cards were parsed under "## C."']);
     const malformed = cards.map(c => ({ card_number: c.number, missing: REQUIRED_FIELDS.filter(k => !(c.fields[k] && c.fields[k].trim())) })).filter(m => m.missing.length);
     if (malformed.length) {
-      return Object.assign(base, { index_loaded: false, parse_status: 'MALFORMED_CARDS', malformed_total: malformed.length,
-        malformed_cards: malformed.slice(0, MAX_MALFORMED_REPORTED), required_fields: REQUIRED_FIELDS.slice(),
-        note: 'One or more card headings lack the required non-empty fields (' + REQUIRED_FIELDS.join(', ') + '); the index is not trusted. Open ' + INDEX_PATH + ' directly. Nothing was inferred.' });
+      return failClosed(base, 'MALFORMED_CARDS', malformed.slice(0, MAX_MALFORMED_REPORTED).map(m => 'card ' + m.card_number + ': missing ' + m.missing.join(', ')),
+        { malformed_total: malformed.length, malformed_cards: malformed.slice(0, MAX_MALFORMED_REPORTED), required_fields: REQUIRED_FIELDS.slice() });
+    }
+    const unsupported = cards.filter(c => c.issues.length).map(c => ({ card_number: c.number, issues: c.issues.slice(0, 3) }));
+    if (unsupported.length) {
+      return failClosed(base, 'UNSUPPORTED_CARD_CONTENT',
+        unsupported.slice(0, MAX_ISSUES_REPORTED).map(u => 'card ' + u.card_number + ': ' + u.issues.map(i => i.kind + (i.field ? ' ' + i.field : '')).join(', ')),
+        { unsupported_cards: unsupported.slice(0, MAX_ISSUES_REPORTED), unsupported_total: unsupported.length });
     }
     Object.assign(base, { index_loaded: true, parse_status: 'OK', total_cards: cards.length, authority_contract: { valid: true, declared: authority.declared } });
 
+    const numbers = list => ({ numbers: list.slice(0, MAX_NUMBERS), truncated: list.length > MAX_NUMBERS });
     if (cardNumber == null && !hasQuery) {
-      return Object.assign(base, { cards: cards.slice(0, MAX_LIST).map(listEntry), truncated: cards.length > MAX_LIST,
-        note: 'Overview (fields verbatim, clipped per truncated_fields). Pass card or query for a fuller card.' });
+      const shown = cards.slice(0, MAX_LIST);
+      return Object.assign(base, { cards: shown.map(listEntry), truncated: cards.length > MAX_LIST,
+        card_numbers: numbers(cards.map(c => c.number)).numbers, omitted_card_numbers: numbers(cards.slice(MAX_LIST).map(c => c.number)).numbers,
+        note: 'Overview (fields verbatim, clipped per truncated_fields). Pass card (number) or query for the full card; omitted_card_numbers lists cards not shown here.' });
     }
     let matches;
     if (cardNumber != null) matches = cards.filter(c => c.number === cardNumber);
@@ -184,9 +226,15 @@
         return terms.every(t => hay.includes(t));
       });
     }
-    return Object.assign(base, { matched: matches.length, truncated: matches.length > MAX_CARDS,
-      cards: matches.slice(0, MAX_CARDS).map(c => projectCard(c, FIELD_KEYS, CARD_FIELD_CHARS)),
-      note: matches.length ? 'Fields are verbatim from the index; null = field absent. Verify at PRIMARY_EVIDENCE.' : 'No card in the current index matches. This is not evidence that no such research exists.' });
+    // Every matching card number is discoverable: cards are returned in full only up to MAX_CARDS,
+    // the remaining matches are listed in omitted_card_numbers (fetch each with { card: N }).
+    const shown = matches.slice(0, MAX_CARDS), allNumbers = numbers(matches.map(c => c.number)), omitted = numbers(matches.slice(MAX_CARDS).map(c => c.number));
+    return Object.assign(base, { matched: matches.length, matched_card_numbers: allNumbers.numbers, matched_card_numbers_truncated: allNumbers.truncated,
+      truncated: matches.length > MAX_CARDS, omitted_card_numbers: omitted.numbers,
+      cards: shown.map(c => projectCard(c, FIELD_KEYS, CARD_FIELD_CHARS)),
+      note: matches.length ? 'Fields are verbatim from the index; null = field absent; caveat fields (CONSISTENCY, NOTES, ...) are part of the card. Verify at PRIMARY_EVIDENCE.' +
+        (matches.length > MAX_CARDS ? ' Only the first ' + MAX_CARDS + ' matching cards are shown in full: call again with { card: N } for each number in omitted_card_numbers.' : '')
+        : 'No card in the current index matches. This is not evidence that no such research exists.' });
   }
 
   // Loader may return a string or { text, source }; failures degrade to pointer-only, never throw.
@@ -202,5 +250,5 @@
     return route(text, args, { source, error });
   }
 
-  return Object.freeze({ INDEX_PATH, HEADER, NOTICE, FIELD_KEYS, REQUIRED_FIELDS, AUTHORITY_REQUIRED, parseAuthorityContract, OFFLINE_HEADER, OFFLINE_VALUE, looksLikeIndex, parseCards, route, routeWithLoader });
+  return Object.freeze({ INDEX_PATH, HEADER, NOTICE, FIELD_KEYS, REQUIRED_FIELDS, AUTHORITY_REQUIRED, parseAuthorityContract, clipCodePoints, MAX_CARDS, OFFLINE_HEADER, OFFLINE_VALUE, STALE_VALUE, looksLikeIndex, parseCards, route, routeWithLoader });
 });

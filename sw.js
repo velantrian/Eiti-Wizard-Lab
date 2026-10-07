@@ -93,23 +93,32 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Research Index — network-first (exact path only). The cache is an offline fallback; a cached copy is
-  // flagged with X-Eiti-Served-From so callers can tell it may be stale. Not precached (never blocks install).
+  // Research Index — online-first (exact path only): a fresh network copy always beats the cache.
+  //  - 200            -> served and cached (the cache write is held open with event.waitUntil)
+  //  - transport failure -> cached copy if one exists, flagged X-Eiti-Served-From: sw-offline-cache
+  //  - 5xx (transient server failure) -> cached copy if one exists, flagged X-Eiti-Served-From: sw-stale-cache
+  //  - 404/410 (authoritative removal) and other 4xx -> passed through; a stale cache must not mask removal, so the cached copy is evicted
+  // Not precached (never blocks install); not runtime authority.
   if (url.pathname === RESEARCH_INDEX_PATH) {
-    event.respondWith(
-      fetch(request, { cache: 'no-store' }).then(response => {
-        if (response && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
-        }
+    const flagged = (cached, value) => {
+      const headers = new Headers(cached.headers);
+      headers.set('X-Eiti-Served-From', value);
+      return new Response(cached.body, { status: cached.status, statusText: cached.statusText, headers });
+    };
+    const cachedIndex = value => caches.open(CACHE_NAME).then(cache => cache.match(request)).then(cached => (cached ? flagged(cached, value) : null));
+    event.respondWith((async () => {
+      let response;
+      try { response = await fetch(request, { cache: 'no-store' }); }
+      catch (_) { return (await cachedIndex('sw-offline-cache').catch(() => null)) || new Response('', { status: 504, statusText: 'Offline' }); }
+      if (response.status === 200) {
+        const copy = response.clone();
+        event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => {}));
         return response;
-      }).catch(() => caches.open(CACHE_NAME).then(cache => cache.match(request)).then(cached => {
-        if (!cached) return new Response('', { status: 504, statusText: 'Offline' });
-        const headers = new Headers(cached.headers);
-        headers.set('X-Eiti-Served-From', 'sw-offline-cache');
-        return new Response(cached.body, { status: cached.status, statusText: cached.statusText, headers });
-      }))
-    );
+      }
+      if (response.status >= 500) return (await cachedIndex('sw-stale-cache').catch(() => null)) || response;
+      if (response.status === 404 || response.status === 410) event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.delete(request)).catch(() => {}));
+      return response;
+    })());
     return;
   }
 

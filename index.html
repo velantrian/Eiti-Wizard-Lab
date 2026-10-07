@@ -6159,12 +6159,13 @@ function wizDecayTick() {
 // ════════════════════════════════════════════════════════════════
 
 // Research Index loader for research_route: fresh over the network (SW is network-first for this path);
-// reports OFFLINE_CACHE when the service worker served its offline fallback copy.
+// reports OFFLINE_CACHE (transport failure) / STALE_CACHE (server 5xx) when the service worker served its cached fallback copy.
 async function wizResearchIndexLoader() {
   const res = await fetch(window.ResearchRouter.INDEX_PATH, { cache: 'no-store' });
   if (!res.ok) return null;
   const served = res.headers.get(window.ResearchRouter.OFFLINE_HEADER);
-  return { text: await res.text(), source: served === window.ResearchRouter.OFFLINE_VALUE ? 'OFFLINE_CACHE' : 'NETWORK' };
+  const source = served === window.ResearchRouter.OFFLINE_VALUE ? 'OFFLINE_CACHE' : served === window.ResearchRouter.STALE_VALUE ? 'STALE_CACHE' : 'NETWORK';
+  return { text: await res.text(), source };
 }
 
 async function executeAgentTool(name, args) {

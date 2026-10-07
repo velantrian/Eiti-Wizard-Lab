@@ -248,7 +248,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     const o = await b.execute('wm_orientation'); const it = o.in_progress[0];
     for (const f of ['title', 'summary', 'current_question', 'status_note', 'next_action']) { assert(it[f].length <= 501, f + ' length ' + it[f].length); assert(it.truncated_fields.includes(f), f + ' flagged'); }
     assert(o.next_actions[0].truncated_fields.includes('next_action') && o.next_actions[0].truncated_fields.includes('title'));
-    assert(o.projects[0].truncated_fields.includes('name') && o.projects[0].truncated_fields.includes('summary'));
+    assert(o.projects.items[0].truncated_fields.includes('name') && o.projects.items[0].truncated_fields.includes('summary'));
     assert.strictEqual(o.source_pointers.items[0].locator, locator); assert(o.source_pointers.items[0].truncated_fields.includes('title'));
     assert(JSON.stringify(o).length < 9000, 'orientation size ' + JSON.stringify(o).length);
     const g = await b.execute('wm_get', { work_id: item.work_id });
@@ -605,7 +605,7 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
   await T('router-bounded', 'router output is bounded and clipped fields are flagged', async () => {
     const big = SYN_INDEX.replace('QUESTION: Beta?', 'QUESTION: ' + 'q'.repeat(2000)).replace('STATUS: Unknown.', 'STATUS: ' + 'u'.repeat(900));
     const r = await makeBridge(null, big).execute('research_route', { card: 2 });
-    assert(r.cards[0].QUESTION.length <= 401); assert(r.cards[0].truncated_fields.includes('QUESTION'));
+    assert([...r.cards[0].QUESTION].length <= 501); assert(r.cards[0].truncated_fields.includes('QUESTION'));
     const list = await makeBridge(null, big).execute('research_route', {}); assert(list.cards.find(c => c.card_number === 5).truncated_fields.includes('STATUS'));
     assert(JSON.stringify(await ex('research_route', {})).length < 20000); assert(JSON.stringify(await ex('research_route', { query: 'e' })).length < 12000);
   });
@@ -656,13 +656,257 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     for (const phrase of ['DEFAULT_RUNTIME_MODE = WORKING', 'wm_orientation', 'WORKING:', 'RESEARCH:', 'MODEL_PROPOSAL / MODEL_SUMMARY != USER_DECISION', 'read-only'])
       assert(Bridge.GUIDANCE.includes(phrase), phrase);
   });
+  // ═══ Final correctness round: reachability, scope, bounds, fidelity, strict args, unicode, SW fallback ═══
+  const clip500 = t => { const cp = [...t]; return cp.length > 500 ? cp.slice(0, 500).join('') + '…' : t; };
+  const loneSurrogate = t => /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/.test(t);
+  const cardBlock = (n, over) => {
+    const f = Object.assign({ 'EXPERIMENT_ID / NAME': 'SYN-' + n, STATUS: 'Closed.', EXECUTION_VERDICT: 'Run complete.', PRIMARY_EVIDENCE: 'raw-' + n }, over || {});
+    return ['### ' + n + '. SYN-' + n, '', ...Object.entries(f).map(([k, v]) => `${k}: ${v}\\`), ''].join('\n');
+  };
+  const synIndex = (cards, over) => ['# Synthetic', '', ...AUTH_HEADER, '', '## C. Experiment line index', '', cards.join('\n'), '## D. Map', ''].join('\n');
+  const expectedMatches = (md, term) => {   // independent of the router's parser/search code
+    const hits = []; for (const m of md.matchAll(/^### (\d+)\. (.+)$/gm)) {
+      const n = Number(m[1]); const hay = [m[2], ...['EXPERIMENT_ID / NAME', 'QUESTION', 'STATUS', 'EXECUTION_VERDICT', 'OPEN_FINDING', 'PRIMARY_EVIDENCE'].map(k => rawField(md, n, k) || '')].join('\n').toLowerCase();
+      if (hay.includes(term.toLowerCase())) hits.push(n);
+    } return hits;
+  };
+
+  await T('router-query-reachability', 'every matching card number is discoverable (matched_card_numbers / omitted_card_numbers) and each omitted card can be fetched with {card:N}', async () => {
+    const real = await ex('research_route', { query: 'NOT_RUN' });
+    const expected = expectedMatches(INDEX_MD, 'NOT_RUN');   // the live index currently has 8 NOT_RUN cards
+    assert(expected.length > Router.MAX_CARDS, 'precondition: the NOT_RUN query must exceed the full-card cap (' + expected.length + ')');
+    assert.strictEqual(real.matched, expected.length); assert.deepStrictEqual(real.matched_card_numbers, expected);
+    assert(real.cards.length <= Router.MAX_CARDS); assert.strictEqual(real.truncated, true);
+    const shown = real.cards.map(c => c.card_number);
+    assert.deepStrictEqual(real.omitted_card_numbers, expected.filter(n => !shown.includes(n)));
+    assert.deepStrictEqual([...shown, ...real.omitted_card_numbers].sort((a, b) => a - b), expected, 'shown + omitted = every match');
+    for (const n of real.omitted_card_numbers) {
+      const r = await ex('research_route', { card: n }); assert.strictEqual(r.index_loaded, true); assert.strictEqual(r.cards[0].card_number, n); assert.deepStrictEqual(r.matched_card_numbers, [n]);
+    }
+    // synthetic: 9 matches, only 3 shown in full, all 9 numbers listed
+    const md = synIndex(Array.from({ length: 12 }, (_, i) => cardBlock(i + 1, i < 9 ? { EXECUTION_VERDICT: '`NOT_RUN`.' } : {})));
+    const syn = await makeBridge(null, md).execute('research_route', { query: 'not_run' });
+    assert.deepStrictEqual(syn.matched_card_numbers, [1, 2, 3, 4, 5, 6, 7, 8, 9]); assert.strictEqual(syn.cards.length, Router.MAX_CARDS); assert.deepStrictEqual(syn.omitted_card_numbers, [4, 5, 6, 7, 8, 9]);
+    assert.match(syn.note, /omitted_card_numbers/);
+    // no truncation -> nothing omitted; number lists are themselves bounded and flagged
+    const few = await makeBridge(null, md).execute('research_route', { query: 'SYN-11' }); assert.deepStrictEqual(few.omitted_card_numbers, []); assert.strictEqual(few.truncated, false);
+    const huge = synIndex(Array.from({ length: 205 }, (_, i) => cardBlock(i + 1)));
+    const h = await makeBridge(null, huge).execute('research_route', { query: 'closed' });
+    assert.strictEqual(h.matched, 205); assert.strictEqual(h.matched_card_numbers.length, 200); assert.strictEqual(h.matched_card_numbers_truncated, true);
+    // overview also exposes cards it does not show
+    const ov = await makeBridge(null, huge).execute('research_route', {}); assert.strictEqual(ov.cards.length, 30); assert.strictEqual(ov.truncated, true); assert.strictEqual(ov.omitted_card_numbers[0], 31);
+  });
+  await T('router-card-fidelity', 'all 19 named fields are returned verbatim, including several fields on one physical line; card 1 CONSISTENCY=PARTIAL_MISMATCH; NOTES/LAST_VERIFIED visible', async () => {
+    const full = await ex('research_route', { card: 1 }); const c1 = full.cards[0];
+    for (const k of ['PROJECT', 'SCIENTIFIC_INTERPRETATION', 'WHAT_WAS_OBSERVED', 'WHAT_IT_SUPPORTS', 'NOTION_REF', 'DRIVE_REF', 'NOTION_STATUS', 'DRIVE_STATUS', 'CONSISTENCY', 'LAST_VERIFIED', 'NOTES']) assert(c1[k], 'card 1 lacks ' + k);
+    assert.match(c1.CONSISTENCY, /PARTIAL_MISMATCH/); assert.strictEqual(c1.CONSISTENCY, '`PARTIAL_MISMATCH`.');   // verbatim, incl. punctuation
+    assert.match(c1.LAST_VERIFIED, /2026-10-06/); assert.match(c1.NOTES, /do not treat GH17 as Crystal primary evidence/);
+    // multi-field physical lines are split, not left glued to the first field
+    assert(!/NOTION_REF|DRIVE_REF/.test(c1.GITHUB_REF), 'GITHUB_REF swallowed its line-mates: ' + c1.GITHUB_REF);
+    assert(!/DRIVE_STATUS|CONSISTENCY|LAST_VERIFIED/.test(c1.NOTION_STATUS) && !/CONSISTENCY|LAST_VERIFIED/.test(c1.DRIVE_STATUS));
+    assert.match(c1.GITHUB_REF, /GH17/); assert.match(c1.NOTION_REF, /N12/); assert.match(c1.DRIVE_REF, /D01/); assert.match(c1.DRIVE_STATUS, /D01 reviewed/);
+    // every real card: all 19 fields present and CONSISTENCY equals an independent extraction from the raw card block
+    assert.strictEqual(Router.FIELD_KEYS.length, 19);
+    for (const m of INDEX_MD.matchAll(/^### (\d+)\. /gm)) {
+      const n = Number(m[1]); const start = INDEX_MD.indexOf(m[0]); const end = INDEX_MD.indexOf('\n### ', start + 5); const block = INDEX_MD.slice(start, end < 0 ? INDEX_MD.indexOf('\n## ', start) : end);
+      const r = (await ex('research_route', { card: n })).cards[0];
+      for (const k of Router.FIELD_KEYS) assert(r[k] !== null && r[k] !== undefined, `card ${n} lacks ${k}`);
+      assert.strictEqual(r.CONSISTENCY, /CONSISTENCY: (`[A-Z_]+`\.)/.exec(block)[1], 'card ' + n + ' CONSISTENCY');
+      assert.strictEqual(r.LAST_VERIFIED, /LAST_VERIFIED: (`[0-9-]+`\.)/.exec(block)[1], 'card ' + n + ' LAST_VERIFIED');
+      assert.strictEqual(r.NOTES, clip500(/^NOTES: (.*?)\\?$/m.exec(block)[1].trim()), 'card ' + n + ' NOTES');
+    }
+    const c6 = (await ex('research_route', { card: 6 })).cards[0]; assert.match(c6.CONSISTENCY, /PARTIAL_MISMATCH/); assert(c6.NOTES && c6.NOTES.length > 0); assert.match(c6.LAST_VERIFIED, /2026/);
+    const stale = (await ex('research_route', { card: 12 })).cards[0]; assert.match(stale.CONSISTENCY, /STALE_DRIVE/);
+    // the overview surfaces CONSISTENCY too (a mismatch is visible without opening the card)
+    const ov = await ex('research_route', {}); assert.match(ov.cards.find(c => c.card_number === 1).CONSISTENCY, /PARTIAL_MISMATCH/);
+    // synthetic: inline groups in any order / subsets, values containing colons, no continuation loss
+    const md = synIndex([cardBlock(1, { GITHUB_REF: '[GH1](#x).  NOTION_REF: [N1](#x).  DRIVE_REF: [D1](#x); note: unverified.', NOTION_STATUS: 'Closed: yes. CONSISTENCY: `PARTIAL_MISMATCH`. LAST_VERIFIED: `2026-10-07`.' , NOTES: 'caveat: do not promote.' })]);
+    const sc = (await makeBridge(null, md).execute('research_route', { card: 1 })).cards[0];
+    assert.strictEqual(sc.GITHUB_REF, '[GH1](#x).'); assert.strictEqual(sc.NOTION_REF, '[N1](#x).'); assert.strictEqual(sc.DRIVE_REF, '[D1](#x); note: unverified.');
+    assert.strictEqual(sc.NOTION_STATUS, 'Closed: yes.'); assert.strictEqual(sc.DRIVE_STATUS, null); assert.strictEqual(sc.CONSISTENCY, '`PARTIAL_MISMATCH`.'); assert.strictEqual(sc.LAST_VERIFIED, '`2026-10-07`.'); assert.strictEqual(sc.NOTES, 'caveat: do not promote.');
+    // nothing meaningful is dropped silently: continuation / unknown lines and repeated fields fail the whole index closed
+    const unsupported = {
+      'continuation line': cardBlock(2) + 'continued on the next line: FAIL\n',
+      'unknown field line': cardBlock(2) + 'EXTRA_FIELD: something\\\n',
+      'duplicate STATUS': cardBlock(2).replace('STATUS: Closed.\\', 'STATUS: Closed.\\\nSTATUS: REOPENED later.\\'),
+    };
+    for (const [label, card] of Object.entries(unsupported)) for (const args of [{}, { card: 1 }]) {
+      const r = await makeBridge(null, synIndex([cardBlock(1), card])).execute('research_route', args);
+      assert.strictEqual(r.index_loaded, false, label); assert.strictEqual(r.parse_status, 'UNSUPPORTED_CARD_CONTENT', label); assert(!r.cards, label); assert.strictEqual(r.unsupported_cards[0].card_number, 2);
+      assert.strictEqual(r.partial_index_acceptance, 'NOT_ALLOWED_IN_B1');
+    }
+    assert.strictEqual((await ex('research_route', {})).parse_status, 'OK');
+  });
+  await T('router-failure-diagnostics', 'every fail-closed response has index_loaded=false, parse_status, entrypoint, diagnostics and no impossible "open the file" instruction; PARTIAL_INDEX_ACCEPTANCE stays NOT_ALLOWED', async () => {
+    const bad = { html: '<html>404</html>', empty: '', authority: synIndex([cardBlock(1)]).replace('CANON: `NO`\\', 'CANON: `YES`\\'), nocards: ['# x', '', ...AUTH_HEADER, '', '## C. y', ''].join('\n'),
+      malformed: synIndex([cardBlock(1), '### 2. SYN-EMPTY\n']), unsupported: synIndex([cardBlock(1) + 'stray prose\n']) };
+    for (const [label, md] of Object.entries(bad)) {
+      const r = await makeBridge(null, md).execute('research_route', { query: 'closed' });
+      assert.strictEqual(r.index_loaded, false, label); assert(r.parse_status && r.parse_status !== 'OK', label); assert.strictEqual(r.entrypoint, Router.INDEX_PATH);
+      assert(r.diagnostics && Array.isArray(r.diagnostics.reasons) && r.diagnostics.reasons.length >= 1, label + ' diagnostics'); assert(!r.cards, label);
+      assert.strictEqual(r.partial_index_acceptance, 'NOT_ALLOWED_IN_B1'); assert.match(r.note, /Fail-closed/); assert(!/\bopen\b[^.]*\bdirectly\b/i.test(r.note), label + ': note tells the agent to open a file: ' + r.note);
+    }
+    const one = synIndex([cardBlock(1), cardBlock(2), '### 3. SYN-EMPTY\n', cardBlock(4)]);   // one bad card among valid ones: whole index unavailable
+    const r1 = await makeBridge(null, one).execute('research_route', { card: 1 }); assert.strictEqual(r1.index_loaded, false); assert.strictEqual(r1.parse_status, 'MALFORMED_CARDS');
+  });
+  await T('router-strict-args', 'research_route arguments are validated strictly (blank query, string/zero/negative/fractional card)', async () => {
+    for (const args of [{ query: '' }, { query: '   ' }, { query: 5 }, { card: '2' }, { card: 0 }, { card: -1 }, { card: 1.5 }, { card: 'abc' }, { line: '3' }, { card: 1, query: 'x' }, { card: 1, line: 2 }]) {
+      const r = await synBridge().execute('research_route', args); assert.strictEqual(r.ok, false, JSON.stringify(args)); assert.strictEqual(r.code, 'VALIDATION', JSON.stringify(args)); assert.strictEqual(r.plane, 'RESEARCH');
+    }
+    assert.strictEqual((await synBridge().execute('research_route', { card: 3 })).cards[0].card_number, 3);
+  });
+
+  await T('orientation-project-scope', 'wm_orientation honours project_id (alias of project), rejects conflicts, never falls back to unscoped', async () => {
+    const d = new SQL.Database(); const st = mkStore(d); const b = makeBridge(st);
+    must(await st.createProject({ project_id: 'proj-a', code: 'PRJA', name: 'A' })); must(await st.createProject({ project_id: 'proj-b', code: 'PRJB', name: 'B' }));
+    const ia = must(await st.createItem({ project_id: 'proj-a', title: 'A in progress', status: 'IN_PROGRESS', next_action: 'a-next', provenance_class: 'USER_NOTE' }));
+    const ib = must(await st.createItem({ project_id: 'proj-b', title: 'B blocked', status: 'BLOCKED', status_note: 'b-wait', provenance_class: 'USER_NOTE' }));
+    must(await st.createSource({ source_id: 'sa', project_id: 'proj-a', surface: 'LOCAL', role: 'PRIMARY', title: 'a src', locator: 'local://a' })); must(await st.createSource({ source_id: 'sb', project_id: 'proj-b', surface: 'LOCAL', role: 'PRIMARY', title: 'b src', locator: 'local://b' }));
+    const unscoped = await b.execute('wm_orientation'); assert.strictEqual(unscoped.scope, 'ALL_PROJECTS'); assert.strictEqual(unscoped.projects.total, 2);
+    for (const args of [{ project_id: 'proj-a' }, { project: 'proj-a' }, { project: 'PRJA' }, { project_id: 'prja' }, { project: 'proj-a', project_id: 'PRJA' }]) {
+      const o = await b.execute('wm_orientation', args); const text = JSON.stringify(o);
+      assert.deepStrictEqual(o.scope, { project_id: 'proj-a', code: 'PRJA' }, JSON.stringify(args)); assert.deepStrictEqual(o.projects.items.map(p => p.project_id), ['proj-a']); assert.strictEqual(o.projects.total, 1);
+      assert.deepStrictEqual(o.in_progress.map(i => i.work_id), [ia.work_id]); assert.strictEqual(o.blocked.length, 0);
+      assert(!text.includes(ib.work_id) && !text.includes('proj-b') && !text.includes('local://b'), 'project B state leaked into A orientation ' + JSON.stringify(args));
+    }
+    assert.deepStrictEqual((await b.execute('wm_orientation', { project_id: 'proj-b' })).blocked.map(i => i.work_id), [ib.work_id]);
+    for (const [tool, args] of [['wm_orientation', { project: 'proj-a', project_id: 'proj-b' }], ['wm_list', { project: 'PRJA', project_id: 'proj-b' }], ['wm_search', { query: 'x', project: 'proj-a', project_id: 'PRJB' }], ['wm_project_sources', { project: 'proj-b', project_id: 'proj-a' }]]) {
+      const r = await b.execute(tool, args); assert.strictEqual(r.ok, false, tool); assert.strictEqual(r.code, 'VALIDATION', tool); assert.match(r.error, /different projects/);
+    }
+    for (const args of [{ project_id: 'nope' }, { project: 'nope' }, { project: 'proj-a', project_id: 'nope' }]) { const r = await b.execute('wm_orientation', args); assert.strictEqual(r.ok, false); assert.strictEqual(r.code, 'NOT_FOUND'); assert(!('in_progress' in r), 'must not fall back to an unscoped orientation'); }
+    assert.strictEqual((await b.execute('wm_orientation', { project_id: 5 })).code, 'VALIDATION');
+  });
+  await T('orientation-projects-bounded', 'wm_orientation.projects is {items,total,truncated}, bounded by project_limit (default 10, max 50); nothing silently dropped; startup payload stays small', async () => {
+    const d = new SQL.Database(); const st = mkStore(d); const b = makeBridge(st);
+    for (let i = 0; i < 150; i++) must(await st.createProject({ project_id: 'px' + i, code: 'PX' + String(i).padStart(3, '0'), name: 'Project ' + i, summary: 'S'.repeat(600) }));
+    const o = await b.execute('wm_orientation');
+    assert.strictEqual(o.projects.items.length, 10); assert.strictEqual(o.projects.total, 150); assert.strictEqual(o.projects.truncated, true);
+    const o3 = await b.execute('wm_orientation', { project_limit: 3 }); assert.strictEqual(o3.projects.items.length, 3); assert.strictEqual(o3.projects.total, 150); assert.strictEqual(o3.projects.truncated, true);
+    const big = await b.execute('wm_orientation', { project_limit: 1000 }); assert.strictEqual(big.projects.items.length, 50); assert.deepStrictEqual(big.limit_clamped, { project_limit: 50 }); assert.strictEqual(big.projects.truncated, true);
+    assert((await b.execute('wm_orientation', { project_limit: 'ten' })).code === 'VALIDATION' && (await b.execute('wm_orientation', { project_limit: 0 })).code === 'VALIDATION');
+    assert(JSON.stringify(o).length < 12000, 'default orientation payload ' + JSON.stringify(o).length); assert(JSON.stringify(big).length < 40000, 'max-project orientation payload ' + JSON.stringify(big).length);
+    must(await st.createProject({ project_id: 'only', code: 'ONLY', name: 'x' })); assert.strictEqual((await makeBridge(st).execute('wm_orientation', { project_id: 'only' })).projects.truncated, false);
+  });
+  await T('strict-tool-arguments', 'runtime argument validation: missing/blank query, string booleans, invalid/clamped limits, non-string filters, non-object args', async () => {
+    const d = new SQL.Database(); const st = mkStore(d); const b = makeBridge(st); must(await st.createProject({ project_id: 'sv', code: 'SV', name: 'SV' }));
+    for (let i = 0; i < 3; i++) must(await st.createItem({ project_id: 'sv', title: 'strict item ' + i, status: i ? 'OPEN' : 'CURRENT', provenance_class: 'USER_NOTE' }));
+    const arch = must(await st.createItem({ project_id: 'sv', title: 'strict archived', provenance_class: 'USER_NOTE' })); must(await st.archiveItem(arch.work_id));
+    const bad = async (tool, args, label) => { const r = await b.execute(tool, args); assert.strictEqual(r.ok, false, label + ' ' + JSON.stringify(r).slice(0, 120)); assert.strictEqual(r.code, 'VALIDATION', label + ' ' + JSON.stringify(r).slice(0, 160)); assert.strictEqual(r.plane, 'WORKING'); return r; };
+    await bad('wm_search', {}, 'missing query'); await bad('wm_search', { q: 'strict' }, 'mistyped key'); await bad('wm_search', { query: '' }, 'empty query'); await bad('wm_search', { query: '   \t' }, 'whitespace query'); await bad('wm_search', { query: 5 }, 'numeric query');
+    await bad('wm_search', { query: 'strict', includeArchived: 'false' }, 'string "false"'); await bad('wm_search', { query: 'strict', includeArchived: 'true' }, 'string "true"'); await bad('wm_search', { query: 'strict', includeArchived: 0 }, 'numeric boolean');
+    await bad('wm_list', { includeArchived: 'false' }, 'list string false'); await bad('wm_list', { includeArchived: 1 }, 'list numeric boolean');
+    assert.strictEqual((await b.execute('wm_list', { includeArchived: false })).items.length, 3); assert.strictEqual((await b.execute('wm_list', { includeArchived: true })).items.length, 4); assert.strictEqual((await b.execute('wm_search', { query: 'strict', includeArchived: true })).items.length, 4);
+    for (const lim of ['abc', '5', '', NaN, 0, -3, 2.5, true, [], {}, Infinity]) { if (lim === '') continue; await bad('wm_list', { limit: lim }, 'limit ' + String(lim)); }
+    await bad('wm_search', { query: 'strict', limit: 'abc' }, 'search limit'); await bad('wm_list_projects', { limit: 0 }, 'projects limit'); await bad('wm_orientation', { limit: -1 }, 'orientation limit'); await bad('wm_get', { work_id: 'x', sources_limit: '3' }, 'sources_limit'); await bad('wm_related', { work_id: 'x', limit: 1.5 }, 'related limit'); await bad('wm_project_sources', { project: 'SV', limit: 'x' }, 'project_sources limit');
+    // documented contract: omitted/null -> default; above max -> clamped and reported
+    assert.strictEqual((await b.execute('wm_list', {})).items.length, 3); assert.strictEqual((await b.execute('wm_list', { limit: null })).items.length, 3); assert.strictEqual((await b.execute('wm_list', {})).limit_clamped, undefined);
+    const clamped = await b.execute('wm_list', { limit: 500 }); assert.deepStrictEqual(clamped.limit_clamped, { limit: 50 }); assert.strictEqual((await b.execute('wm_list', { limit: 2 })).items.length, 2);
+    assert.deepStrictEqual((await b.execute('wm_orientation', { limit: 99 })).limit_clamped, { limit: 10 });
+    const g = await b.execute('wm_get', { work_id: st.listItems({})[0].work_id, sources_limit: 999, relations_limit: 999 }); assert.deepStrictEqual(g.limit_clamped, { sources_limit: 50, relations_limit: 50 });
+    // required / typed identifiers and filters
+    await bad('wm_get', {}, 'get without work_id'); await bad('wm_get', { work_id: 5 }, 'numeric work_id'); await bad('wm_get', { work_id: '  ' }, 'blank work_id'); await bad('wm_related', {}, 'related without work_id'); await bad('wm_project_sources', {}, 'sources without project');
+    await bad('wm_list', { thread: 5 }, 'numeric thread'); await bad('wm_list', { status: 5 }, 'numeric status'); await bad('wm_list', { project: 5 }, 'numeric project');
+    assert.strictEqual((await b.execute('wm_list', { status: 'BOGUS' })).ok, false);
+    for (const args of ['text', ['a'], 7]) await bad('wm_list', args, 'non-object args');
+    assert.strictEqual((await b.execute('wm_list', null)).ok === undefined, true); assert.strictEqual((await b.execute('wm_list', undefined)).items.length, 3);
+    // blank optional filters are absent, not errors
+    assert.strictEqual((await b.execute('wm_list', { status: '', thread: '  ', project: '' })).items.length, 3);
+  });
+  await T('unicode-safe-clipping', 'agent-facing clipping is code-point safe: an emoji exactly across the cap is kept whole, never split into a lone surrogate', async () => {
+    const d = new SQL.Database(); const st = mkStore(d); const b = makeBridge(st);
+    must(await st.createProject({ project_id: 'uc', code: 'UC', name: 'N'.repeat(199) + '😀' + 'tail', summary: 'S'.repeat(499) + '😀' + 'tail' }));
+    const crossing = (n, tail) => 'a'.repeat(n - 1) + '😀' + tail;          // the emoji occupies UTF-16 units n and n+1 -> a plain slice(0, n) would cut it in half
+    const it = must(await st.createItem({ project_id: 'uc', title: crossing(200, 'tail'), summary: crossing(500, 'tail'), current_question: crossing(300, 'x'), status: 'IN_PROGRESS',
+      status_note: crossing(300, 'x'), next_action: crossing(300, 'x'), body_md: crossing(4000, 'tail'), tags: ['t'], provenance_class: 'USER_NOTE' }));
+    assert(loneSurrogate('a'.repeat(199) + '😀'.slice(0, 1)), 'sanity: the detector flags a split pair');
+    const o = await b.execute('wm_orientation'); const g = await b.execute('wm_get', { work_id: it.work_id }); const text = JSON.stringify([o, g]);
+    assert(!loneSurrogate(text), 'lone surrogate in tool output');
+    const row = o.in_progress[0]; assert.strictEqual(row.title, 'a'.repeat(199) + '😀' + '…'); assert.strictEqual([...row.title].length, 201);
+    assert.strictEqual(row.summary, 'a'.repeat(499) + '😀' + '…'); assert.strictEqual(row.current_question, 'a'.repeat(299) + '😀' + '…');
+    assert.strictEqual(g.item.body_md, 'a'.repeat(3999) + '😀' + '…'); assert.deepStrictEqual(g.item.truncated_fields.sort(), ['body_md', 'current_question', 'next_action', 'status_note', 'summary', 'title'].sort());
+    assert.strictEqual(o.projects.items[0].name, 'N'.repeat(199) + '😀' + '…'); assert.strictEqual(o.projects.items[0].summary, 'S'.repeat(499) + '😀' + '…');
+    // a string whose code-point count equals the cap is NOT truncated even though its UTF-16 length exceeds it
+    const exact = must(await st.createItem({ project_id: 'uc', title: 'a'.repeat(199) + '😀', status: 'OPEN', provenance_class: 'USER_NOTE' }));
+    const e = (await b.execute('wm_get', { work_id: exact.work_id })).item; assert.strictEqual(e.title, 'a'.repeat(199) + '😀'); assert(!e.truncated_fields.includes('title'));
+    // the cut can land on any boundary: emoji-only text and mixed BMP/astral text
+    for (const text2 of ['😀'.repeat(300), '😀a'.repeat(150), 'я'.repeat(199) + '👨‍👩‍👧' + 'z']) {
+      const t = must(await st.createItem({ project_id: 'uc', title: text2, status: 'OPEN', provenance_class: 'USER_NOTE' })); const v = (await b.execute('wm_get', { work_id: t.work_id })).item.title;
+      assert(!loneSurrogate(v)); assert(v === text2 || [...v].length === 201, 'clipped length'); assert.strictEqual(Buffer.from(v, 'utf8').toString('utf8'), v, 'UTF-8 round trip');
+    }
+    // research side: card fields are clipped by code point as well
+    const md = synIndex([cardBlock(1, { QUESTION: 'q'.repeat(499) + '😀' + 'tail' }), cardBlock(2, { QUESTION: '😀'.repeat(600) })]);
+    const rb = makeBridge(null, md); const q1 = (await rb.execute('research_route', { card: 1 })).cards[0]; const q2 = (await rb.execute('research_route', { card: 2 })).cards[0];
+    assert.strictEqual(q1.QUESTION, 'q'.repeat(499) + '😀' + '…'); assert(q1.truncated_fields.includes('QUESTION')); assert.strictEqual([...q2.QUESTION].length, 501);
+    assert(!loneSurrogate(JSON.stringify([q1, q2, await rb.execute('research_route', {})])));
+    assert.deepStrictEqual(Router.clipCodePoints('ab😀cd', 3), { text: 'ab😀…', truncated: true }); assert.deepStrictEqual(Router.clipCodePoints('ab😀', 3), { text: 'ab😀', truncated: false });
+  });
+
+  // ── Service worker: Research Index fallback policy (mocked runtime) ──
+  const makeSw = () => {
+    const vm = require('node:vm'); const src = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+    const caches = new Map(), listeners = {}; const net = { mode: 'ok', status: 200, body: 'FRESH', calls: 0 };
+    const cachesApi = { async open(name) { if (!caches.has(name)) caches.set(name, new Map()); const c = caches.get(name);
+      return { async addAll() {}, async put(req, res) { c.set(req.url || req, res); }, async match(req) { const h = c.get(req.url || req); return h ? h.clone() : undefined; }, async delete(req) { return c.delete(req.url || req); } }; },
+      async match(req) { for (const c of caches.values()) { const h = c.get(req.url || req); if (h) return h.clone(); } return undefined; }, async keys() { return [...caches.keys()]; }, async delete(k) { return caches.delete(k); } };
+    const ctx = { self: { addEventListener: (n, f) => { listeners[n] = f; }, skipWaiting() {}, clients: { claim() {}, matchAll: async () => [] }, registration: {} }, caches: cachesApi,
+      fetch: async () => { net.calls++; if (net.mode === 'down') throw new TypeError('offline'); return new Response(net.status === 204 ? null : net.body, { status: net.status }); }, Response, Headers, Request, URL, console };
+    vm.createContext(ctx); vm.runInContext(src, ctx);
+    const name = src.match(/const CACHE_NAME = '([^']+)'/)[1]; const IDX = 'http://127.0.0.1:1/Eiti-Wizard-Lab/docs/research/EXPERIMENT_EVIDENCE_INDEX.md';
+    const fire = async () => { const waits = []; const ev = { request: new Request(IDX), respondWith(p) { this.p = p; }, waitUntil(p) { waits.push(p); } }; listeners.fetch(ev); const res = await ev.p; return { res, waits }; };
+    return { net, fire, cache: () => caches.get(name), name, IDX, seed: body => { caches.set(name, new Map([[IDX, new Response(body)]])); } };
+  };
+  await T('sw-research-5xx-fallback', 'research index: online fresh > stale cache; 5xx and transport failure fall back to a flagged cached copy; cache writes are covered by event.waitUntil', async () => {
+    const w = makeSw();
+    let { res, waits } = await w.fire(); assert.strictEqual(await res.text(), 'FRESH'); assert(waits.length >= 1, 'cache write must be registered with event.waitUntil');
+    await Promise.all(waits); assert.strictEqual(await w.cache().get(w.IDX).clone().text(), 'FRESH', 'fresh 200 is cached once the waited promise settles');
+    for (const status of [500, 502, 503, 504, 599]) {
+      w.net.status = status; w.net.body = 'SERVER-ERROR'; ({ res, waits } = await w.fire());
+      assert.strictEqual(res.status, 200, 'status ' + status); assert.strictEqual(await res.text(), 'FRESH', 'stale cached copy served for ' + status);
+      assert.strictEqual(res.headers.get('X-Eiti-Served-From'), 'sw-stale-cache'); assert.strictEqual(w.cache().has(w.IDX), true, status + ' must not evict or overwrite the cache');
+    }
+    w.net.status = 200; w.net.body = 'NEWER'; ({ res, waits } = await w.fire()); await Promise.all(waits);
+    assert.strictEqual(await res.text(), 'NEWER'); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), null, 'online fresh beats stale cache'); assert.strictEqual(await w.cache().get(w.IDX).clone().text(), 'NEWER');
+    w.net.mode = 'down'; ({ res } = await w.fire()); assert.strictEqual(await res.text(), 'NEWER'); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), 'sw-offline-cache');
+    // no cached copy: the 5xx itself / a 504 is returned (never an invented success)
+    const n = makeSw(); n.net.status = 503; n.net.body = 'DOWN'; ({ res } = await n.fire()); assert.strictEqual(res.status, 503); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), null);
+    n.net.mode = 'down'; ({ res } = await n.fire()); assert.strictEqual(res.status, 504);
+  });
+  await T('sw-research-404-no-stale', 'research index: 404/410 (authoritative removal) is NOT masked by an old cache and evicts it; other 4xx pass through untouched', async () => {
+    for (const status of [404, 410]) {
+      const w = makeSw(); w.seed('OLD-INDEX'); w.net.status = status; w.net.body = 'GONE';
+      const { res, waits } = await w.fire(); await Promise.all(waits);
+      assert.strictEqual(res.status, status); assert.strictEqual(await res.text(), 'GONE'); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), null, status + ' served the stale cache');
+      assert.strictEqual(w.cache().has(w.IDX), false, status + ' did not evict the stale copy');
+      w.net.mode = 'down'; const off = await w.fire(); assert.strictEqual(off.res.status, 504, 'after removal even offline must not resurrect the old index');
+    }
+    for (const status of [401, 403, 429]) {
+      const w = makeSw(); w.seed('OLD-INDEX'); w.net.status = status; w.net.body = 'DENIED'; const { res, waits } = await w.fire(); await Promise.all(waits);
+      assert.strictEqual(res.status, status); assert.strictEqual(w.cache().has(w.IDX), true, status + ' must not evict'); assert.strictEqual(res.headers.get('X-Eiti-Served-From'), null);
+    }
+  });
+  await T('index-loader-source', 'page loader maps the SW flag to index_source (NETWORK / OFFLINE_CACHE / STALE_CACHE) and the router exposes both header values', async () => {
+    assert.strictEqual(Router.OFFLINE_VALUE, 'sw-offline-cache'); assert.strictEqual(Router.STALE_VALUE, 'sw-stale-cache');
+    assert(/STALE_VALUE \? 'STALE_CACHE'/.test(INDEX_HTML) && /OFFLINE_VALUE \? 'OFFLINE_CACHE'/.test(INDEX_HTML));
+    const b = Bridge.create({ store: null, router: Router, loadResearchIndex: async () => ({ text: SYN_INDEX, source: 'STALE_CACHE' }) });
+    assert.strictEqual((await b.execute('research_route', {})).index_source, 'STALE_CACHE');
+  });
+
   await T('docs', 'AGENT_START_HERE keeps history and documents both planes', async () => {
     const d = fs.readFileSync(path.join(ROOT, 'AGENT_START_HERE.md'), 'utf8');
     for (const s of ['DEFAULT_RUNTIME_MODE        = WORKING', 'WORKING_MEMORY != RESEARCH_INDEX', 'RESEARCH_INDEX != RUNTIME_AUTHORITY', 'RESEARCH_RESULT != USER_DECISION', 'MEMORY_CONTINUITY != RESEARCH_EVIDENCE_INDEX', 'PR #28'])
       assert(d.includes(s), s);
     assert(INDEX_MD.includes('RESEARCH_INDEX_ONLY') && INDEX_MD.includes('CANON: `NO`'));
     const b1 = fs.readFileSync(path.join(ROOT, 'docs/working-memory/WORKING_MEMORY_B1_AGENT_READ_BRIDGE.md'), 'utf8');
-    for (const s2 of ['FINAL_MODEL_MIXED_ANSWER_ENFORCEMENT = NOT_IMPLEMENTED', 'FRESH_MODEL_BEHAVIOR = NOT_RUN', 'MALFORMED_CARDS', '`STATUS`, `EXECUTION_VERDICT` and `PRIMARY_EVIDENCE`']) assert(b1.includes(s2), s2);
+    // ONE canonical start sequence; in-app (runtime tools) vs repository agents are distinguished; no unconditional "read the index first"
+    assert.strictEqual((d.match(/^## Canonical start sequence/gm) || []).length, 1, 'exactly one canonical start sequence');
+    assert(!/^\d+\. Read \[docs\/research\/EXPERIMENT_EVIDENCE_INDEX\.md\]/m.test(d), 'the old unconditional "read the index" step is gone');
+    const seq = d.slice(d.indexOf('## Canonical start sequence'), d.indexOf('Repository notes'));
+    assert.strictEqual((seq.match(/^\d+\. /gm) || []).length, 6, 'six numbered steps');
+    assert(/In-app agent/.test(d) && /Repository agent/.test(d) && /no\*\* `wm_\*` \/ `research_route` tools/.test(d), 'in-app vs repository agents documented');
+    assert(/when runtime Working Memory is available/i.test(seq) && /Repository agent: runtime Working Memory is not available/.test(seq), 'wm_orientation only where runtime WM exists');
+    assert(/only when the task requires research/i.test(seq) && /primary evidence/.test(seq) && /CONSISTENCY/.test(seq));
+    assert(!/\bold sequence|Fresh-agent sequence/.test(d), 'no second start sequence');
+    for (const s2 of ['FINAL_MODEL_MIXED_ANSWER_ENFORCEMENT = NOT_IMPLEMENTED', 'FRESH_MODEL_BEHAVIOR = NOT_RUN', 'MALFORMED_CARDS', '`STATUS`, `EXECUTION_VERDICT` and `PRIMARY_EVIDENCE`', 'PARTIAL_INDEX_ACCEPTANCE = NOT_ALLOWED_IN_B1', 'matched_card_numbers', 'omitted_card_numbers', 'limit_clamped', 'sw-stale-cache', 'UNSUPPORTED_CARD_CONTENT', '`project_limit`', 'code points']) assert(b1.includes(s2), s2);
   });
 
   console.log(`\n${passed}/${passed + failed} tests passed.`);

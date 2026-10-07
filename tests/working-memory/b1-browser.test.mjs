@@ -142,6 +142,38 @@ try {
   for (const key of ['wmOmitted', 'wmEmpty']) { assert(Array.isArray(disp[key].out.items), key + ': valid wm_list'); assert(disp[key].d.store > 0, key + ' reaches the store'); }
   console.log('PASS  real dispatcher: null / false / 0 / 7 / "text" / [] / "" / true are VALIDATION with FETCH_COUNT = 0 (research_route + every wm_* tool); omitted / {} still run');
 
+  // Real dispatcher: NON-PLAIN argument objects (class instances, custom / null prototypes, built-ins) are VALIDATION before any I/O.
+  const nonPlain = await page.evaluate(async () => {
+    const counts = { fetch: 0, init: 0, store: 0 };
+    const realFetch = window.fetch; window.fetch = function (...a) { counts.fetch++; return realFetch.apply(this, a); };
+    const realInit = window.wizInitSQLite; window.wizInitSQLite = function (...a) { counts.init++; return realInit.apply(this, a); };
+    const realStore = window.WmStore; window.WmStore = new Proxy(realStore, { get(t, k) { const v = t[k]; if (typeof v === 'function') counts.store++; return v; } });
+    class Custom {}
+    const values = {
+      classInstance: new Custom(), classInstanceWithKeys: new (class Sub { constructor() { this.limit = 2; this.card = 1; } })(), customPrototype: Object.create({ custom: true }),
+      nullPrototype: Object.create(null), nullPrototypeWithKeys: Object.assign(Object.create(null), { limit: 2 }), date: new Date(), map: new Map(), set: new Set(), regexp: /x/, argumentsObject: (function () { return arguments; })(),
+    };
+    const call = async (tool, args) => { const before = Object.assign({}, counts); const out = JSON.parse(await executeAgentTool(tool, args)); return { out, d: { fetch: counts.fetch - before.fetch, init: counts.init - before.init, store: counts.store - before.store } }; };
+    try {
+      const res = { invalid: {}, valid: {} };
+      for (const tool of ['research_route', 'wm_list', 'wm_orientation', 'wm_search']) for (const [k, v] of Object.entries(values)) res.invalid[tool + ':' + k] = await call(tool, v);
+      res.valid.emptyObject = await call('research_route', {}); res.valid.literal = await call('research_route', { card: 1 }); res.valid.wmEmpty = await call('wm_list', {}); res.valid.wmLiteral = await call('wm_list', { limit: 2 });
+      res.valid.parsed = await call('wm_list', JSON.parse('{"limit":1}')); res.valid.objectCreateObjectPrototype = await call('wm_list', Object.create(Object.prototype));
+      return res;
+    } finally { window.fetch = realFetch; window.wizInitSQLite = realInit; window.WmStore = realStore; }
+  });
+  let nonPlainChecked = 0;
+  for (const [key, r] of Object.entries(nonPlain.invalid)) {
+    assert.equal(r.out.code, 'VALIDATION', key + ' must be VALIDATION: ' + JSON.stringify(r.out).slice(0, 160)); assert.match(r.out.error, /arguments must be an object, or omitted entirely/);
+    assert.equal(r.d.fetch, 0, key + ': FETCH_COUNT must be 0'); assert.equal(r.d.init, 0, key + ': SQLITE_INIT_COUNT must be 0'); assert.equal(r.d.store, 0, key + ': STORE_ACCESS_COUNT must be 0');
+    assert(!('items' in r.out) && !('cards' in r.out) && !('in_progress' in r.out), key + ' returned data'); nonPlainChecked++;
+  }
+  assert.equal(nonPlainChecked, 4 * 10);
+  assert.equal(nonPlain.valid.emptyObject.out.index_loaded, true); assert(nonPlain.valid.emptyObject.d.fetch >= 1); assert.equal(nonPlain.valid.literal.out.cards[0].card_number, 1);
+  for (const key of ['wmEmpty', 'wmLiteral', 'parsed', 'objectCreateObjectPrototype']) { assert(Array.isArray(nonPlain.valid[key].out.items), key + ' must keep working'); assert(nonPlain.valid[key].d.store > 0, key + ' reaches the store'); }
+  assert.equal(nonPlain.valid.wmLiteral.out.items.length <= 2, true);
+  console.log('PASS  real dispatcher: class instances, Object.create(proto), Object.create(null), Date / Map / Set / RegExp / arguments are VALIDATION with FETCH = SQLITE_INIT = STORE_ACCESS = 0; {} and object literals still run');
+
   // blank scope fails closed through the real dispatcher; research.available is true because the router is loaded
   for (const [tool, args] of [['wm_list', { project: '' }], ['wm_list', { project: '   ' }], ['wm_list', { project_id: '' }], ['wm_search', { query: 'Browser', project: '' }], ['wm_orientation', { project_id: '  ' }]]) {
     const r = await page.evaluate(async (t, a) => JSON.parse(await executeAgentTool(t, a)), tool, args);

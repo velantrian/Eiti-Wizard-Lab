@@ -39,7 +39,10 @@
   const ALLOWED_ARGS = Object.freeze(Object.fromEntries(TOOLS_SPEC.map(t => [t.name,
     Object.freeze(new Set(Object.keys(t.parameters.properties).concat(t.name === 'research_route' ? ['line'] : [])))])));
   const planeOf = name => (name === 'research_route' ? 'RESEARCH' : 'WORKING');
-  const isPlainObject = v => Object.prototype.toString.call(v) === '[object Object]';
+  // STRICT plain object: an ordinary object whose prototype is exactly Object.prototype. Class instances, Object.create(proto),
+  // Object.create(null), arrays, Date / Map / Set / RegExp / boxed primitives / functions and everything else are NOT plain.
+  // (The [[Class]] tag is checked as well so exotic objects that merely inherit Object.prototype, e.g. an `arguments` object, are rejected too.)
+  const isPlainObject = v => typeof v === 'object' && v !== null && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype && Object.prototype.toString.call(v) === '[object Object]';
   const describe = v => (v === null ? 'null' : Array.isArray(v) ? 'an array' : typeof v === 'object' ? 'a non-plain object' : 'a ' + typeof v + ' (' + JSON.stringify(v) + ')');
   // PURE structural preflight shared by bridge.execute and the in-app dispatcher: it runs before any loader, fetch, SQLite init or tool code.
   // Runtime argument-object contract: `undefined` (genuinely omitted) means {}; null / number / boolean / string / array / non-plain object

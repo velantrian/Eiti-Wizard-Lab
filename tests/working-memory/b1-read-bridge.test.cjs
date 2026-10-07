@@ -1226,15 +1226,15 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
       assert.strictEqual(Bridge.preflightCall(tool, bad).code, 'VALIDATION', `preflightCall ${tool}(${label})`);
     }
     assert.strictEqual(storeCalls, 0, 'STORE_CALLS must be 0 for invalid argument objects'); assert.strictEqual(loaderCalls, 0, 'LOADER_CALLS must be 0 for invalid argument objects');
-    // omitted -> {} (valid); an empty plain object is valid; Object.create(null) is a plain object; both reach the tool
-    assert.strictEqual(Bridge.preflightCall('wm_list', undefined), null); assert.strictEqual(Bridge.preflightCall('wm_list', {}), null); assert.strictEqual(Bridge.preflightCall('wm_list', Object.create(null)), null);
+    // omitted -> {} (valid); an empty plain object is valid; a null-prototype object is NOT plain
+    assert.strictEqual(Bridge.preflightCall('wm_list', undefined), null); assert.strictEqual(Bridge.preflightCall('wm_list', {}), null); assert.strictEqual(Bridge.preflightCall('wm_list', Object.create(Object.prototype)), null, 'prototype exactly Object.prototype is plain'); assert.strictEqual(Bridge.preflightCall('wm_list', Object.create(null)).code, 'VALIDATION', 'null-prototype objects are NOT plain');
     for (const tool of ['wm_orientation', 'wm_list_projects', 'wm_list']) { const r = await b.execute(tool, undefined); assert.notStrictEqual(r.ok, false, tool + '(undefined) must run as {}'); assert.strictEqual((await b.execute(tool, {})).ok, undefined); }
     assert(storeCalls > 0, 'valid calls do reach the store'); const before = loaderCalls;
     assert.strictEqual((await b.execute('research_route', undefined)).index_loaded, true); assert.strictEqual((await b.execute('research_route', {})).index_loaded, true); assert.strictEqual(loaderCalls, before + 2, 'omitted / empty args load the index once each');
     // a plain object still gets unknown-key and tool-specific validation
     assert.strictEqual((await b.execute('wm_list', { projectId: 'x' })).code, 'VALIDATION'); assert.strictEqual(Bridge.preflightCall('wm_list', { projectId: 'x' }).code, 'VALIDATION'); assert.strictEqual(Bridge.preflightCall('nope', {}).code, 'UNKNOWN_TOOL');
     // router-level direct callers follow the same contract
-    for (const [label, bad] of nonObjects.slice(0, 12)) { let calls = 0; const r = await Router.routeWithLoader(async () => { calls++; return SYN_INDEX; }, bad); assert.strictEqual(r.code, 'VALIDATION', 'router ' + label); assert.strictEqual(calls, 0, 'router ' + label); assert.strictEqual(Router.route(SYN_INDEX, bad).code, 'VALIDATION', 'route ' + label); }
+    for (const [label, bad] of nonObjects) { let calls = 0; const r = await Router.routeWithLoader(async () => { calls++; return SYN_INDEX; }, bad); assert.strictEqual(r.code, 'VALIDATION', 'router ' + label); assert.strictEqual(calls, 0, 'router ' + label); assert.strictEqual(Router.route(SYN_INDEX, bad).code, 'VALIDATION', 'route ' + label); }
     assert.strictEqual((await Router.routeWithLoader(async () => SYN_INDEX, undefined)).index_loaded, true);
   });
   await T('dispatcher-no-falsy-coercion', 'the real dispatcher no longer turns falsy argument values into {} for B1 tools: validation precedes SQLite init / loader / fetch; legacy tools keep their normalisation', async () => {
@@ -1247,6 +1247,53 @@ const clip400 = t => (t.length > 400 ? t.slice(0, 400) + '…' : t);
     assert(!/functionCall\.args \|\| \{\}/.test(INDEX_HTML.slice(INDEX_HTML.indexOf('toolCalls.push({'))), 'no falsy coercion left in the Gemini call parser');
     // every B1 tool's allowed set stays tied to its declared parameters
     assert.strictEqual(Bridge.preflightCall('research_route', { line: 3 }), null);
+  });
+
+  // ═══ Strict plain-object contract ═══
+  class SomeClass { constructor() { this.limit = 2; } }
+  const customProto = { custom: true };
+  const NON_PLAIN = {
+    CLASS_INSTANCE: [['class instance', new SomeClass()], ['empty class instance', new (class Custom {})()], ['subclass of Object', new (class Sub extends Object {})()], ['Error', new Error('x')], ['Promise', Promise.resolve({})]],
+    CUSTOM_PROTOTYPE: [['Object.create(customProto)', Object.create(customProto)], ['Object.create(Array.prototype)', Object.create(Array.prototype)], ['setPrototypeOf literal', Object.setPrototypeOf({ limit: 1 }, { inherited: true })], ['Object.create(Date.prototype)', Object.create(Date.prototype)]],
+    NULL_PROTOTYPE: [['Object.create(null)', Object.create(null)], ['null-prototype with keys', Object.assign(Object.create(null), { limit: 3 })], ['setPrototypeOf(null)', Object.setPrototypeOf({ card: 1 }, null)]],
+    BUILTIN: [['Date', new Date()], ['Map', new Map()], ['Set', new Set()], ['RegExp', /x/], ['WeakMap', new WeakMap()], ['Uint8Array', new Uint8Array(2)], ['ArrayBuffer', new ArrayBuffer(1)], ['Number box', new Number(1)], ['String box', new String('x')], ['Boolean box', new Boolean(false)], ['array', []], ['function', () => ({})], ['arguments', (function () { return arguments; })()]],
+  };
+  const spyStore = counters => { const base = { listProjects: () => [], listItems: () => [], listSources: () => [], listItemSources: () => [], listRelations: () => [], getItem: () => null, searchItems: () => [] }; const o = {}; for (const k of Object.keys(base)) o[k] = (...a) => { counters.store++; return base[k](...a); }; return o; };
+  for (const [category, cases] of Object.entries(NON_PLAIN))
+    await T(category.toLowerCase().replace(/_/g, '-') + '-rejected', `${category}_REJECTED: non-plain argument objects (${cases.map(c => c[0]).slice(0, 4).join(', ')}, ...) are VALIDATION on every tool with LOADER_CALLS = 0 and STORE_ACCESS = 0`, async () => {
+      const counters = { store: 0, loader: 0 }; const b = Bridge.create({ store: spyStore(counters), router: Router, loadResearchIndex: async () => { counters.loader++; return SYN_INDEX; } });
+      for (const [label, bad] of cases) {
+        for (const tool of Bridge.TOOL_NAMES) {
+          const r = await b.execute(tool, bad); assert.strictEqual(r.ok, false, `${tool}(${label})`); assert.strictEqual(r.code, 'VALIDATION', `${tool}(${label}) ${JSON.stringify(r).slice(0, 120)}`); assert.match(r.error, /arguments must be an object, or omitted entirely/);
+          assert(!('items' in r) && !('cards' in r) && !('item' in r) && !('index_loaded' in r) && !('in_progress' in r), `${tool}(${label}) must not return data`);
+          assert.strictEqual(Bridge.preflightCall(tool, bad).code, 'VALIDATION', `preflightCall ${tool}(${label})`);
+        }
+        let calls = 0; const viaRouter = await Router.routeWithLoader(async () => { calls++; return SYN_INDEX; }, bad); assert.strictEqual(viaRouter.code, 'VALIDATION', 'router ' + label); assert.strictEqual(calls, 0, 'router loader ' + label);
+        assert.strictEqual(Router.route(SYN_INDEX, bad).code, 'VALIDATION', 'route ' + label); assert.strictEqual(Router.preflightArgs(bad).error.code, 'VALIDATION', 'preflightArgs ' + label);
+      }
+      assert.strictEqual(counters.loader, 0, 'LOADER_CALLS = 0'); assert.strictEqual(counters.store, 0, 'STORE_ACCESS = 0');
+    });
+  await T('plain-object-accepted', 'PLAIN_OBJECT_ACCEPTED: ordinary objects (prototype exactly Object.prototype) still work: {}, literals, JSON.parse results, frozen objects, Object.create(Object.prototype); omitted = {}', async () => {
+    const counters = { store: 0, loader: 0 }; const b = Bridge.create({ store: spyStore(counters), router: Router, loadResearchIndex: async () => { counters.loader++; return SYN_INDEX; } });
+    for (const ok of [{}, { limit: 2 }, JSON.parse('{"limit":3}'), Object.freeze({ limit: 1 }), Object.create(Object.prototype), Object.assign(Object.create(Object.prototype), { limit: 4 }), undefined]) {
+      assert.strictEqual(Bridge.preflightCall('wm_list', ok), null); const r = await b.execute('wm_list', ok); assert.notStrictEqual(r.ok, false, 'wm_list ' + JSON.stringify(ok) + ' ' + JSON.stringify(r).slice(0, 100)); assert(Array.isArray(r.items));
+    }
+    for (const ok of [{}, { card: 1 }, { query: 'syn' }, JSON.parse('{"line":2}'), Object.freeze({ card: 3 }), undefined]) { const r = await b.execute('research_route', ok); assert.strictEqual(r.index_loaded, true, 'research_route ' + JSON.stringify(ok)); assert.strictEqual(Router.preflightArgs(ok).error, undefined); }
+    assert(counters.store > 0 && counters.loader >= 6, 'valid calls reach the store and the loader');
+    // a plain object still gets unknown-key validation; an own "__proto__" key (JSON.parse) does not change the prototype and is just an unknown argument
+    assert.strictEqual((await b.execute('wm_list', JSON.parse('{"__proto__":{"limit":1}}'))).code, 'VALIDATION'); assert.match((await b.execute('wm_list', JSON.parse('{"__proto__":{"limit":1}}'))).error, /Unknown argument\(s\).*__proto__/);
+  });
+  await T('no-io-on-non-plain-object', 'NO_IO_ON_NON_PLAIN_OBJECT: for every non-plain value the real-shaped call sequence performs 0 loader calls, 0 store accesses and 0 index fetches (dispatcher-level counters are asserted in the real-browser test)', async () => {
+    let fetches = 0; const realFetch = globalThis.fetch; globalThis.fetch = async () => { fetches++; throw new Error('network must not be touched'); };
+    try {
+      const counters = { store: 0, loader: 0 }; const b = Bridge.create({ store: spyStore(counters), router: Router, loadResearchIndex: async () => { counters.loader++; return (await fetch('docs/research/EXPERIMENT_EVIDENCE_INDEX.md')).text(); } });
+      for (const cases of Object.values(NON_PLAIN)) for (const [label, bad] of cases) for (const tool of Bridge.TOOL_NAMES) assert.strictEqual((await b.execute(tool, bad)).code, 'VALIDATION', `${tool}(${label})`);
+      assert.deepStrictEqual([counters.loader, counters.store, fetches], [0, 0, 0], 'LOADER_CALLS / STORE_ACCESS / FETCH_COUNT');
+      const ok = await b.execute('research_route', {}); assert.strictEqual(fetches, 1, 'a valid call does touch the network (so the counter is live)'); assert(ok.index_loaded === false && ok.parse_status === 'FETCH_FAILED');
+    } finally { globalThis.fetch = realFetch; }
+    // the dispatcher itself relies on the shared strict preflight
+    assert(/Object\.getPrototypeOf\(v\) === Object\.prototype/.test(fs.readFileSync(path.join(ROOT, 'wm-agent-read.js'), 'utf8')) && /Object\.getPrototypeOf\(v\) === Object\.prototype/.test(fs.readFileSync(path.join(ROOT, 'wm-agent-read.js'), 'utf8')), 'strict prototype check (not Object.prototype.toString alone)');
+    assert(/Object\.getPrototypeOf\(args\) === Object\.prototype/.test(fs.readFileSync(path.join(ROOT, 'research-router.js'), 'utf8')), 'router uses the strict prototype check too');
   });
 
   await T('docs', 'AGENT_START_HERE keeps history and documents both planes', async () => {

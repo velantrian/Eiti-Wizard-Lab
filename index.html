@@ -54,7 +54,7 @@
         var p = location.pathname;
         if ((p !== '/Eiti-Wizard-Lab/index.html' && p !== '/Eiti-Wizard-Lab/') || location.search !== '?b1device=1') return;
         if (location.href.indexOf('#') !== -1 && !/^#(?:projects|chat|agent|settings|notes|memory|history|files|eiti-files|diary|board)$/.test(location.hash)) return;
-        var EXPECTED_HARNESS_BUILD = '90599ef31ef5';
+        var EXPECTED_HARNESS_BUILD = '45665e6b4bd6';
         var s = document.createElement('script');
         s.src = 'b1-device-harness.js?h=' + EXPECTED_HARNESS_BUILD;
         s.setAttribute('data-expected-build', EXPECTED_HARNESS_BUILD);

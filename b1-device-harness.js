@@ -9,11 +9,16 @@
  * so a stale page with an older, looser gate cannot activate it either. Without it nothing here is ever loaded or shown, so the normal UI is
  * unchanged.
  *
- * Device-run validity (no network, no service-worker change): before any button is enabled the harness verifies that
+ * Device-run validity (no network probe, no service-worker change). Before any button is enabled the harness checks
  *  - its own code is the build it claims to be (build id = SHA-256 of its own function source with the id literal masked),
  *  - the page that loaded it expects exactly this build (data-expected-build marker and ?h= in the script URL),
- *  - the browser is online (a cached page / harness served while offline cannot be shown to be current).
- * Anything else is STALE_HARNESS + DEVICE_RUN_INVALID: every button is disabled and every action refuses (no import, no PASS).
+ *  - the browser does not report itself offline (navigator.onLine === false: cached copies cannot be shown to be current).
+ * Every failure that IS observable is STALE_HARNESS + DEVICE_RUN_INVALID: every button is disabled and every action refuses (no import, no PASS).
+ * What this does NOT prove: navigator.onLine is not a freshness oracle (Chromium can report true after an offline reload that the service worker
+ * served entirely from its cache), and a cached page + cached harness that are mutually consistent cannot be told from the current deployment
+ * without a network probe or a service-worker change (both out of scope). Such a run is only internally VALID and is NOT current-deployment
+ * evidence: BEFORE IMPORT the human must compare the displayed HARNESS_BUILD with the build id published for the exact reviewed / deployed HEAD
+ * (every report says FRESHNESS = NOT_PROVEN_BY_HARNESS).
  *
  * Boundaries (asserted by tests/working-memory/b1-device-harness.test.cjs and b1-device-browser.test.mjs):
  *  - the ONLY write is the existing WmStore.importJSON (wm_* namespace), ONLY when wm_* is empty both logically (exportData) and physically
@@ -50,7 +55,7 @@
 
   // ── Build identity ────────────────────────────────────────────────────────────────────────────────────────────────────────────
   // HARNESS_BUILD_ID = first 12 hex of SHA-256(source text of this function with the next line's literal masked to '').
-  const HARNESS_BUILD_ID = '90599ef31ef5';
+  const HARNESS_BUILD_ID = '45665e6b4bd6';
 
   // ── Frozen B1-DEVICE-01 checkpoints (three DIFFERENT hashes; never substitute one for another) ─────────────────────────────
   const EXPECTED_SEED = '780bfac4bce6442f46f5fc9827b0d8cc25cba3f4c80ad7e54bc2e87dabba1ec0';      // SEED_HASH (work-id mapping)
@@ -126,7 +131,8 @@
       'PAGE_EXPECTED_BUILD = ' + (v.pageExpected || 'MISSING'),
       'SCRIPT_URL_BUILD = ' + (v.urlBuild || 'MISSING'),
       'BUILD_CHECK = ' + (run.state === 'VALID' ? 'OK' : run.state === 'INVALID' ? 'MISMATCH' : 'PENDING'),
-      'ONLINE = ' + (v.online === false ? 'NO' : v.online === true ? 'YES' : 'UNKNOWN'),
+      'ONLINE_REPORTED = ' + (v.online === false ? 'NO' : v.online === true ? 'YES' : 'UNKNOWN') + ' (navigator.onLine; not a freshness proof)',
+      'FRESHNESS = NOT_PROVEN_BY_HARNESS (a cached page + harness can look identical to the current deployment; BEFORE IMPORT compare HARNESS_BUILD with the build id published for the exact reviewed / deployed HEAD)',
     ];
   }
   function invalidResult() {
@@ -136,11 +142,11 @@
       'STALE_HARNESS = ' + (run.state === 'VERIFYING' ? 'UNKNOWN (build verification has not finished)' : buildProblems.length ? 'YES' : 'POSSIBLE (offline: a cached page / harness cannot be shown to be current)'),
       'REASONS = ' + (v.problems.join(', ') || 'BUILD_NOT_VERIFIED')];
     L.push.apply(L, buildLines());
-    L.push('No import, no fingerprint pass and no environment OK are possible in this state. Reload the exact URL while online; compare HARNESS_BUILD with the build id published for the PR head.');
+    L.push('No import, no fingerprint pass and no environment OK are possible in this state. Reload the exact URL over the network; compare HARNESS_BUILD with the build id published for the reviewed / deployed HEAD.');
     L.push('WRITES_PERFORMED = NO');
     return { verdict: 'DEVICE_RUN_INVALID', text: L.join('\n') };
   }
-  const validHeader = () => 'DEVICE_RUN = VALID (harness build ' + HARNESS_BUILD_ID + ' verified: self-hash, page marker, script URL, online)';
+  const validHeader = () => 'DEVICE_RUN = VALID (internal consistency only: build ' + HARNESS_BUILD_ID + ' self-hash, page marker, script URL; no offline signal) — NOT current-deployment evidence until HARNESS_BUILD is compared with the expected build id BEFORE IMPORT';
 
   // ── Read-only helpers ───────────────────────────────────────────────────────────────────────────────────────────────────────
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -160,19 +166,23 @@
   const countsLine = c => LISTS.map(k => 'wm_' + k + ' = ' + c[k]).join('\n');
   const countsMatch = c => Object.keys(EXPECTED).every(k => c[k] === EXPECTED[k]);
 
-  // Physical emptiness of the wm_* namespace, including the FTS5 index and its shadow tables. Read-only: fixed SELECT statements on
-  // table names taken from sqlite_master (validated wm_<identifier>); nothing is repaired or deleted.
-  //   data tables, wm_items_fts, _content, _docsize, _idx, any other wm_* table : no rows
-  //   wm_items_fts_data : only the two structure rows of an empty FTS5 index (ids 1 and 10);  wm_items_fts_config : only the 'version' key
-  const PHYSICAL_CORE = ['wm_projects', 'wm_sources', 'wm_items', 'wm_item_sources', 'wm_relations', 'wm_changes', 'wm_items_fts'];
-  function physicalGuard() {
+  // The wm_* namespace is verified PHYSICALLY: the complete expected table set must be present, and then empty. Read-only: fixed SELECT statements
+  // on table names taken from sqlite_master (validated wm_<identifier>); nothing is recreated, repaired or deleted.
+  //   presence : all 12 tables of this exact WorkingMemory schema — the six data tables, the FTS5 index wm_items_fts and its five shadow tables.
+  //              Any absent table => WM_PHYSICAL_UNVERIFIABLE (the namespace cannot be proven pristine), before anything else is read.
+  //   rows     : data tables, wm_items_fts, _content, _docsize, _idx and any other wm_* table: no rows;
+  //              wm_items_fts_data: only the two structure rows of an empty FTS5 index (ids 1 and 10);  wm_items_fts_config: only the 'version' key
+  const PHYSICAL_REQUIRED = ['wm_projects', 'wm_sources', 'wm_items', 'wm_item_sources', 'wm_relations', 'wm_changes',
+    'wm_items_fts', 'wm_items_fts_content', 'wm_items_fts_docsize', 'wm_items_fts_idx', 'wm_items_fts_data', 'wm_items_fts_config'];
+  function physicalGuard(presenceOnly) {
     const db = window._wizDB;
     if (!db || typeof db.exec !== 'function') return { ok: false, code: 'WM_PHYSICAL_UNVERIFIABLE', lines: ['the app SQLite handle is not available'] };
     try {
       const first = r => (r && r[0] && r[0].values) || [];
       const names = first(db.exec("SELECT name FROM sqlite_master WHERE type = 'table'")).map(v => String(v[0])).filter(n => n.indexOf('wm_') === 0).sort();
-      const missing = PHYSICAL_CORE.filter(n => names.indexOf(n) === -1);
-      if (missing.length) return { ok: false, code: 'WM_PHYSICAL_UNVERIFIABLE', lines: ['missing wm_* table(s): ' + missing.join(', ')] };
+      const missing = PHYSICAL_REQUIRED.filter(n => names.indexOf(n) === -1);
+      if (missing.length) return { ok: false, code: 'WM_PHYSICAL_UNVERIFIABLE', lines: ['missing expected wm_* table(s): ' + missing.join(', ')] };
+      if (presenceOnly) return { ok: true, tables: names.length, lines: [] };
       const violations = [];
       for (const name of names) {
         if (!/^wm_[a-z0-9_]+$/.test(name)) { violations.push(name + ': unexpected table name'); continue; }
@@ -259,7 +269,9 @@
       for (const p of fixture.problems) bad(p);
     }
     let empty = false;
-    if (store && typeof store.exportData === 'function') {
+    const presence = physicalGuard(true);                                                                  // the whole expected namespace must exist first
+    if (!presence.ok) L.push('WM_EMPTY = UNKNOWN (the physical wm_* namespace is incomplete or unreadable)');
+    else if (store && typeof store.exportData === 'function') {
       try {
         const snap = snapshotOf(store);
         empty = snap.total === 0;
@@ -267,9 +279,10 @@
         L.push('WM_EMPTY = ' + (empty ? 'YES' : 'NO') + ' (rows=' + snap.total + ')');
       } catch (e) { bad('cannot read wm_*: ' + String((e && e.message) || e)); }
     }
-    const phys = physicalGuard();
+    const phys = presence.ok ? physicalGuard() : presence;
     L.push('WM_PHYSICAL_EMPTY = ' + (phys.ok ? 'YES' : phys.code === 'WM_PHYSICAL_NOT_EMPTY' ? 'NO' : 'UNVERIFIABLE') + (phys.tables ? ' (wm_* tables checked=' + phys.tables + ')' : ''));
     if (!phys.ok) { L.push('CODE = ' + phys.code); for (const x of phys.lines) L.push('  ' + x); }
+    if (!phys.ok && phys.code === 'WM_PHYSICAL_UNVERIFIABLE') bad('the physical wm_* namespace is incomplete or unreadable (WM_PHYSICAL_UNVERIFIABLE) — the environment cannot be verified');
     const proceed = ok && empty && phys.ok;
     L.push('IMPORT_WOULD_PROCEED = ' + (proceed ? 'YES' : 'NO' + (ok && !empty ? ' (wm_* is not empty — import aborts)' : ok && empty && !phys.ok ? ' (' + phys.code + ' — import aborts)' : '')));
     L.push('WRITES_PERFORMED = NO');
@@ -291,9 +304,15 @@
     if (!store || typeof store.importJSON !== 'function' || typeof store.exportData !== 'function') return fail('WmStore missing');
     if (!window.WorkingMemory || window.WorkingMemory.EXPORT_FORMAT !== EXPORT_FORMAT) return fail('WorkingMemory export format unexpected');
 
-    const before = snapshotOf(store);
+    const presence = physicalGuard(true);                                                                  // 1. the complete expected physical namespace must exist
+    if (!presence.ok) {
+      L.push('CODE = ' + presence.code);
+      for (const x of presence.lines) L.push('  ' + x);
+      return fail(presence.code + ' — abort before import; nothing was recreated, cleaned or changed (use an isolated browser profile)');
+    }
+    const before = snapshotOf(store);                                                                      // 2. logical emptiness
     if (before.total !== 0) return fail('WM not empty (rows=' + before.total + ') — abort; use an isolated browser profile');
-    const phys = physicalGuard();
+    const phys = physicalGuard();                                                                          // 3. physical emptiness (data tables, FTS index, shadow tables)
     if (!phys.ok) {
       L.push('CODE = ' + phys.code);
       for (const x of phys.lines) L.push('  ' + x);
@@ -441,9 +460,9 @@
       else run = { state: v.problems.length ? 'INVALID' : 'VALID', v };
       root.setAttribute('data-run-state', run.state);
       if (run.state === 'VALID') {
-        statusEl.textContent = 'BUILD VERIFIED · ' + HARNESS_BUILD_ID + ' · online';
-        css(statusEl, { background: '#d4edda', color: '#155724' });
-        out.textContent = validHeader() + '\n' + buildLines().join('\n') + '\n\nPress a button. CHECK ENVIRONMENT and RUN FINGERPRINT never change anything; IMPORT FROZEN FIXTURE writes only into an empty wm_*.';
+        statusEl.textContent = 'BUILD CONSISTENT · ' + HARNESS_BUILD_ID + ' · freshness NOT proven — compare with the expected build id BEFORE import';
+        css(statusEl, { background: '#d1ecf1', color: '#0c5460' });
+        out.textContent = validHeader() + '\n' + buildLines().join('\n') + '\n\nBEFORE IMPORT: compare HARNESS_BUILD above with the build id published for the exact reviewed / deployed HEAD. If it differs, stop.\nPress a button. CHECK ENVIRONMENT and RUN FINGERPRINT never change anything; IMPORT FROZEN FIXTURE writes only into an empty wm_*.';
         setEnabled(true);
       } else {
         const r = invalidResult();

@@ -22,24 +22,37 @@ itself against the *navigation entry* (the URL as it was opened — `location.ha
 So a stale page with an older, looser gate cannot activate it. If the navigation entry is unavailable the harness stays inert. Anywhere else nothing here is
 loaded or shown and the normal UI is unchanged (`index.html` minus the gate is byte-identical to `main`).
 
-## Device-run validity (stale harness / stale page) — no network, no `sw.js` change
+## Device-run validity (stale harness / stale page) — bounded contract, no network probe, no `sw.js` change
 
 The production `sw.js` serves `index.html` network-first with an offline fallback to its cache, and everything else cache-first, so an offline or flaky device can
-be handed a cached page and / or a cached harness. The harness therefore proves, **before any button is enabled**, that:
+be handed a cached page and / or a cached harness. Before any button is enabled the harness checks what it **can** observe:
 
 1. **its own code is the build it claims to be** — `HARNESS_BUILD_ID` is the first 12 hex of SHA-256 of the harness function's own source text (read at runtime with
    `Function.prototype.toString`, the id literal masked); a modified, truncated or transformed file fails (`HARNESS_SELF_HASH_MISMATCH`);
 2. **the page that loaded it expects exactly this build** — the gate passes the expected build in `data-expected-build` and `?h=`; a missing marker (an older
    page) or any difference is `PAGE_BUILD_MARKER_MISSING` / `PAGE_HARNESS_BUILD_MISMATCH` / `HARNESS_URL_BUILD_MISMATCH`;
-3. **the browser is online** — an offline load can only come from caches, and cached copies cannot be shown to be current (`OFFLINE_FRESHNESS_UNVERIFIED`).
+3. **the browser does not report itself offline** — `navigator.onLine === false` is `OFFLINE_FRESHNESS_UNVERIFIED`.
 
-Any failure ⇒ `STALE_HARNESS` + `DEVICE_RUN_INVALID`: the banner says so, all three buttons are disabled, and each action also refuses on its own (a force-enabled
-button still returns `DEVICE_RUN_INVALID`) — no CHECK `ENV_OK`, no import, no `FINGERPRINT_PASS`. Every valid report carries `DEVICE_RUN = VALID`, `HARNESS_BUILD`,
-`HARNESS_BUILD_SELF_COMPUTED`, `PAGE_EXPECTED_BUILD`, `SCRIPT_URL_BUILD`, `BUILD_CHECK = OK`, `ONLINE = YES`.
+### The acceptance contract
 
-**Residual limit (not claimable without a network probe or a service-worker change, both out of scope):** a cached page + cached harness that are mutually
-consistent, served while the browser still reports `online`, cannot be told from current ones. Such a run is only as current as the printed `HARNESS_BUILD`:
-compare it with the build id published for the PR head before accepting a device run.
+| What is observable | Harness state | Is the run current-deployment evidence? |
+|---|---|---|
+| any build / marker / URL / self-hash mismatch, tampered code, or `navigator.onLine === false` | `STALE_HARNESS` + **`DEVICE_RUN_INVALID`**: banner says so, all buttons disabled, every action refuses on its own (a force-enabled button too) — no `ENV_OK`, no import, no `FINGERPRINT_PASS` | **No** |
+| everything consistent and `navigator.onLine` is not `false` | **`VALID` (internal consistency only)**: buttons enabled; every report carries `FRESHNESS = NOT_PROVEN_BY_HARNESS` and `NOT current-deployment evidence until HARNESS_BUILD is compared with the expected build id BEFORE IMPORT` | **Only after the manual comparison below** |
+
+`navigator.onLine` is **not a freshness oracle**. Reproduced against the real production `sw.js`: after an offline reload the page and the harness come entirely from the
+service worker's cache, and Chromium may nevertheless report `navigator.onLine === true`. A cached page + cached harness that are mutually consistent (an older deployment
+included) cannot be told from the current deployment without a network probe or a service-worker change — both explicitly out of scope — so the harness **does not claim**
+freshness, and its `VALID` is only "internally consistent".
+
+**Manual step, before the import:** compare the displayed `HARNESS_BUILD` with the build id published for the exact reviewed / deployed HEAD (the PR description lists it;
+`tests/working-memory/b1-device-harness.test.cjs` keeps the harness, the gate and the id in sync). If it differs, stop: the device is running a different deployment.
+Until that comparison has been done, the run is not accepted as evidence about the deployed HEAD.
+
+Real-service-worker tests (`REAL_SW_CONTRACT`): (a) the natural case — the decision follows exactly what Chromium reports; (b) `onLine === true` after the cached offline
+reload ⇒ internally `VALID`, `FRESHNESS = NOT_PROVEN_BY_HARNESS`, accepted only after the build comparison; (c) a **stale but consistent** cached deployment with `onLine === true`
+⇒ the harness is internally `VALID` and cannot tell, and only the manual comparison rejects it (displayed build ≠ expected build for HEAD); (d) observable offline ⇒ `DEVICE_RUN_INVALID`.
+Mismatch / tamper detection is unchanged and tested separately.
 
 ## Screen
 
@@ -53,15 +66,18 @@ compare it with the build id published for the PR head before accepting a device
 
 ## Physical `wm_*` guard (before the import)
 
-`WmStore.exportData()` shows only the six logical tables, so an orphan row in the FTS index or a contaminated shadow table is invisible to it. Before the import the
-harness also reads, with fixed read-only `SELECT`s on the app's SQLite handle, **every** `wm_*` table in `sqlite_master`:
+`WmStore.exportData()` shows only the six logical tables, so an orphan row in the FTS index, a contaminated shadow table or a missing table is invisible to it. Before the
+import the harness verifies the physical namespace of this exact WorkingMemory schema, with fixed read-only `SELECT`s on the app's SQLite handle:
 
-- the six data tables, `wm_items_fts`, `wm_items_fts_content`, `wm_items_fts_docsize`, `wm_items_fts_idx` and any other `wm_*` table: no rows;
-- `wm_items_fts_data`: only the two structure rows of an empty FTS5 index (ids 1 and 10); `wm_items_fts_config`: only the `version` key;
-- all six data tables and `wm_items_fts` must exist (an unreadable / missing namespace is `WM_PHYSICAL_UNVERIFIABLE`).
+1. **Presence — the complete expected set of 12 tables must exist:** the six data tables (`wm_projects`, `wm_sources`, `wm_items`, `wm_item_sources`, `wm_relations`,
+   `wm_changes`), the FTS5 index `wm_items_fts` and its five shadow tables (`wm_items_fts_content`, `_docsize`, `_idx`, `_data`, `_config`). Any absent table (also a lone
+   shadow table, whose absence `exportData()` does not notice) ⇒ **`WM_PHYSICAL_UNVERIFIABLE`**, `IMPORT_WOULD_PROCEED = NO`, `WRITE_ATTEMPTED = NO`, CHECK ENVIRONMENT `ENV_FAIL`; the
+   check runs **before anything else is read** and before `WmStore.importJSON` (never called). Missing tables are **not recreated, repaired or cleaned**.
+2. **Rows — then every `wm_*` table must be empty:** the data tables, `wm_items_fts`, `_content`, `_docsize`, `_idx` and any other `wm_*` table: no rows; `wm_items_fts_data`: only
+   the two structure rows of an empty FTS5 index (ids 1 and 10); `wm_items_fts_config`: only the `version` key. Any unexpected row ⇒ **`WM_PHYSICAL_NOT_EMPTY`**, abort before
+   the write, nothing cleaned up (use an isolated browser profile). An unreadable namespace (no SQLite handle) is also `WM_PHYSICAL_UNVERIFIABLE`.
 
-Any unexpected physical row ⇒ `WM_PHYSICAL_NOT_EMPTY`, import aborted before the write, **nothing is cleaned up** (use an isolated browser profile). CHECK ENVIRONMENT shows
-`WM_PHYSICAL_EMPTY = YES / NO / UNVERIFIABLE` and the offending tables.
+CHECK ENVIRONMENT shows `WM_PHYSICAL_EMPTY = YES / NO / UNVERIFIABLE`, the offending or missing tables, and `IMPORT_WOULD_PROCEED`.
 
 ## Frozen checkpoints (three DIFFERENT hashes — never substitute one for another)
 
@@ -76,7 +92,7 @@ Expected counts after import: projects 2, items 9, sources 3, relations 1, item_
 ## Safety boundaries
 
 - The only write is `WmStore.importJSON` into an empty `wm_*` with the exact fixture; nothing else is written (no Canon, `wiz_ref`, Continuity, ledger, registry, caches, storage).
-- The app SQLite handle is used for fixed read-only `SELECT`s on `wm_*` tables only (`sqlite_master` listing, `COUNT(*)`, two id / key listings); no `run`, `prepare`, `export`.
+- The app SQLite handle is used for fixed read-only `SELECT`s on `wm_*` tables only (`sqlite_master` listing, `COUNT(*)`, two id / key listings); no `run`, `prepare`, `export`, and nothing is ever recreated or repaired.
 - No network request, no external CDN, no model invocation, no console output.
 - No API key / token access: no `localStorage` / `sessionStorage` / `IndexedDB` / cookie access of its own; the screen shows counts, ids, statuses, hashes and version strings only.
 - Re-running IMPORT on a non-empty store aborts. If an import was written but failed verification the screen says so; it never cleans up on its own.
@@ -93,6 +109,6 @@ the harness only reports what is observable.
 `tests/working-memory/b1-device-harness.test.cjs` runs the real harness file in a `vm` with a tiny DOM stub against a **real sql.js database and the real WorkingMemory store**:
 fixture identity and `importJSON` round trip, static safety scan, gate / build-id sync, the exact-URL table for the gate **and** the harness, the stale matrix (marker
 missing, wrong build, URL build, older self-consistent build, tampered code, missing id, offline, no WebCrypto — all force-clicked), valid run, physical contamination
-matrix (orphan FTS row and every shadow table) and its edges. `tests/working-memory/b1-device-browser.test.mjs` (real Chromium, 360 px touch viewport, fresh profiles) covers the
+matrix (orphan FTS row and every shadow table), the **complete-namespace test (each of the 12 expected tables dropped one at a time; `importJSON` call count = 0)** and edges. `tests/working-memory/b1-device-browser.test.mjs` (real Chromium, 360 px touch viewport, fresh profiles) covers the
 exact gate in a browser (incl. defense in depth against an old loose gate), normal-UI DOM equality, phone screen, the full device flow with call-stack-attributed spies,
-stale page / older harness / tampered code, the **offline scenario through the real production `sw.js`**, physical contamination, and the fail-closed paths.
+stale page / older harness / tampered code, the **four `REAL_SW_CONTRACT` scenarios through the real production `sw.js`** (incl. an older consistent cached deployment), physical contamination, **missing expected tables in the real app**, and the fail-closed paths.

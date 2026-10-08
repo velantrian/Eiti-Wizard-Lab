@@ -127,6 +127,10 @@ const physDump = db => { const names = db.exec("SELECT name FROM sqlite_master W
   return sha256(JSON.stringify(names.map(n => { let r; try { r = db.exec('SELECT * FROM "' + n + '"'); } catch (e) { r = 'ERR'; } return [n, r]; }))); };
 const otherDump = db => sha256(JSON.stringify(db.exec("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")[0].values.map(v => v[0]).filter(n => !n.startsWith('wm_')).map(n => [n, db.exec('SELECT * FROM "' + n + '"')])));
 const NO_PASS = /IMPORT_PASS|FINGERPRINT_PASS|ENV_OK|PASS: imported/;
+// The complete expected physical wm_* namespace of THIS WorkingMemory schema: six data tables + the FTS5 index + its five shadow tables.
+const EXPECTED_PHYSICAL = ['wm_projects', 'wm_sources', 'wm_items', 'wm_item_sources', 'wm_relations', 'wm_changes',
+  'wm_items_fts', 'wm_items_fts_content', 'wm_items_fts_docsize', 'wm_items_fts_idx', 'wm_items_fts_data', 'wm_items_fts_config'];
+const wmTables = db => db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0].values.map(v => v[0]).filter(n => n.startsWith('wm_')).sort();
 
 (async () => {
   const SQL = await initSqlJs({ wasmBinary: WASM });
@@ -188,6 +192,13 @@ const NO_PASS = /IMPORT_PASS|FINGERPRINT_PASS|ENV_OK|PASS: imported/;
     const at = (s, from) => code.indexOf(s, from), imp = at('store.importJSON(');
     assert(at('before.total !== 0') > 0 && at('before.total !== 0') < at('const phys = physicalGuard();', at('before.total !== 0')) && at('fixtureIntegrity()', at('async function importFixture')) < imp, 'logical guard -> physical guard -> fixture integrity -> import');
     assert(at('if (!phys.ok)', at('async function importFixture')) > 0 && at('if (!phys.ok)', at('async function importFixture')) < imp, 'physical guard precedes the import');
+    const required = code.match(/const PHYSICAL_REQUIRED = \[([^\]]*)\];/);
+    assert(required, 'PHYSICAL_REQUIRED present');
+    assert.deepStrictEqual([...required[1].matchAll(/'(wm_[a-z_]+)'/g)].map(m => m[1]), EXPECTED_PHYSICAL, 'the harness requires exactly the 12 expected wm_* tables');
+    { const fnStart = at('async function importFixture');
+      assert(at('physicalGuard(true)', fnStart) > fnStart && at('physicalGuard(true)', fnStart) < at('snapshotOf(store)', fnStart) && at('physicalGuard(true)', fnStart) < imp, 'IMPORT: the namespace-presence check precedes every logical read and the import');
+      const chkStart = at('async function checkEnvironment');
+      assert(at('physicalGuard(true)', chkStart) > chkStart && at('physicalGuard(true)', chkStart) < at('snapshotOf(store)', chkStart), 'CHECK: the namespace-presence check precedes the logical read'); }
     for (const re of [/raw !== FIXTURE_RAW_SHA256/, /seed !== EXPECTED_SEED/, /logical !== EXPECTED_LOGICAL/]) assert(re.test(code), 'integrity comparison present: ' + re);
     assert(code.indexOf('logical !== EXPECTED_LOGICAL', imp) > 0 && code.indexOf('seed !== EXPECTED_SEED', imp) > 0, 'post-import verification of both hashes follows the import');
     assert(/FINGERPRINT_' \+ verdict/.test(code) && /const verdict = okCounts && okHash \? 'PASS' : 'FAIL';/.test(code), 'fingerprint verdict derives from counts AND both hashes');
@@ -271,6 +282,10 @@ const NO_PASS = /IMPORT_PASS|FINGERPRINT_PASS|ENV_OK|PASS: imported/;
     const env = runHarness({ db, store }); assert.strictEqual(await env.settled(), 'VALID');
     assert.deepStrictEqual(env.buttonsDisabled(), [false, false, false]);
     assert(env.out().text.includes('DEVICE_RUN = VALID') && env.out().text.includes('BUILD_CHECK = OK') && env.out().text.includes('HARNESS_BUILD = ' + HARNESS_ID));
+    // the bounded contract: internally VALID, but explicitly NOT current-deployment evidence until the human compares HARNESS_BUILD BEFORE IMPORT
+    assert(env.out().text.includes('NOT current-deployment evidence until HARNESS_BUILD is compared with the expected build id BEFORE IMPORT') && env.out().text.includes('FRESHNESS = NOT_PROVEN_BY_HARNESS') &&
+      env.out().text.includes('ONLINE_REPORTED = YES (navigator.onLine; not a freshness proof)') && env.out().text.includes('BEFORE IMPORT: compare HARNESS_BUILD above'), env.out().text);
+    assert.strictEqual(env.get('b1d-status').textContent, 'BUILD CONSISTENT · ' + HARNESS_ID + ' · freshness NOT proven — compare with the expected build id BEFORE import');
     const w0 = physDump(db), o0 = otherDump(db);
     const chk = await env.press('b1d-check'); assert.strictEqual(chk.verdict, 'ENV_OK');
     assert(chk.text.includes('WM_EMPTY = YES (rows=0)') && chk.text.includes('WM_PHYSICAL_EMPTY = YES (wm_* tables checked=12)') && chk.text.includes('IMPORT_WOULD_PROCEED = YES') && chk.text.includes('WRITES_PERFORMED = NO'), chk.text);
@@ -308,6 +323,7 @@ const NO_PASS = /IMPORT_PASS|FINGERPRINT_PASS|ENV_OK|PASS: imported/;
       assert.strictEqual(env.out().verdict, 'DEVICE_RUN_INVALID', name);
       assert(reason.test(env.out().text) && env.out().text.includes('STALE_HARNESS = ' + stale) && env.out().text.startsWith('DEVICE_RUN_INVALID'), name + '\n' + env.out().text);
       assert(env.get('b1d-status').textContent === 'STALE_HARNESS · DEVICE_RUN_INVALID', name + ': status banner');
+      if (o.onLine === false) assert(env.out().text.includes('ONLINE_REPORTED = NO'), name + ': the offline observation is shown');
       for (const b of ['b1d-check', 'b1d-import', 'b1d-fingerprint']) {
         assert.strictEqual(await env.get(b).tap(), false, name + ': a disabled button dispatches no click');
         const r = await env.force(b);                                                // devtools re-enables the button and clicks: the action itself refuses
@@ -345,6 +361,36 @@ const NO_PASS = /IMPORT_PASS|FINGERPRINT_PASS|ENV_OK|PASS: imported/;
     }
   });
 
+  await T('PHYSICAL_NAMESPACE_COMPLETE', 'every one of the 12 expected wm_* tables (six data tables, wm_items_fts and its five shadow tables) is REQUIRED: dropping any single one => WM_PHYSICAL_UNVERIFIABLE, IMPORT_WOULD_PROCEED = NO, WRITE_ATTEMPTED = NO; WmStore.importJSON is never called (counted), no SQL write is issued, nothing is recreated or repaired', async () => {
+    { const { db } = makeStore(SQL); assert.deepStrictEqual(wmTables(db), EXPECTED_PHYSICAL.slice().sort(), 'a pristine WorkingMemory DB has exactly the 12 expected tables'); }
+    for (const dropped of EXPECTED_PHYSICAL) {
+      const { db, store } = makeStore(SQL);
+      db.run('DROP TABLE "' + dropped + '"');                                                    // note: dropping the virtual table wm_items_fts removes its five shadow tables with it
+      const absent = EXPECTED_PHYSICAL.filter(n => !wmTables(db).includes(n)); assert(absent.includes(dropped), dropped + ' really is absent');
+      let importCalls = 0, exportCalls = 0, sqlWrites = 0;
+      const counting = { exportData: () => { exportCalls++; return store.exportData(); }, importJSON: (...a) => { importCalls++; return store.importJSON(...a); } };
+      const runOrig = db.run.bind(db); db.run = (...a) => { sqlWrites++; return runOrig(...a); };    // the harness must never issue a write itself
+      const w0 = physDump(db), o0 = otherDump(db), tablesBefore = wmTables(db);
+      const env = runHarness({ db, store: counting }); assert.strictEqual(await env.settled(), 'VALID', dropped);
+      const chk = await env.press('b1d-check');
+      assert.strictEqual(chk.verdict, 'ENV_FAIL', dropped + ': an incomplete physical namespace is an environment failure');
+      assert(chk.text.includes('WM_PHYSICAL_EMPTY = UNVERIFIABLE') && chk.text.includes('CODE = WM_PHYSICAL_UNVERIFIABLE') && chk.text.includes('IMPORT_WOULD_PROCEED = NO') && chk.text.includes('WRITES_PERFORMED = NO') &&
+        chk.text.includes('WM_EMPTY = UNKNOWN') && absent.every(n => chk.text.includes(n)), dropped + '\n' + chk.text);
+      const imp = await env.press('b1d-import');
+      assert.strictEqual(imp.verdict, 'IMPORT_FAIL', dropped);
+      assert(imp.text.includes('CODE = WM_PHYSICAL_UNVERIFIABLE') && imp.text.includes('WM_PHYSICAL_UNVERIFIABLE — abort before import; nothing was recreated, cleaned or changed') && imp.text.includes('WRITE_ATTEMPTED = NO') &&
+        absent.every(n => imp.text.includes(n)) && !/PASS: imported|importJSON = ok/.test(imp.text), dropped + '\n' + imp.text);
+      assert.strictEqual(importCalls, 0, dropped + ': WmStore.importJSON must never be called');
+      assert.strictEqual(exportCalls, 0, dropped + ': the incomplete namespace is not even read logically');
+      assert.strictEqual(sqlWrites, 0, dropped + ': no SQL write issued');
+      assert.deepStrictEqual(wmTables(db), tablesBefore, dropped + ': nothing recreated'); assert.strictEqual(physDump(db), w0, dropped + ': a table changed (repaired / cleaned)'); assert.strictEqual(otherDump(db), o0);
+      const exportCallsBeforeFingerprint = exportCalls;
+      const fp = await env.press('b1d-fingerprint'); assert(fp.verdict !== 'PASS' && !/^FINGERPRINT_PASS/.test(fp.text), dropped + ': fingerprint must not pass');
+      assert.strictEqual(importCalls, 0, dropped + ': still never called');
+      if (process.env.B1DEV_VERBOSE) console.log('      dropped ' + dropped.padEnd(22) + ' absent=' + String(absent.length).padStart(2) + '  CHECK=' + chk.verdict + '(WM_PHYSICAL_UNVERIFIABLE, IMPORT_WOULD_PROCEED=NO)  IMPORT=' + imp.verdict + '(WRITE_ATTEMPTED=NO)  importJSON calls=' + importCalls + '  exportData calls before FINGERPRINT=' + exportCallsBeforeFingerprint + '  SQL writes=' + sqlWrites + '  FINGERPRINT=' + fp.verdict);
+    }
+  });
+
   await T('PHYSICAL_GUARD_EDGES', 'physical guard edges: an empty extra wm_* table is allowed; a pristine DB passes (12 tables); missing app handle or missing core / FTS tables are WM_PHYSICAL_UNVERIFIABLE and abort before import; a logical row is still caught by the logical guard', async () => {
     { const { db, store } = makeStore(SQL); db.run('CREATE TABLE wm_empty_extra(x)');
       const env = runHarness({ db, store }); await env.settled(); const imp = await env.press('b1d-import'); assert.strictEqual(imp.verdict, 'IMPORT_PASS', 'empty extra table must not block: ' + imp.text); }
@@ -353,7 +399,7 @@ const NO_PASS = /IMPORT_PASS|FINGERPRINT_PASS|ENV_OK|PASS: imported/;
       const imp = await env.press('b1d-import'); assert.strictEqual(imp.verdict, 'IMPORT_FAIL'); assert(imp.text.includes('WM_PHYSICAL_UNVERIFIABLE') && imp.text.includes('WRITE_ATTEMPTED = NO'), imp.text); assert.strictEqual(store.exportData().items.length, 0); }
     { const { db, store } = makeStore(SQL); db.run('DROP TRIGGER wm_items_fts_insert'); db.run('DROP TRIGGER wm_items_fts_update'); db.run('DROP TABLE wm_items_fts');
       const w0 = physDump(db); const env = runHarness({ db, store }); await env.settled();
-      const imp = await env.press('b1d-import'); assert(imp.verdict === 'IMPORT_FAIL' && /WM_PHYSICAL_UNVERIFIABLE/.test(imp.text) && /missing wm_\* table\(s\): .*wm_items_fts/.test(imp.text) && imp.text.includes('WRITE_ATTEMPTED = NO'), imp.text); assert.strictEqual(physDump(db), w0); }
+      const imp = await env.press('b1d-import'); assert(imp.verdict === 'IMPORT_FAIL' && /WM_PHYSICAL_UNVERIFIABLE/.test(imp.text) && /missing expected wm_\* table\(s\): .*wm_items_fts/.test(imp.text) && imp.text.includes('WRITE_ATTEMPTED = NO'), imp.text); assert.strictEqual(physDump(db), w0); }
     { const { db, store } = makeStore(SQL); const r = await store.createProject({ project_id: 'p1', code: 'P1', name: 'pre' }); assert(r.ok);
       const w0 = physDump(db); const env = runHarness({ db, store }); await env.settled();
       const imp = await env.press('b1d-import'); assert(imp.verdict === 'IMPORT_FAIL' && /WM not empty \(rows=\d+\) — abort/.test(imp.text) && imp.text.includes('WRITE_ATTEMPTED = NO'), imp.text); assert.strictEqual(physDump(db), w0); }

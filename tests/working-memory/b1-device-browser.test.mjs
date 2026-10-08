@@ -41,6 +41,23 @@ await new Promise(resolve => portProbe.close(resolve));
 const server = spawn('python3', ['-m', 'http.server', String(port), '--bind', '127.0.0.1'], { cwd: temp, stdio: 'ignore' });
 const ORIGIN = `http://127.0.0.1:${port}`;
 const BASE = `${ORIGIN}/Eiti-Wizard-Lab/index.html`;
+// A second origin that serves an OLDER but internally consistent deployment (older harness build + a page whose gate expects exactly that build). It is what a
+// device that cached an earlier deployment still holds; everything else (sw.js, the app) is the real repository.
+const OLDER_HARNESS0 = HARNESS_SRC.replace("'SEED_HASH(fixture) = '", "'SEED_HASH(fixture)  = '"); assert.notEqual(OLDER_HARNESS0, HARNESS_SRC);
+const OLDER_ID = buildIdOf(OLDER_HARNESS0);
+const OLD_DIR = path.join(temp, 'old');
+fs.mkdirSync(path.join(OLD_DIR, 'Eiti-Wizard-Lab'), { recursive: true });
+for (const e of fs.readdirSync(ROOT)) if (!['.git', 'index.html', 'b1-device-harness.js'].includes(e)) fs.symlinkSync(path.join(ROOT, e), path.join(OLD_DIR, 'Eiti-Wizard-Lab', e));
+fs.writeFileSync(path.join(OLD_DIR, 'Eiti-Wizard-Lab', 'b1-device-harness.js'), withId(OLDER_HARNESS0, OLDER_ID));
+fs.writeFileSync(path.join(OLD_DIR, 'Eiti-Wizard-Lab', 'index.html'), fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(/var EXPECTED_HARNESS_BUILD = '[0-9a-f]{12}';/, "var EXPECTED_HARNESS_BUILD = '" + OLDER_ID + "';"));
+const portProbe2 = net.createServer();
+await new Promise((resolve, reject) => portProbe2.once('error', reject).listen(0, '127.0.0.1', resolve));
+const port2 = portProbe2.address().port;
+await new Promise(resolve => portProbe2.close(resolve));
+const server2 = spawn('python3', ['-m', 'http.server', String(port2), '--bind', '127.0.0.1'], { cwd: OLD_DIR, stdio: 'ignore' });
+const BASE_OLDER = `http://127.0.0.1:${port2}/Eiti-Wizard-Lab/index.html`;
+// The build id a human must compare against: the one published for the exact reviewed / deployed HEAD (here: the harness file of this checkout).
+const EXPECTED_BUILD_FOR_HEAD = HARNESS_ID;
 
 let browser, passed = 0, failed = 0, completed = false;
 process.on('exit', code => { if (!completed && code === 0) { console.log('FAIL  [harness] the suite did not run to completion'); process.exitCode = 3; } });
@@ -75,8 +92,8 @@ async function phone(opts = {}, sharedContext) {
 const ready = page => page.waitForFunction(() => window._wizDB && window.WorkingMemory && window.WmStore, { timeout: 30000 });
 const runState = page => page.$eval('#b1device-root', e => e.getAttribute('data-run-state'));
 // open the harness URL and wait until build verification has settled; expect = the state that must be reached
-const openHarness = async (page, query = '?b1device=1', expect = 'VALID') => {
-  await page.goto(BASE + query, { waitUntil: 'load' }); await ready(page); await page.waitForSelector('#b1device-root', { timeout: 15000 });
+const openHarness = async (page, query = '?b1device=1', expect = 'VALID', base = BASE) => {
+  await page.goto(base + query, { waitUntil: 'load' }); await ready(page); await page.waitForSelector('#b1device-root', { timeout: 15000 });
   await page.waitForFunction(() => document.getElementById('b1device-root').getAttribute('data-run-state') !== 'VERIFYING', { timeout: 15000 });
   if (expect) assert.equal(await runState(page), expect, 'run state');
 };
@@ -229,7 +246,7 @@ try {
       return { title: document.getElementById('b1d-title').textContent, sub: document.getElementById('b1d-sub').textContent, status: document.getElementById('b1d-status').textContent, root: { w: r.width, h: r.height, z: getComputedStyle(root).zIndex, noHScroll: root.scrollWidth <= root.clientWidth },
         buttons: ['b1d-check', 'b1d-import', 'b1d-fingerprint'].map(btn), allButtons: [...root.querySelectorAll('button')].map(b => b.textContent), verdict: document.getElementById('b1d-verdict').getAttribute('data-verdict'), ext: [...root.querySelectorAll('[src],[href],link,img,iframe')].length };
     });
-    assert.equal(ui.title, 'B1-DEVICE TEST — NON PRODUCTION'); assert(/TEST ONLY/.test(ui.sub)); assert(/^BUILD VERIFIED · [0-9a-f]{12} · online$/.test(ui.status), ui.status);
+    assert.equal(ui.title, 'B1-DEVICE TEST — NON PRODUCTION'); assert(/TEST ONLY/.test(ui.sub)); assert.equal(ui.status, 'BUILD CONSISTENT · ' + HARNESS_ID + ' · freshness NOT proven — compare with the expected build id BEFORE import');
     assert.deepEqual(ui.allButtons, ['CHECK ENVIRONMENT', 'IMPORT FROZEN FIXTURE', 'RUN FINGERPRINT']);
     assert.equal(ui.root.w, 360); assert.equal(ui.root.h, 740); assert.equal(ui.root.z, '2147483647'); assert(ui.root.noHScroll, 'horizontal scroll inside the screen');
     for (const b of ui.buttons) { assert(b.h >= 48 && b.w >= 300 && b.left >= 0 && b.right <= 360 && b.unobstructed && !b.disabled, JSON.stringify(b)); }
@@ -249,7 +266,7 @@ try {
 
     const check = await tap(page, 'b1d-check');
     assert.equal(check.verdict, 'ENV_OK');
-    for (const s of ['DEVICE_RUN = VALID (harness build ' + HARNESS_ID + ' verified', 'BUILD_CHECK = OK', 'HARNESS_BUILD_SELF_COMPUTED = ' + HARNESS_ID, 'PAGE_EXPECTED_BUILD = ' + HARNESS_ID, 'ONLINE = YES',
+    for (const s of ['DEVICE_RUN = VALID (internal consistency only: build ' + HARNESS_ID, 'NOT current-deployment evidence until HARNESS_BUILD is compared with the expected build id BEFORE IMPORT', 'FRESHNESS = NOT_PROVEN_BY_HARNESS', 'BUILD_CHECK = OK', 'HARNESS_BUILD_SELF_COMPUTED = ' + HARNESS_ID, 'PAGE_EXPECTED_BUILD = ' + HARNESS_ID, 'ONLINE_REPORTED = YES',
       'WmStore = PRESENT', 'WmStore.exportData = function', 'WmStore.importJSON = function', 'WorkingMemory.EXPORT_FORMAT = eiti-working-memory-export/1', 'FIXTURE_SELF_CHECK = PASS',
       'FIXTURE_RAW_SHA256 = 29b0e3d2e2025f1fab8979ae40169be78ce455549573617b57bd213e45eb73d4', 'WM_EMPTY = YES (rows=0)', 'WM_PHYSICAL_EMPTY = YES (wm_* tables checked=12)', 'IMPORT_WOULD_PROCEED = YES', 'WRITES_PERFORMED = NO',
       'APP_VERSION = 1.8.8', 'SW_CACHE = ', 'USER_AGENT = ' + SAMSUNG_UA])
@@ -328,28 +345,79 @@ try {
       await openHarness(page, '?b1device=1', 'INVALID'); await assertDeviceRunInvalid(page, /HARNESS_SELF_HASH_MISMATCH/); await closeCtx(context); }
   });
 
-  await T('STALE_HARNESS (real service worker, offline): a cached page + harness served by the production sw.js while offline is DEVICE_RUN_INVALID; going online and reloading restores VALID', async () => {
+  // ── The real-service-worker contract (bounded, see docs): observable offline => INVALID; navigator.onLine === true with a mutually consistent cached
+  //    page + harness => internally VALID but NOT current-deployment evidence until a human compares the displayed HARNESS_BUILD with the expected build id. ──────
+  // Visit twice online under the real production sw.js so the page and the harness are in its cache, then go offline and reload.
+  async function cachedThenOfflineReload({ base, onLine }) {
     const { context, page } = await phone({ bypassSW: false });
     const appVersion = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').match(/const APP_VERSION = '([^']+)'/)[1];
     await page.evaluateOnNewDocument(v => { try { localStorage.setItem('wiz_lab_app_version', v); } catch (_) {} }, appVersion);   // steady-state visit (no first-visit cache reset)
     const fromSW = []; page.on('response', r => { if (/b1-device-harness|\/index\.html/.test(r.url()) && !/sw\.js/.test(r.url())) fromSW.push({ url: r.url(), sw: r.fromServiceWorker() }); });
-    await openHarness(page);                                                                             // visit 1 (online): SW installs and takes control
+    const deployedId = (await (await fetch(base.replace('index.html', 'b1-device-harness.js'))).text()).match(/\n  const HARNESS_BUILD_ID = '([0-9a-f]{12})';/)[1];
+    await openHarness(page, '?b1device=1', 'VALID', base);                                              // visit 1 (online): the SW installs and takes control
     await page.waitForFunction(async () => navigator.serviceWorker.controller && (await caches.keys()).some(k => k.startsWith('eiti-wizard-lab-')), { timeout: 30000 });
-    await openHarness(page);                                                                             // visit 2 (online, controlled): page + harness pass through the SW and are cached
-    await page.waitForFunction(async id => !!(await caches.match(new URL('b1-device-harness.js?h=' + id, location.href).href)) && !!(await caches.match(location.href)), { timeout: 30000 }, HARNESS_ID);
-    const swSource = await (await fetch(BASE.replace('index.html', 'sw.js'))).text();
-    assert(!/b1-device/.test(swSource), 'production sw.js is unchanged by the harness');
-    await page.setOfflineMode(true);                                                                     // the network is gone: the production SW falls back to its cached page and harness
+    await openHarness(page, '?b1device=1', 'VALID', base);                                              // visit 2 (online, controlled): page + harness pass through the SW and are cached
+    await page.waitForFunction(async id => !!(await caches.match(new URL('b1-device-harness.js?h=' + id, location.href).href)) && !!(await caches.match(location.href)), { timeout: 30000 }, deployedId);
+    assert(!/b1-device/.test(await (await fetch(base.replace('index.html', 'sw.js'))).text()), 'production sw.js is unchanged by the harness');
+    await page.setOfflineMode(true);                                                                     // the network is gone: the production SW answers from its cache
+    let override = null;
+    if (onLine !== undefined) override = await page.evaluateOnNewDocument(v => { Object.defineProperty(Navigator.prototype, 'onLine', { get() { return v; }, configurable: true }); }, onLine);
     fromSW.length = 0;
     await page.reload({ waitUntil: 'load' }); await ready(page); await page.waitForSelector('#b1device-root', { timeout: 15000 });
     await page.waitForFunction(() => document.getElementById('b1device-root').getAttribute('data-run-state') !== 'VERIFYING', { timeout: 15000 });
     assert(fromSW.some(r => /index\.html/.test(r.url) && r.sw) && fromSW.some(r => /b1-device-harness/.test(r.url) && r.sw), 'page and harness really came from the service worker cache: ' + JSON.stringify(fromSW));
+    return { context, page, deployedId, override };
+  }
+  // The harness is internally VALID (mutually consistent cached copies, no offline signal): it enables the buttons, but says FRESHNESS is not proven.
+  async function assertInternallyValidButNotEvidence(page, displayedBuild) {
+    assert.equal(await runState(page), 'VALID');
+    assert.deepEqual(await page.$$eval('#b1device-root button', bs => bs.map(b => b.disabled)), [false, false, false], 'internally valid: buttons enabled');
+    const shown = await page.evaluate(() => ({ status: document.getElementById('b1d-status').textContent, out: document.getElementById('b1d-out').textContent }));
+    assert.equal(shown.status, 'BUILD CONSISTENT · ' + displayedBuild + ' · freshness NOT proven — compare with the expected build id BEFORE import');
+    for (const t of ['DEVICE_RUN = VALID (internal consistency only', 'NOT current-deployment evidence until HARNESS_BUILD is compared with the expected build id BEFORE IMPORT', 'FRESHNESS = NOT_PROVEN_BY_HARNESS',
+      'ONLINE_REPORTED = YES (navigator.onLine; not a freshness proof)', 'BEFORE IMPORT: compare HARNESS_BUILD above', 'BUILD_CHECK = OK', 'HARNESS_BUILD = ' + displayedBuild])
+      assert(shown.out.includes(t), 'report must say: ' + t + '\n' + shown.out);
+    const chk = await tap(page, 'b1d-check');                                                           // read-only: the disclaimers are in every report, not only the first screen
+    assert.equal(chk.verdict, 'ENV_OK'); assert(chk.text.includes('FRESHNESS = NOT_PROVEN_BY_HARNESS') && chk.text.includes('NOT current-deployment evidence until'), chk.text);
+    return displayedBuild;
+  }
+  // The human step, BEFORE IMPORT: displayed HARNESS_BUILD against the build id published for the exact reviewed / deployed HEAD.
+  const manualComparisonAccepts = displayedBuild => displayedBuild === EXPECTED_BUILD_FOR_HEAD;
+  const displayedBuildOf = page => page.$eval('#b1d-out', e => (e.textContent.match(/HARNESS_BUILD = ([0-9a-f]{12})/) || [])[1]);
+
+  await T('REAL_SW_CONTRACT (a) natural: offline reload from the real production sw.js — the harness decision follows exactly what Chromium reports (onLine=false => INVALID; onLine=true => internally VALID, not evidence)', async () => {
+    const { context, page, deployedId } = await cachedThenOfflineReload({ base: BASE });
+    const reported = await page.evaluate(() => navigator.onLine);
+    console.log('      (note) Chromium reported navigator.onLine=' + reported + ' after the offline reload served by the service worker');
+    if (reported === false) { await assertDeviceRunInvalid(page, /OFFLINE_FRESHNESS_UNVERIFIED/, 'POSSIBLE'); assert((await page.$eval('#b1d-out', e => e.textContent)).includes('ONLINE_REPORTED = NO')); }
+    else { await assertInternallyValidButNotEvidence(page, deployedId); assert(manualComparisonAccepts(await displayedBuildOf(page)), 'the displayed build equals the expected build for HEAD'); }
+    await closeCtx(context);
+  });
+
+  await T('REAL_SW_CONTRACT (b) navigator.onLine === true after the cached offline reload (the independently reproduced Chromium behaviour): mutually consistent cached page + harness => internally VALID, buttons enabled, FRESHNESS = NOT_PROVEN_BY_HARNESS; accepted as evidence ONLY after the manual HARNESS_BUILD comparison', async () => {
+    const { context, page, deployedId } = await cachedThenOfflineReload({ base: BASE, onLine: true });
+    assert.equal(await page.evaluate(() => navigator.onLine), true);
+    await assertInternallyValidButNotEvidence(page, deployedId);
+    assert(manualComparisonAccepts(await displayedBuildOf(page)), 'manual comparison: displayed ' + deployedId + ' vs expected ' + EXPECTED_BUILD_FOR_HEAD);
+    await closeCtx(context);
+  });
+
+  await T('REAL_SW_CONTRACT (c) a STALE but mutually consistent cached deployment with onLine === true is internally VALID — the harness cannot tell — and is caught ONLY by the manual HARNESS_BUILD comparison (displayed build != expected build for HEAD)', async () => {
+    const { context, page, deployedId } = await cachedThenOfflineReload({ base: BASE_OLDER, onLine: true });
+    assert.equal(deployedId, OLDER_ID); assert.notEqual(OLDER_ID, EXPECTED_BUILD_FOR_HEAD);
+    await assertInternallyValidButNotEvidence(page, OLDER_ID);                                          // the harness's own verdict: consistent => VALID (and it says so honestly)
+    const displayed = await displayedBuildOf(page);
+    assert.equal(displayed, OLDER_ID); assert.equal(manualComparisonAccepts(displayed), false, 'the manual comparison rejects the stale deployment: displayed ' + displayed + ' vs expected ' + EXPECTED_BUILD_FOR_HEAD);
+    await closeCtx(context);
+  });
+
+  await T('REAL_SW_CONTRACT (d) observable offline (navigator.onLine === false) with the real service worker => STALE_HARNESS + DEVICE_RUN_INVALID, buttons disabled, nothing written; going online restores a VALID (internally consistent) run', async () => {
+    const { context, page, override } = await cachedThenOfflineReload({ base: BASE, onLine: false });
     await assertDeviceRunInvalid(page, /OFFLINE_FRESHNESS_UNVERIFIED/, 'POSSIBLE');
-    const offlineText = await page.$eval('#b1d-out', e => e.textContent); assert(offlineText.includes('ONLINE = NO') && offlineText.includes('BUILD_CHECK = MISMATCH'), offlineText);
-    await page.setOfflineMode(false);
-    await openHarness(page);                                                                             // back online: freshness can be shown again
+    const offlineText = await page.$eval('#b1d-out', e => e.textContent); assert(offlineText.includes('ONLINE_REPORTED = NO') && offlineText.includes('BUILD_CHECK = MISMATCH') && offlineText.includes('FRESHNESS = NOT_PROVEN_BY_HARNESS'), offlineText);
+    await page.setOfflineMode(false); await page.removeScriptToEvaluateOnNewDocument(override.identifier);   // the simulated report is withdrawn together with the network condition
+    await openHarness(page);                                                                             // back online: a fresh load verifies again
     assert.equal((await tap(page, 'b1d-check')).verdict, 'ENV_OK');
-    assert.deepEqual(page.errors.filter(e => !/Failed to fetch|NetworkError|net::/i.test(e)), []);
     await closeCtx(context);
   });
 
@@ -373,6 +441,28 @@ try {
       assert.deepEqual(await dbParts(page), polluted, name + ': the import ran, or the contamination was cleaned up');
       assert.equal((await wmExport(page)).items.length, 0, name + ': items imported');
       assert.equal((await tap(page, 'b1d-fingerprint')).verdict, 'FAIL');
+      await closeCtx(context);
+    }
+  });
+
+  await T('PHYSICAL_NAMESPACE_COMPLETE (real app): dropping any expected wm_* table (a data table, the FTS index, each FTS shadow table) => WM_PHYSICAL_UNVERIFIABLE, ENV_FAIL, IMPORT_WOULD_PROCEED = NO, WRITE_ATTEMPTED = NO; WmStore.importJSON is never called; nothing is recreated or repaired', async () => {
+    for (const dropped of ['wm_items', 'wm_items_fts', 'wm_items_fts_content', 'wm_items_fts_docsize', 'wm_items_fts_idx', 'wm_items_fts_data', 'wm_items_fts_config']) {
+      const { context, page } = await phone();
+      await openHarness(page); await sentinelTables(page);
+      await page.evaluate(t => window._wizDB.run('DROP TABLE "' + t + '"'), dropped);
+      await page.evaluate(() => { const real = window.WmStore; window.__calls = { imp: 0, exp: 0 }; window.WmStore = { exportData: () => { window.__calls.exp++; return real.exportData(); }, importJSON: p => { window.__calls.imp++; return real.importJSON(p); } }; });
+      const before = await dbParts(page);
+      const check = await tap(page, 'b1d-check');
+      assert.equal(check.verdict, 'ENV_FAIL', dropped);
+      for (const t of ['WM_PHYSICAL_EMPTY = UNVERIFIABLE', 'CODE = WM_PHYSICAL_UNVERIFIABLE', 'missing expected wm_* table(s): ', dropped, 'IMPORT_WOULD_PROCEED = NO', 'WRITES_PERFORMED = NO'])
+        assert(check.text.includes(t), dropped + ': CHECK missing ' + t + '\n' + check.text);
+      const imp = await tap(page, 'b1d-import');
+      assert.equal(imp.verdict, 'IMPORT_FAIL', dropped);
+      assert(imp.text.includes('CODE = WM_PHYSICAL_UNVERIFIABLE') && imp.text.includes('abort before import; nothing was recreated, cleaned or changed') && imp.text.includes('WRITE_ATTEMPTED = NO') && !/PASS: imported|importJSON = ok/.test(imp.text), dropped + '\n' + imp.text);
+      assert.deepEqual(await page.evaluate(() => window.__calls), { imp: 0, exp: 0 }, dropped + ': WmStore.importJSON / exportData must not be called');
+      assert.deepEqual(await dbParts(page), before, dropped + ': a table changed (recreated / repaired / cleaned)');
+      assert.equal(await page.evaluate(t => !!window._wizDB.exec("SELECT 1 FROM sqlite_master WHERE name='" + t + "'")[0], dropped), false, dropped + ' was recreated');
+      assert.deepEqual(page.errors, [], dropped);
       await closeCtx(context);
     }
   });
@@ -474,6 +564,6 @@ try {
   completed = true; process.exitCode = failed ? 1 : 0;
 } finally {
   if (browser) await browser.close().catch(() => {});
-  server.kill();
+  server.kill(); server2.kill();
   fs.rmSync(temp, { recursive: true, force: true });
 }

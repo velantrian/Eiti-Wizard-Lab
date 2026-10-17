@@ -1,0 +1,76 @@
+# Expected answers — Session B Q1–Q10
+
+EXPERIMENTAL_ONLY=YES
+AUTHORITATIVE=NO
+CANON=NO
+OFFICIAL_MEMORY=NO
+
+SOURCE=experiments/ruslan-experimental-memory/RUSLAN_EXPERIMENTAL_MEMORY.md
+PLUS=checkpoints/2026-10-05-cross-session-session-a-v01.md
+JUDGE=compare Session B answers to these extracts; do not treat MODEL_SUMMARY as OWNER_ASSERTED
+
+## Q1 CURRENT_PROJECT
+
+EXPECTED=экспериментальная непрерывность Ruslan (continuity memory v0.1), отдельно от Owner Authority / PDP
+PROVENANCE=MODEL_SUMMARY
+
+## Q2 CURRENT_THREAD
+
+EXPECTED=CROSS-SESSION AI RESUME TEST v0.1 for experiments/ruslan-experimental-memory/ on PR #28
+PROVENANCE=OWNER_ASSERTED
+
+## Q3 CURRENT_GOAL
+
+EXPECTED=отличить STRUCTURED_RESUME_TEST от CROSS_SESSION_AI_RESUME_TEST и подготовить handoff Session B
+PROVENANCE=MODEL_SUMMARY
+
+## Q4 CURRENT_STATUS
+
+EXPECTED contains: PR #28 OPEN DRAFT; Session A completed; STRUCTURED_RESUME_TEST=PASS; CROSS_SESSION_AI_RESUME_TEST=NOT_RUN; awaiting Session B
+PROVENANCE=MODEL_SUMMARY
+
+## Q5 LAST_STOP_POINT
+
+EXPECTED=Session A ended after writing checkpoint + expected-answers; awaiting Session B
+PROVENANCE=OWNER_ASSERTED
+
+## Q6 LAST_COMPLETED_STEP + newest checkpoint
+
+EXPECTED_STEP=Session A: labeled test distinction; checkpoint 2026-10-05-cross-session-session-a-v01.md; expected-answers.md; SESSION_B_PROMPT.md; session-a-checkpoint.md
+PROVENANCE_STEP=MODEL_SUMMARY
+EXPECTED_NEWEST_CHECKPOINT=checkpoints/2026-10-05-cross-session-session-a-v01.md
+
+## Q7 HARD_DO_NOT
+
+EXPECTED:
+- do not touch Canon / official memory / ledger / wiz_ref
+- do not merge; do not mark PR ready
+- do not mix with experiments/owner-authority-sandbox/
+- no graph / RAG / SQLite / auto-ingestion / real authority
+- this Session A agent must not run Session B as the same identity
+PROVENANCE=OWNER_ASSERTED
+KEYS=DO_NOT_TOUCH_CANON=YES; DO_NOT_TOUCH_OFFICIAL_MEMORY=YES; DO_NOT_MERGE=YES; DO_NOT_MIX_OWNER_AUTHORITY_SANDBOX=YES; DO_NOT_ADD_GRAPH=YES; DO_NOT_ADD_RAG=YES; DO_NOT_ADD_SQLITE=YES; DO_NOT_ADD_AUTO_INGESTION=YES; DO_NOT_ADD_REAL_AUTHORITY_OR_GRANTS=YES
+
+## Q8 NEXT_BOUNDED_ACTION
+
+EXPECTED=SESSION_B must answer Q1–Q10 from experimental memory only; then STOP for OWNER REVIEW of comparison.
+PROVENANCE=OWNER_ASSERTED
+
+## Q9 STRUCTURED_RESUME_TEST vs CROSS_SESSION_AI_RESUME_TEST
+
+EXPECTED_DISTINCTION:
+- STRUCTURED_RESUME_TEST = deterministic KEY=VALUE parser; no LLM
+- CROSS_SESSION_AI_RESUME_TEST = fresh AI session answers Q1–Q10 from this folder only; no prior chat
+- STRUCTURED_RESUME_TEST_IS_NOT=CROSS_SESSION_AI_RESUME_TEST
+EXPECTED_STATUS:
+- STRUCTURED_RESUME_TEST=PASS | OBSERVED_FROM_PROJECT_SOURCE
+- CROSS_SESSION_AI_RESUME_TEST=NOT_RUN | OWNER_ASSERTED
+- SESSION_A_COMPLETED=YES | MODEL_SUMMARY
+- SESSION_B_COMPLETED=NO | MODEL_SUMMARY
+
+## Q10 Provenance examples
+
+EXPECTED_OWNER_ASSERTED_EXAMPLE=NEXT_BOUNDED_ACTION or DO_NOT_MERGE=YES or CURRENT_THREAD
+EXPECTED_OBSERVED_EXAMPLE=PR_28_STATE=OPEN/DRAFT/NOT_MERGED | SOURCE_REF=GitHub PR #28
+EXPECTED_MODEL_SUMMARY_EXAMPLE=CURRENT_PROJECT or CURRENT_STATUS or CURRENT_GOAL
+RULE=MODEL_SUMMARY != OWNER_ASSERTED; do not convert model wording into OWNER_ASSERTED

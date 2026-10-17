@@ -1,0 +1,51 @@
+{
+  "seed": {
+    "goal": {
+      "goal_id": "goal-phase1-arch",
+      "content": "Phase 1 architecture choice",
+      "status": "OPEN"
+    },
+    "open_loop": {
+      "loop_id": "loop-prod-auth",
+      "content": "Is Phase 1 production-authorized?",
+      "status": "OPEN"
+    }
+  },
+  "steps": [
+    {
+      "step": 1,
+      "event_id": "evt-001",
+      "content": "Use Graphiti in Phase 1.",
+      "event_type": "MODEL_PROPOSAL",
+      "source_actor": "MODEL"
+    },
+    {
+      "step": 2,
+      "event_id": "evt-002",
+      "content": "Phase 1 will proceed without Graphiti.",
+      "event_type": "USER_DECISION",
+      "source_actor": "USER"
+    },
+    {
+      "step": 3,
+      "event_id": "evt-003",
+      "content": "Use Graphiti in Phase 1.",
+      "event_type": "MODEL_PROPOSAL",
+      "source_actor": "MODEL"
+    },
+    {
+      "step": 4,
+      "event_id": "evt-004",
+      "content": "Phase 1 is production-authorized.",
+      "event_type": "RESEARCH_CLAIM",
+      "source_actor": "MODEL"
+    },
+    {
+      "step": 5,
+      "event_id": "evt-005",
+      "content": "Where did we stop?",
+      "event_type": "QUERY_RESUME",
+      "source_actor": "USER"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+TEST 1: PASS (test_01_model_proposal_not_user_decision)
+TEST 2: PASS (test_02_no_silent_erasure)
+TEST 5: PASS (test_05_rejected_branch_retrievable)
+TEST 11: PASS (test_11_unsupported_claim_not_authoritative)
+TEST 12: PASS (test_12_resume_recovers_context)

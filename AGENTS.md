@@ -21,7 +21,7 @@ python3 -m http.server 8080 # предпочтительно — ничего с
 
 ### Сборка / Линт / Тесты
 
-Сборки нет, линтера нет, конвейера непрерывной интеграции нет, файла `package.json` приложения нет. Но тестовый набор есть: каталог `tests/refmem/` (набор для reference-memory). Первичная инструкция — `tests/refmem/README.md`.
+Сборки нет, линтера нет, конвейера непрерывной интеграции нет, файла `package.json` приложения нет. Но тестовый набор есть: каталог `tests/refmem/` (набор для reference-memory). Первичная инструкция — `tests/refmem/README.md`. На текущем `main` также есть `tests/working-memory/`: DB, read-bridge, device-harness и browser/SW проверки. Выбирайте набор по изменяемой подсистеме; перечень ниже описывает только reference-memory.
 
 Команды из корня репозитория:
 
@@ -51,7 +51,7 @@ PRIVATE_IDS=/local/private-ids.txt PRIVATE_TITLES=/local/private-titles.txt BASE
 
 ### Заметки о провайдерах ИИ
 
-Проверено на текущем HEAD чтением кода (`index.html`). Три разных уровня, не смешивать:
+Исторически проверено на `2bad54791b715636043da6725b1685774db1829b` чтением кода (`index.html`). Три разных уровня, не смешивать:
 
 1. Присутствует в интерфейсе и коде (селекторы `cfgProvider` и `cfgAgentProvider`, ветки отправки чата, проверка ключей): Ollama (офлайн, `http://localhost:11434/api/chat`, проверка через `/api/tags`), DeepSeek (`https://api.deepseek.com/v1/chat/completions`), Claude/Anthropic (`https://api.anthropic.com/v1/messages`), OpenAI (`https://api.openai.com/v1/chat/completions`), Groq (`https://api.groq.com/openai/v1/chat/completions`), OpenRouter (`https://openrouter.ai/api/v1/chat/completions`), Gemini (`https://generativelanguage.googleapis.com/v1beta/models/...:generateContent?key=...`), Grok (`https://api.x.ai/v1/chat/completions`). Чат Grok идёт через `https://api.x.ai/v1/chat/completions`. Отдельно существует голосовой канал Grok Voice через `wss://api.x.ai/v1/realtime` — это не чатовый endpoint.
 2. Живая сквозная проверка (E2E): в репозитории нет свидетельств живого сквозного прогона чата ни по одному провайдеру. Набор `tests/refmem/` покрывает только reference-memory (уровень базы, браузерный интерфейс памяти, сканирование приватности). Поэтому про живой E2E ничего не утверждается.
@@ -77,5 +77,6 @@ PRIVATE_IDS=/local/private-ids.txt PRIVATE_TITLES=/local/private-titles.txt BASE
 | `sql-wasm.wasm` | Бинарный модуль SQLite WASM |
 | `sw.js` | Service Worker для кэширования и офлайн-поддержки (`CACHE_NAME`, `STATIC_ASSETS` с `wiz-ref-memory.js`) |
 | `manifest.json` | Манифест PWA (устанавливаемость, иконки, ярлыки) |
+| `tests/working-memory/` | Наборы DB, read-bridge, device-harness, browser и Service Worker; смотрите заголовки файлов для зависимостей и переменных окружения |
 | `tests/refmem/` | Тестовый набор reference-memory: `db.test.cjs`, `browser.test.mjs`, `scan-private.sh`, `README.md`, `fixtures/` |
 | `icon-*.png` | Иконки PWA в корне репозитория (от 48×48 до 512×512) |

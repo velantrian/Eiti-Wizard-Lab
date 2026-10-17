@@ -1,0 +1,32 @@
+{
+  "synthetic": true,
+  "sensitivity": "TEST_ONLY",
+  "authoritative": false,
+  "experimental_only": true,
+  "now": "2026-10-05T12:00:00.000Z",
+  "context_issued_at": "2026-10-05T11:30:00.000Z",
+  "required_freshness_seconds": 3600,
+  "stale": false,
+  "authenticated_subject": "synth-subject-alpha-0001",
+  "actor_kind": "HUMAN_SYNTHETIC",
+  "tools_available": [
+    "sandbox.note.create",
+    "sandbox.note.read",
+    "sandbox.note.delete",
+    "sandbox.note.expired",
+    "sandbox.note.revoked",
+    "sandbox.note.conflict",
+    "sandbox.note.ambiguous",
+    "sandbox.note.deny-precedence",
+    "sandbox.export.bundle"
+  ],
+  "context_access": ["sandbox.notes.read"],
+  "model": {
+    "provider_label": "provider:lab-model-label",
+    "model_label": "model:demo-llm",
+    "confidence": 0.99,
+    "kind": "MODEL_OUTPUT",
+    "not": "OWNER_PERMISSION",
+    "not_subject": true
+  }
+}

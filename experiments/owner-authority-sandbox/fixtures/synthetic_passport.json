@@ -1,0 +1,43 @@
+{
+  "synthetic": true,
+  "sensitivity": "TEST_ONLY",
+  "authoritative": false,
+  "experimental_only": true,
+  "kind": "SYNTHETIC_OWNER_PASSPORT",
+  "not": "REAL_OWNER_PASSPORT",
+  "subject_id": "synth-subject-alpha-0001",
+  "display_name": "Синтетическая лабораторная персона Альфа",
+  "authenticated_subject": "synth-subject-alpha-0001",
+  "equivalent_subjects": ["synth-subject-alpha-0001"],
+  "not_equivalent": [
+    "provider:lab-model-label",
+    "model:demo-llm",
+    "synth-subject-beta-9999"
+  ],
+  "notes": "Вымышленная персона лабораторного стенда. Не биография владельца, не цели, не здоровье, не финансы, не учётные данные.",
+  "goals": [
+    {
+      "id": "GOAL-SYN-01",
+      "statement": "Держать синтетические заметки песочницы в порядке",
+      "kind": "OWNER_GOAL",
+      "not": "ACTION_AUTHORITY"
+    }
+  ],
+  "preferences": [
+    {
+      "id": "PREF-SYN-01",
+      "statement": "В синтетических сводках предпочитать краткую форму",
+      "kind": "OWNER_PREFERENCE",
+      "not": "DELEGATION"
+    }
+  ],
+  "past_acceptances": [
+    {
+      "id": "ACC-SYN-01",
+      "action": "sandbox.note.create",
+      "at": "2026-01-01T00:00:00.000Z",
+      "kind": "PAST_OWNER_ACCEPTANCE",
+      "not": "FUTURE_PERMISSION"
+    }
+  ]
+}

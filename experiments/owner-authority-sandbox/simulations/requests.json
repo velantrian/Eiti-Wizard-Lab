@@ -1,0 +1,260 @@
+{
+  "synthetic": true,
+  "sensitivity": "TEST_ONLY",
+  "authoritative": false,
+  "kind": "SYNTHETIC_REQUEST_SET",
+  "not": "REAL_PEP_INPUT",
+  "requests": [
+    {
+      "id": "REQ-01-NO-GRANT",
+      "case": 1,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.ungranted",
+      "resource": "sandbox://notes/ungranted",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-02-EXACT-VALID",
+      "case": 2,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-03-EXPIRED",
+      "case": 3,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.expired",
+      "resource": "sandbox://notes/expired",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-04-REVOKED",
+      "case": 4,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.revoked",
+      "resource": "sandbox://notes/revoked",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-05-STALE-CONTEXT",
+      "case": 5,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true,
+      "context_overrides": {
+        "context_issued_at": "2026-01-01T00:00:00.000Z",
+        "stale": true
+      }
+    },
+    {
+      "id": "REQ-06-DENY-PRECEDENCE",
+      "case": 6,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.deny-precedence",
+      "resource": "sandbox://notes/precedence",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-07-SUBJECT-MISMATCH",
+      "case": 7,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-beta-9999",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-08-PROVIDER-LABEL",
+      "case": 8,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "provider:lab-model-label",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true,
+      "notes": "Метка провайдера не является authenticated_subject и не входит в equivalent_subjects."
+    },
+    {
+      "id": "REQ-08B-MODEL-LABEL",
+      "case": 8,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "model:demo-llm",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true,
+      "notes": "Метка модели не является authenticated_subject и не входит в equivalent_subjects."
+    },
+    {
+      "id": "REQ-09-UNKNOWN-ACTION",
+      "case": 9,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.unknown.explode",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-10-AMBIGUOUS",
+      "case": 10,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.ambiguous",
+      "resource": "sandbox://notes/ambiguous",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-10B-AMBIGUOUS-BASIS",
+      "case": 10,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "AMBIGUOUS",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-11-OWNER-GOAL",
+      "case": 11,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "OWNER_GOAL",
+      "authority_ref": "GOAL-SYN-01",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-12-OWNER-PREFERENCE",
+      "case": 12,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "OWNER_PREFERENCE",
+      "authority_ref": "PREF-SYN-01",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-13-PAST-ACCEPTANCE",
+      "case": 13,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "PAST_OWNER_ACCEPTANCE",
+      "authority_ref": "ACC-SYN-01",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-14-MODEL-CONFIDENCE",
+      "case": 14,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "MODEL_CONFIDENCE",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-15-CONTEXT-ACCESS",
+      "case": 15,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "CONTEXT_ACCESS",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-16-SIMULATED-ALLOW",
+      "case": 16,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-17-TEST-GRANT",
+      "case": 17,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-18-CONFLICTING",
+      "case": 18,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.conflict",
+      "resource": "sandbox://notes/conflict",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-19-REPLAY",
+      "case": 19,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "GRANT",
+      "requires_fresh_context": true
+    },
+    {
+      "id": "REQ-20-TOOL-AVAILABLE",
+      "case": 20,
+      "synthetic": true,
+      "sensitivity": "TEST_ONLY",
+      "subject": "synth-subject-alpha-0001",
+      "action": "sandbox.note.create",
+      "resource": "sandbox://notes/alpha",
+      "authority_basis": "TOOL_AVAILABLE",
+      "requires_fresh_context": true
+    }
+  ]
+}

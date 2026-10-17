@@ -1,0 +1,152 @@
+{
+  "phase": "1D",
+  "title": "COMPLETE CONTEXT-PRESERVING GOLD REPAIR",
+  "base_phase1c_commit": "5771de4c03c2cd6e33223b3d21223687535406bd",
+  "HUMAN_GOLD": "NOT_CREATED",
+  "BLIND_RUN": "NOT_RUN",
+  "parent_count_original_user_messages": 10,
+  "atomic_span_count": 22,
+  "remaining_intentionally_compound_spans": [
+    "E0B-V13",
+    "E0B-V08.1.2",
+    "E0B-V17.1",
+    "E0B-V18.1",
+    "E0B-V21.2.2",
+    "E0B-V31.2",
+    "E0B-V38.3"
+  ],
+  "content_origin_distribution": {
+    "USER_OWN": 22
+  },
+  "conditional_act_count": 8,
+  "conditional_act_ids": [
+    "E0B-V08.1.2",
+    "E0B-V17.1",
+    "E0B-V17.2",
+    "E0B-V18.1",
+    "E0B-V21.2.1",
+    "E0B-V21.2.2",
+    "E0B-V31.2",
+    "E0B-V38.3"
+  ],
+  "UNKNOWN_capable_fields": [
+    "scope.status",
+    "condition.status",
+    "target.status",
+    "preceding_context_ref.status",
+    "presence_fields.decision.status",
+    "presence_fields.open_loop.status",
+    "GOLD_SURFACES.*.AUTHORITY_EXERCISED",
+    "content_origin (UNKNOWN allowed)"
+  ],
+  "NOT_PRESENT_capable_fields": [
+    "condition",
+    "rejected_branch",
+    "rationale",
+    "decision",
+    "open_loop",
+    "relation.status",
+    "EXPLICIT_MARKER_PRESENT=false"
+  ],
+  "marker_coverage_atoms_with_any_marker": 18,
+  "marker_coverage_ratio": "18/22",
+  "further_splits_beyond_1c": {
+    "E0B-V08.1": [
+      "E0B-V08.1.1",
+      "E0B-V08.1.2"
+    ],
+    "E0B-V21.2": [
+      "E0B-V21.2.1",
+      "E0B-V21.2.2"
+    ],
+    "E0B-V38": "boundary moved: .2 ends at 265; .3 starts at purpose clause"
+  },
+  "integrity_findings": [
+    {
+      "type": "RECONSTRUCT_OK",
+      "parent": "E0B-V08",
+      "child_count": 3
+    },
+    {
+      "type": "RECONSTRUCT_OK",
+      "parent": "E0B-V17",
+      "child_count": 2
+    },
+    {
+      "type": "RECONSTRUCT_OK",
+      "parent": "E0B-V18",
+      "child_count": 4
+    },
+    {
+      "type": "RECONSTRUCT_OK",
+      "parent": "E0B-V21",
+      "child_count": 3
+    },
+    {
+      "type": "RECONSTRUCT_OK",
+      "parent": "E0B-V31",
+      "child_count": 2
+    },
+    {
+      "type": "RECONSTRUCT_OK",
+      "parent": "E0B-V34",
+      "child_count": 2
+    },
+    {
+      "type": "RECONSTRUCT_OK",
+      "parent": "E0B-V38",
+      "child_count": 3
+    },
+    {
+      "type": "CONDITION_ATTACHED_OK",
+      "atom": "E0B-V38.3",
+      "needle": "чтобы"
+    },
+    {
+      "type": "CONDITION_ATTACHED_OK",
+      "atom": "E0B-V38.3",
+      "needle": "если"
+    },
+    {
+      "type": "CONDITION_ATTACHED_OK",
+      "atom": "E0B-V08.1.2",
+      "needle": "Если"
+    },
+    {
+      "type": "CONDITION_ATTACHED_OK",
+      "atom": "E0B-V17.1",
+      "needle": "Потому что"
+    },
+    {
+      "type": "CONDITION_ATTACHED_OK",
+      "atom": "E0B-V18.1",
+      "needle": "потому что"
+    },
+    {
+      "type": "CONDITION_ATTACHED_OK",
+      "atom": "E0B-V21.2.2",
+      "needle": "не меняя"
+    }
+  ],
+  "context_loss_findings": [
+    {
+      "severity": "INFO",
+      "atom_id": "E0B-V18.3",
+      "finding": "Additive proposal uses anaphoric \"туда\"/continuation; relation CONTINUES_PROPOSAL_FROM V18.1 recorded; not a character loss"
+    },
+    {
+      "severity": "INFO",
+      "atom_id": "E0B-V38.3",
+      "finding": "Purpose clause \"чтобы можно…\" kept with operational span (reattached from soft 1C boundary)"
+    },
+    {
+      "severity": "INFO",
+      "atom_id": "E0B-V21.2.2",
+      "finding": "Trailing \"Потому что\" remains truncated as in source parent (no characters invented)"
+    },
+    {
+      "severity": "NONE",
+      "finding": "All parent messages reconstruct exactly from children; no paraphrase; no dropped/duplicated characters"
+    }
+  ]
+}

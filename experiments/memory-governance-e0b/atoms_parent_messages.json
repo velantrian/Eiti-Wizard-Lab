@@ -1,0 +1,353 @@
+[
+  {
+    "atom_id": "E0B-V08",
+    "source_id": "AGENT_CHAT:Labs",
+    "source_stream": "AGENT_CHAT",
+    "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+    "source_artifact_entry_sha256": "5cc943a50a4bb740a4c81a5f5569ad31b5db056b4833696c25d8577b6bbb8da7",
+    "source_message_id": "t0u",
+    "source_turn_id": "t0u",
+    "source_location": "transcript_entries[id=t0u].raw_text[0:434]",
+    "span_start": 0,
+    "span_end": 434,
+    "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+    "timestamp": "2026-09-09T21:32:30.339000+02:00",
+    "turn_order_seq": 3,
+    "immediate_local_context_ref": null,
+    "speaker_source_metadata": {
+      "role": "USER",
+      "source_actor": "USER",
+      "agent_name": "Labs",
+      "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "event_type": null
+    },
+    "VERBATIM": true,
+    "raw_text": "Слу- слушай, скажи мне, ты можешь здесь запустить, а, как тебе сказать? Вот, э, посмотри, а, при- другие мои чат-боты, да, что там обсуждалось, и скажи, можно здесь, а, мою систему запустить полноценно? Ты, у тебя же есть доступ к компьютеру. Если у тебя есть доступ к компьютеру, то ты, по идее, можешь то же самое, что на компьютере запустить, чтобы тестировать мою систему. Ну ты скажи только точно, не выдумывай, а, и не галицини.",
+    "content_sha256": "43fbcccdb529a7f996e3921945a0789269e6148c40c255c54c4a24c8587a1626",
+    "requires_human_label": true,
+    "auto_structural": {
+      "SOURCE": "USER"
+    },
+    "labels_pending_human_or_blank": {
+      "SPEECH_SEMANTIC_ACT": null,
+      "COMMITMENT": null,
+      "LIFECYCLE": null,
+      "AUTHORITY_CANDIDATE": null
+    },
+    "GROUND_TRUTH_STATUS": "PENDING",
+    "authority_sensitive_user": true,
+    "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+    "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t0u",
+    "corpus_role": "PARENT_MESSAGE_ARCHIVE",
+    "replaced_by_atom_ids": [
+      "E0B-V08.1",
+      "E0B-V08.2"
+    ],
+    "children_v2": [
+      "E0B-V08.1.1",
+      "E0B-V08.1.2",
+      "E0B-V08.2"
+    ]
+  },
+  {
+    "atom_id": "E0B-V17",
+    "source_id": "AGENT_CHAT:Labs",
+    "source_stream": "AGENT_CHAT",
+    "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+    "source_artifact_entry_sha256": "137c34f087cebd15ad0a5b3b7d6abe018348527fbeb77fee43e55a46622585dc",
+    "source_message_id": "t2u",
+    "source_turn_id": "t2u",
+    "source_location": "transcript_entries[id=t2u].raw_text[0:218]",
+    "span_start": 0,
+    "span_end": 218,
+    "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+    "timestamp": "2026-09-09T21:43:02.094000+02:00",
+    "turn_order_seq": 16,
+    "immediate_local_context_ref": "prev_message_id=t1s2",
+    "speaker_source_metadata": {
+      "role": "USER",
+      "source_actor": "USER",
+      "agent_name": "Labs",
+      "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "event_type": null
+    },
+    "VERBATIM": true,
+    "raw_text": "Хочу тебя попросить, когда ты мне отвечаешь, всегда отвечай с эмодзи по смыслу. Потому что я визуально лучше понимаю, чем просто сухой текст. Хорошо? Запомни это в своей памяти, чтобы это не просто су- сухой текст был.",
+    "content_sha256": "2a32891b38929f065750350ce2b26ec222b0022a374657550d0c4a959d560478",
+    "requires_human_label": true,
+    "auto_structural": {
+      "SOURCE": "USER"
+    },
+    "labels_pending_human_or_blank": {
+      "SPEECH_SEMANTIC_ACT": null,
+      "COMMITMENT": null,
+      "LIFECYCLE": null,
+      "AUTHORITY_CANDIDATE": null
+    },
+    "GROUND_TRUTH_STATUS": "PENDING",
+    "authority_sensitive_user": true,
+    "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+    "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t2u",
+    "corpus_role": "PARENT_MESSAGE_ARCHIVE",
+    "replaced_by_atom_ids": [
+      "E0B-V17.1",
+      "E0B-V17.2"
+    ],
+    "children_v2": [
+      "E0B-V17.1",
+      "E0B-V17.2"
+    ]
+  },
+  {
+    "atom_id": "E0B-V18",
+    "source_id": "AGENT_CHAT:Labs",
+    "source_stream": "AGENT_CHAT",
+    "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+    "source_artifact_entry_sha256": "b5ce4c840d4d326c5e167ff44111c85540476a7a72c668f42b0769db37b1bb5c",
+    "source_message_id": "t3u",
+    "source_turn_id": "t3u",
+    "source_location": "transcript_entries[id=t3u].raw_text[0:364]",
+    "span_start": 0,
+    "span_end": 364,
+    "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+    "timestamp": "2026-09-09T21:45:21.015000+02:00",
+    "turn_order_seq": 20,
+    "immediate_local_context_ref": "prev_message_id=t2u",
+    "speaker_source_metadata": {
+      "role": "USER",
+      "source_actor": "USER",
+      "agent_name": "Labs",
+      "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "event_type": null
+    },
+    "VERBATIM": true,
+    "raw_text": "Слушай, а я знаешь, чё думаю? Просто у меня вопрос. Можно же опционально ещё, а, например, Ladybug и Kuzu туда вместить, и, потому что для них не нужен сервер. Я думаю, его легче будет установить, а он также по функционалу подойдёт. Вдобавок ещё можно, а, использовать, э, SQLite и PostgreSQL. Ты их сможешь запустить? Просто скажи мне, это легче будет, чем Neo4j?",
+    "content_sha256": "82711f489054256bff1da91255173107eced5702c3ceaa2d9515cf0fa532e38a",
+    "requires_human_label": true,
+    "auto_structural": {
+      "SOURCE": "USER"
+    },
+    "labels_pending_human_or_blank": {
+      "SPEECH_SEMANTIC_ACT": null,
+      "COMMITMENT": null,
+      "LIFECYCLE": null,
+      "AUTHORITY_CANDIDATE": null
+    },
+    "GROUND_TRUTH_STATUS": "PENDING",
+    "authority_sensitive_user": true,
+    "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+    "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t3u",
+    "corpus_role": "PARENT_MESSAGE_ARCHIVE",
+    "replaced_by_atom_ids": [
+      "E0B-V18.1",
+      "E0B-V18.2",
+      "E0B-V18.3",
+      "E0B-V18.4"
+    ],
+    "children_v2": [
+      "E0B-V18.1",
+      "E0B-V18.2",
+      "E0B-V18.3",
+      "E0B-V18.4"
+    ]
+  },
+  {
+    "atom_id": "E0B-V21",
+    "source_id": "AGENT_CHAT:Labs",
+    "source_stream": "AGENT_CHAT",
+    "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+    "source_artifact_entry_sha256": "c6b8bf912794e593bf9b81c58e6a6fea7f3c7ac87f14735911b2bb017f614091",
+    "source_message_id": "t4u",
+    "source_turn_id": "t4u",
+    "source_location": "transcript_entries[id=t4u].raw_text[0:487]",
+    "span_start": 0,
+    "span_end": 487,
+    "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+    "timestamp": "2026-09-09T21:52:29.559000+02:00",
+    "turn_order_seq": 25,
+    "immediate_local_context_ref": "prev_message_id=t3s2",
+    "speaker_source_metadata": {
+      "role": "USER",
+      "source_actor": "USER",
+      "agent_name": "Labs",
+      "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "event_type": null
+    },
+    "VERBATIM": true,
+    "raw_text": "А давай знаешь, что мы сделаем? Давай мы сделаем второй репозиторий с таким же названием, просто назовем исследовательский, и всё оттуда перенесем во второй. Всё, что необходимо. Но так сделаем его, чтобы он был заточен под kuzu, Ladybugdb, SQLite, PostgreSQL, и ещё под что-то, что ты считаешь нужным, что ты сможешь запустить и чтобы мы протестировали её. Там же есть уже готовый код, документация и так далее. Мы просто можем её адаптировать, не меняя основной репозиторий. Потому что",
+    "content_sha256": "bc07cf39a7b49b7895a3a72e76385bc244e499baaae14280eebb60e58d90b0d0",
+    "requires_human_label": true,
+    "auto_structural": {
+      "SOURCE": "USER"
+    },
+    "labels_pending_human_or_blank": {
+      "SPEECH_SEMANTIC_ACT": null,
+      "COMMITMENT": null,
+      "LIFECYCLE": null,
+      "AUTHORITY_CANDIDATE": null
+    },
+    "GROUND_TRUTH_STATUS": "PENDING",
+    "authority_sensitive_user": true,
+    "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+    "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t4u",
+    "corpus_role": "PARENT_MESSAGE_ARCHIVE",
+    "replaced_by_atom_ids": [
+      "E0B-V21.1",
+      "E0B-V21.2"
+    ],
+    "children_v2": [
+      "E0B-V21.1",
+      "E0B-V21.2.1",
+      "E0B-V21.2.2"
+    ]
+  },
+  {
+    "atom_id": "E0B-V31",
+    "source_id": "AGENT_CHAT:Labs",
+    "source_stream": "AGENT_CHAT",
+    "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+    "source_artifact_entry_sha256": "92a14471fd2b7eb2d26e035044942b080ca68322c479b63d316bda2ef6642583",
+    "source_message_id": "t5u",
+    "source_turn_id": "t5u",
+    "source_location": "transcript_entries[id=t5u].raw_text[0:434]",
+    "span_start": 0,
+    "span_end": 434,
+    "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+    "timestamp": "2026-09-09T22:00:08.413000+02:00",
+    "turn_order_seq": 40,
+    "immediate_local_context_ref": "prev_message_id=t4s10",
+    "speaker_source_metadata": {
+      "role": "USER",
+      "source_actor": "USER",
+      "agent_name": "Labs",
+      "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "event_type": null
+    },
+    "VERBATIM": true,
+    "raw_text": "Так, а предлагаю знаешь что? Посмотри, как устроены другие мои проекты, которые ты здесь перечислил, да? Они в других ботах есть. Посмотри ихний README, как устроен. Я хочу, чтобы ты тоже так сделал: с эмодзи, красиво, с оформлением. Такое же оформление, документы README, текстовый и ещё какие-то там документы, красиво оформленные, и читабельно, да, для машины и для человека, для ИИ и для человека. Ты можешь изучить и сделать так?",
+    "content_sha256": "c33c2467343a5cc5c514545bd27e4e9e1dfe887e57e560ceb5ff108744ebbbbf",
+    "requires_human_label": true,
+    "auto_structural": {
+      "SOURCE": "USER"
+    },
+    "labels_pending_human_or_blank": {
+      "SPEECH_SEMANTIC_ACT": null,
+      "COMMITMENT": null,
+      "LIFECYCLE": null,
+      "AUTHORITY_CANDIDATE": null
+    },
+    "GROUND_TRUTH_STATUS": "PENDING",
+    "authority_sensitive_user": true,
+    "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+    "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t5u",
+    "corpus_role": "PARENT_MESSAGE_ARCHIVE",
+    "replaced_by_atom_ids": [
+      "E0B-V31.1",
+      "E0B-V31.2"
+    ],
+    "children_v2": [
+      "E0B-V31.1",
+      "E0B-V31.2"
+    ]
+  },
+  {
+    "atom_id": "E0B-V34",
+    "source_id": "AGENT_CHAT:Labs",
+    "source_stream": "AGENT_CHAT",
+    "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+    "source_artifact_entry_sha256": "4234e14fbf0cbeb65d245186a4bac1fa4c6e6be1f749499ff4c0fcf155a00d43",
+    "source_message_id": "t6u",
+    "source_turn_id": "t6u",
+    "source_location": "transcript_entries[id=t6u].raw_text[0:229]",
+    "span_start": 0,
+    "span_end": 229,
+    "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+    "timestamp": "2026-09-09T22:04:31.497000+02:00",
+    "turn_order_seq": 47,
+    "immediate_local_context_ref": "prev_message_id=t5s4",
+    "speaker_source_metadata": {
+      "role": "USER",
+      "source_actor": "USER",
+      "agent_name": "Labs",
+      "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "event_type": null
+    },
+    "VERBATIM": true,
+    "raw_text": "А теперь можешь основного всё туда переносить, а потом будем думать, что заменять, что убирать, что переделывать. Мы же здесь можем экспериментировать, как хотим. Тебя можем, да, туда весь код и документацию перенести с фрактала?",
+    "content_sha256": "bc9b14029a1008b44d3fe765b31e1de7fd084bc46d9d474b2ad228dcb92cd02c",
+    "requires_human_label": true,
+    "auto_structural": {
+      "SOURCE": "USER"
+    },
+    "labels_pending_human_or_blank": {
+      "SPEECH_SEMANTIC_ACT": null,
+      "COMMITMENT": null,
+      "LIFECYCLE": null,
+      "AUTHORITY_CANDIDATE": null
+    },
+    "GROUND_TRUTH_STATUS": "PENDING",
+    "authority_sensitive_user": true,
+    "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+    "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t6u",
+    "corpus_role": "PARENT_MESSAGE_ARCHIVE",
+    "replaced_by_atom_ids": [
+      "E0B-V34.1",
+      "E0B-V34.2"
+    ],
+    "children_v2": [
+      "E0B-V34.1",
+      "E0B-V34.2"
+    ]
+  },
+  {
+    "atom_id": "E0B-V38",
+    "source_id": "AGENT_CHAT:Labs",
+    "source_stream": "AGENT_CHAT",
+    "source_artifact": "agent-data/agents/7870c64b-b8c5-4fe4-860f-0674ef545d23/store.db",
+    "source_artifact_entry_sha256": "1a96d3bb6197e23b3e02b6fb7ef8e4a7e97185dacf308ee5ac09346e4d7d0194",
+    "source_message_id": "t7u",
+    "source_turn_id": "t7u",
+    "source_location": "transcript_entries[id=t7u].raw_text[0:498]",
+    "span_start": 0,
+    "span_end": 498,
+    "conversation_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+    "timestamp": "2026-09-09T22:10:09.513000+02:00",
+    "turn_order_seq": 53,
+    "immediate_local_context_ref": "prev_message_id=t6s3",
+    "speaker_source_metadata": {
+      "role": "USER",
+      "source_actor": "USER",
+      "agent_name": "Labs",
+      "agent_id": "7870c64b-b8c5-4fe4-860f-0674ef545d23",
+      "event_type": null
+    },
+    "VERBATIM": true,
+    "raw_text": "смотри ladybugdb это как бы как kuzu но не замороженные а адаптированный в отличие от  kuzu который с прошлого года за архивированные поэтому я тебе предлагаю вот что , ￼ изучи подробнее как они все устроены включая и другие db, и что можно перенести в этот проект чтобы можно знаешь если например ну в песочнице запускаем точнее у тебя запускай мне в песочнице а у тебя на компьютере что адаптирование всего из этого бы у тебя работало бы лучше всего как бы сам проект был адаптированный вот нужно",
+    "content_sha256": "f9f3c641b8328a54f26add051f4e1561b1bdcf382a6bd39dc3d712cb02d1b3d7",
+    "requires_human_label": true,
+    "auto_structural": {
+      "SOURCE": "USER"
+    },
+    "labels_pending_human_or_blank": {
+      "SPEECH_SEMANTIC_ACT": null,
+      "COMMITMENT": null,
+      "LIFECYCLE": null,
+      "AUTHORITY_CANDIDATE": null
+    },
+    "GROUND_TRUTH_STATUS": "PENDING",
+    "authority_sensitive_user": true,
+    "notes": "Prospective Phase 1B capture from agent store.db transcript_entries; exact substring span; SOURCE from role/kind metadata only.",
+    "excerpt_ref": "raw_messages.json#7870c64b-b8c5-4fe4-860f-0674ef545d23:t7u",
+    "corpus_role": "PARENT_MESSAGE_ARCHIVE",
+    "replaced_by_atom_ids": [
+      "E0B-V38.1",
+      "E0B-V38.2",
+      "E0B-V38.3"
+    ],
+    "children_v2": [
+      "E0B-V38.1",
+      "E0B-V38.2",
+      "E0B-V38.3"
+    ]
+  }
+]

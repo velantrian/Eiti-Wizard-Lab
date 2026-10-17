@@ -1,0 +1,205 @@
+{
+  "repair": "E0B_PHASE_1C_ATOMICITY_REPAIR",
+  "timestamp": "2026-09-21T20:45:37.029020+02:00",
+  "base_commit": "e803e06906d2d00a8ff51c3b1c6f79aa9dd37128",
+  "old_user_atom_count": 10,
+  "new_atomic_user_span_count": 20,
+  "parent_to_children": {
+    "E0B-V08": [
+      "E0B-V08.1",
+      "E0B-V08.2"
+    ],
+    "E0B-V17": [
+      "E0B-V17.1",
+      "E0B-V17.2"
+    ],
+    "E0B-V18": [
+      "E0B-V18.1",
+      "E0B-V18.2",
+      "E0B-V18.3",
+      "E0B-V18.4"
+    ],
+    "E0B-V21": [
+      "E0B-V21.1",
+      "E0B-V21.2"
+    ],
+    "E0B-V31": [
+      "E0B-V31.1",
+      "E0B-V31.2"
+    ],
+    "E0B-V34": [
+      "E0B-V34.1",
+      "E0B-V34.2"
+    ],
+    "E0B-V38": [
+      "E0B-V38.1",
+      "E0B-V38.2",
+      "E0B-V38.3"
+    ]
+  },
+  "kept_atomic_unchanged": [
+    "E0B-V04",
+    "E0B-V07",
+    "E0B-V13"
+  ],
+  "retired_parents_from_primary_corpus": [
+    "E0B-V08",
+    "E0B-V17",
+    "E0B-V18",
+    "E0B-V21",
+    "E0B-V31",
+    "E0B-V34",
+    "E0B-V38"
+  ],
+  "parents_archived_in": "atoms_parent_messages.json",
+  "ambiguous_spans": [
+    {
+      "parent": "E0B-V08",
+      "spans": [
+        "E0B-V08.1"
+      ],
+      "note": "Span .1 includes computer-access scaffolding before accuracy constraint; kept with question-family span per QUESTION+CONSTRAINT finding (not further split)."
+    },
+    {
+      "parent": "E0B-V18",
+      "spans": [
+        "E0B-V18.1",
+        "E0B-V18.3"
+      ],
+      "note": "Two proposal-shaped contiguous spans (Ladybug/Kuzu vs SQLite/PostgreSQL); framing clause stays on .1."
+    },
+    {
+      "parent": "E0B-V21",
+      "spans": [
+        "E0B-V21.2"
+      ],
+      "note": "Span .2 mixes stack constraints with no-touch-main-repo constraint in one contiguous block."
+    },
+    {
+      "parent": "E0B-V38",
+      "spans": [
+        "E0B-V38.2",
+        "E0B-V38.3"
+      ],
+      "note": "Boundary at «если например» is soft; U+FFFC preserved inside .2."
+    },
+    {
+      "parent": "E0B-V13",
+      "spans": [
+        "E0B-V13"
+      ],
+      "note": "Left unsplit: single primary interrogative with brief setup; not in multi-act finding list."
+    }
+  ],
+  "old_corpus_total": 42,
+  "new_corpus_total": 52,
+  "source_counts_repaired": {
+    "EXTERNAL": 2,
+    "MODEL": 30,
+    "USER": 20
+  },
+  "provenance_coverage_primary": "100%",
+  "HUMAN_GOLD": "NOT_CREATED",
+  "BLIND_RUN": "NOT_RUN",
+  "split_offsets": {
+    "E0B-V08": [
+      {
+        "atom_id": "E0B-V08.1",
+        "parent_span_start": 0,
+        "parent_span_end": 377
+      },
+      {
+        "atom_id": "E0B-V08.2",
+        "parent_span_start": 377,
+        "parent_span_end": 434
+      }
+    ],
+    "E0B-V17": [
+      {
+        "atom_id": "E0B-V17.1",
+        "parent_span_start": 0,
+        "parent_span_end": 150
+      },
+      {
+        "atom_id": "E0B-V17.2",
+        "parent_span_start": 150,
+        "parent_span_end": 218
+      }
+    ],
+    "E0B-V18": [
+      {
+        "atom_id": "E0B-V18.1",
+        "parent_span_start": 0,
+        "parent_span_end": 160
+      },
+      {
+        "atom_id": "E0B-V18.2",
+        "parent_span_start": 160,
+        "parent_span_end": 233
+      },
+      {
+        "atom_id": "E0B-V18.3",
+        "parent_span_start": 233,
+        "parent_span_end": 294
+      },
+      {
+        "atom_id": "E0B-V18.4",
+        "parent_span_start": 294,
+        "parent_span_end": 364
+      }
+    ],
+    "E0B-V21": [
+      {
+        "atom_id": "E0B-V21.1",
+        "parent_span_start": 0,
+        "parent_span_end": 179
+      },
+      {
+        "atom_id": "E0B-V21.2",
+        "parent_span_start": 179,
+        "parent_span_end": 487
+      }
+    ],
+    "E0B-V31": [
+      {
+        "atom_id": "E0B-V31.1",
+        "parent_span_start": 0,
+        "parent_span_end": 166
+      },
+      {
+        "atom_id": "E0B-V31.2",
+        "parent_span_start": 166,
+        "parent_span_end": 434
+      }
+    ],
+    "E0B-V34": [
+      {
+        "atom_id": "E0B-V34.1",
+        "parent_span_start": 0,
+        "parent_span_end": 163
+      },
+      {
+        "atom_id": "E0B-V34.2",
+        "parent_span_start": 163,
+        "parent_span_end": 229
+      }
+    ],
+    "E0B-V38": [
+      {
+        "atom_id": "E0B-V38.1",
+        "parent_span_start": 0,
+        "parent_span_end": 134
+      },
+      {
+        "atom_id": "E0B-V38.2",
+        "parent_span_start": 134,
+        "parent_span_end": 284
+      },
+      {
+        "atom_id": "E0B-V38.3",
+        "parent_span_start": 284,
+        "parent_span_end": 498
+      }
+    ]
+  }
+}

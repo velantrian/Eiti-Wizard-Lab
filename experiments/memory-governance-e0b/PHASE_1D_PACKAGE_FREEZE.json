@@ -1,0 +1,62 @@
+{
+  "package": "E0B_PHASE_1D_CONTEXT_PRESERVING_GOLD_REPAIR",
+  "frozen_at": "2026-09-21T21:37:43.877265+02:00",
+  "HUMAN_GOLD": "NOT_CREATED",
+  "BLIND_RUN": "NOT_RUN",
+  "package_sha256": "745af6f39f2a2781553d8a289a7bd3a48d70773c27d9d74be04bbf975c3d9352",
+  "files": [
+    {
+      "file": "ATOMICITY_REPAIR_REPORT_v2.json",
+      "sha256": "8300dc12a5f3b0d5724a4f0e2516e145268d89d76a673ae3f80ec00fd6e003ac",
+      "bytes": 3679
+    },
+    {
+      "file": "ATOMICITY_REPAIR_REPORT_v2.md",
+      "sha256": "b5aaf14235e8b7d30fd42b7b98c358c5ea27bb4b950ac923ff85a6683d4534b0",
+      "bytes": 1866
+    },
+    {
+      "file": "atoms_atomic_v2.json",
+      "sha256": "1efec9838a130683b2cbc0cb9a5065454aa9219c8ea81af6449b7329d2f51128",
+      "bytes": 156067
+    },
+    {
+      "file": "atoms_parent_messages.json",
+      "sha256": "2c6b85819a3ca11dcad32ad18a74d0ff3d29502568ae251f714a2f51fa5cb4a2",
+      "bytes": 17053
+    },
+    {
+      "file": "context_integrity_report.md",
+      "sha256": "ff28b36a8c0d58ce63b8a6b7a10c320025cf88bb4939e61fc99f0b2a1f9a83dd",
+      "bytes": 3324
+    },
+    {
+      "file": "human_gold_packet_v2.md",
+      "sha256": "456121c5e7effd66374cff21513e9b5770ba90d23e5650090599bf041ead978c",
+      "bytes": 46882
+    },
+    {
+      "file": "marker_baseline.json",
+      "sha256": "e194f41bf284f3b623ea413cd9c2a6c4e77bc5e3379eba0aa3307ada25a4a327",
+      "bytes": 15563
+    }
+  ],
+  "counts": {
+    "parent_count": 10,
+    "atomic_span_count": 22,
+    "intentionally_compound": [
+      "E0B-V13",
+      "E0B-V08.1.2",
+      "E0B-V17.1",
+      "E0B-V18.1",
+      "E0B-V21.2.2",
+      "E0B-V31.2",
+      "E0B-V38.3"
+    ],
+    "content_origin_distribution": {
+      "USER_OWN": 22
+    },
+    "conditional_act_count": 8,
+    "marker_coverage": "18/22"
+  }
+}

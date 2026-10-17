@@ -1,0 +1,662 @@
+{
+  "phase": "1A",
+  "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+  "prepared_at": "2026-09-21T18:35:03+02:00",
+  "prior_phase1_atom_count": 45,
+  "excluded_count": 38,
+  "admitted_verbatim_count": 7,
+  "excluded": [
+    {
+      "atom_id": "E0B-A08",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Study a generalized child around age 10 (not a specific child).",
+      "prior_notes": "Paraphrase from evidence 'source-state features' attributed to conversation scope; requires human confirm of wording fidelity vs missing verbatim.",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-src-u-scope",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "attribution": "evidence_record_explicit",
+        "series": "TCE-SLOT-01/frozen-source"
+      },
+      "auto_structural": {
+        "SOURCE": "USER"
+      }
+    },
+    {
+      "atom_id": "E0B-A09",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Use a whole-system / gradual inquiry approach.",
+      "prior_notes": "Evidence-attributed USER orientation (paraphrase). Human must confirm.",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-src-u-method",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "attribution": "evidence_record_explicit"
+      },
+      "auto_structural": {
+        "SOURCE": "USER"
+      }
+    },
+    {
+      "atom_id": "E0B-A10",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Separate established findings, working models, and unknowns.",
+      "prior_notes": "Evidence-attributed USER epistemic constraint (paraphrase).",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-src-u-epistemic",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "attribution": "evidence_record_explicit"
+      },
+      "auto_structural": {
+        "SOURCE": "USER"
+      }
+    },
+    {
+      "atom_id": "E0B-A11",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Leave the topic of soul epistemically open (not predetermined as fact or fiction).",
+      "prior_notes": "Evidence-attributed USER open stance (paraphrase).",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-src-u-soul-open",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "attribution": "evidence_record_explicit"
+      },
+      "auto_structural": {
+        "SOURCE": "USER"
+      }
+    },
+    {
+      "atom_id": "E0B-A12",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Four possible next directions are proposed for continuing the inquiry.",
+      "prior_notes": "Evidence: assistant proposed four next directions. Atomic paraphrase; not numbered list (verbatim missing).",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-src-m-four-dirs",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "attribution": "evidence_record_explicit",
+        "speaker_label": "ASSISTANT"
+      },
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      }
+    },
+    {
+      "atom_id": "E0B-A13",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "User did not select any of the four proposed next directions before requesting Snapshot.",
+      "prior_notes": "Critical unselected-state atom. Evidence-attributed USER non-selection. Authority-sensitive.",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-src-u-nonselect",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "attribution": "evidence_record_explicit"
+      },
+      "auto_structural": {
+        "SOURCE": "USER"
+      }
+    },
+    {
+      "atom_id": "E0B-A14",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Request Snapshot.",
+      "prior_notes": "Evidence: user requested Snapshot after non-selection.",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-src-u-snap-req",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "attribution": "evidence_record_explicit"
+      },
+      "auto_structural": {
+        "SOURCE": "USER"
+      }
+    },
+    {
+      "atom_id": "E0B-A15",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "В поле 3 разрешено написать NOT_PRESENT, если отвергнутые альтернативы в разговоре не зафиксированы.",
+      "prior_notes": "Prompt delta instruction text from evidence (EXTERNAL experiment condition), not a dialog turn.",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-req-not-present",
+      "speaker_source_metadata": {
+        "role": "EXTERNAL",
+        "attribution": "evidence_record_instruction",
+        "artifact": "SLOT-01 modified Snapshot request"
+      },
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      }
+    },
+    {
+      "atom_id": "E0B-A16",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "NOT_PRESENT was permitted but not used; field 3 remained populated.",
+      "prior_notes": "Observed MODEL Snapshot behavior (evidence observation about MODEL output). SOURCE=MODEL for the producing run.",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-obs-not-present-unused",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "attribution": "evidence_record_observation",
+        "condition": "SLOT-01 Sol Snapshot"
+      },
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      }
+    },
+    {
+      "atom_id": "E0B-A17",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Four proposed next directions and explicit non-selection were omitted from the SLOT-01 Snapshot.",
+      "prior_notes": "Evidence observation of MODEL Snapshot omission (UNSELECTED_STATE_LOSS).",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-obs-unselected-loss",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "attribution": "evidence_record_observation"
+      },
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      }
+    },
+    {
+      "atom_id": "E0B-A18",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Coordinator / \"memory as files\" scientific explanation appeared as rejected material without preserving assistant-origin status.",
+      "prior_notes": "Evidence observation of status mixing in MODEL Snapshot field 3.",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-obs-status-mix",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "attribution": "evidence_record_observation"
+      },
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      }
+    },
+    {
+      "atom_id": "E0B-A19",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "NOT_CHOSEN ≠ REJECTED",
+      "prior_notes": "Research invariant from evidence record (EXTERNAL), not a dialog atom from Orchid/LIVE.",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-inv-01",
+      "speaker_source_metadata": {
+        "role": "EXTERNAL",
+        "attribution": "evidence_record_invariant"
+      },
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      }
+    },
+    {
+      "atom_id": "E0B-A20",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "CONSTRAINT ≠ REJECTED",
+      "prior_notes": "Research invariant (EXTERNAL).",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-inv-02",
+      "speaker_source_metadata": {
+        "role": "EXTERNAL",
+        "attribution": "evidence_record_invariant"
+      },
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      }
+    },
+    {
+      "atom_id": "E0B-A21",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "ASSISTANT CLAIM ≠ USER REJECTION",
+      "prior_notes": "Research invariant (EXTERNAL).",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-inv-03",
+      "speaker_source_metadata": {
+        "role": "EXTERNAL",
+        "attribution": "evidence_record_invariant"
+      },
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      }
+    },
+    {
+      "atom_id": "E0B-A22",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "AI interpretations can enter persistent memory and then recursively influence retrieval, questioning, tone, and later \"evidence\".",
+      "prior_notes": "LIVE-01 USER concern (evidence paraphrase). Verbatim transcript MISSING. Human confirm wording.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-u-risk",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "attribution": "evidence_record_paraphrase"
+      },
+      "auto_structural": {
+        "SOURCE": "USER"
+      }
+    },
+    {
+      "atom_id": "E0B-A23",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "When I think, a small functional model can remain (example: a car — key parts, purpose, relation to work/home/everyday life) rather than exhaustive detail.",
+      "prior_notes": "USER first-person observation (evidence paraphrase). Authority-sensitive preference/claim-like.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-u-car-model",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "attribution": "evidence_record_paraphrase"
+      },
+      "auto_structural": {
+        "SOURCE": "USER"
+      }
+    },
+    {
+      "atom_id": "E0B-A24",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "This compact-linked-model intuition connects to the older Digital Soul idea.",
+      "prior_notes": "USER connection claim (evidence paraphrase).",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-u-soul-link",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "attribution": "evidence_record_paraphrase"
+      },
+      "auto_structural": {
+        "SOURCE": "USER"
+      }
+    },
+    {
+      "atom_id": "E0B-A25",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "An LLM cannot safely be treated as merely a neutral language layer when it also generates new interpretations and links.",
+      "prior_notes": "USER constraint/claim (evidence paraphrase).",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-u-not-neutral",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "attribution": "evidence_record_paraphrase"
+      },
+      "auto_structural": {
+        "SOURCE": "USER"
+      }
+    },
+    {
+      "atom_id": "E0B-A26",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "EXPLORING / NOT COMMITTED — I was listening and continuing to think; I did not accept the Sol-proposed architecture as a settled decision.",
+      "prior_notes": "Post-audit USER stance explicitly attributed in evidence. Critical authority atom. Human confirm exact wording.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-u-stance-post-audit",
+      "speaker_source_metadata": {
+        "role": "USER",
+        "attribution": "evidence_record_explicit_user_stance"
+      },
+      "auto_structural": {
+        "SOURCE": "USER"
+      }
+    },
+    {
+      "atom_id": "E0B-A27",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Use an append-only archive.",
+      "prior_notes": "Evidence lists this as Sol-generated architecture proposal wrongly promoted into shared decision. SOURCE=MODEL.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-m-append-only",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "attribution": "evidence_record_as_model_proposal",
+        "model": "gpt-5.6-sol"
+      },
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      }
+    },
+    {
+      "atom_id": "E0B-A28",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Introduce influenced_by links.",
+      "prior_notes": "MODEL proposal per evidence audit.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-m-influenced-by",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "attribution": "evidence_record_as_model_proposal"
+      },
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      }
+    },
+    {
+      "atom_id": "E0B-A29",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Separate USER / AGENT / HYPOTHESIS / JOINT / WORLD spaces.",
+      "prior_notes": "MODEL proposal per evidence audit.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-m-spaces",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "attribution": "evidence_record_as_model_proposal"
+      },
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      }
+    },
+    {
+      "atom_id": "E0B-A30",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Use hot/cold state and related MVP structure.",
+      "prior_notes": "MODEL proposal per evidence audit.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-m-hot-cold",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "attribution": "evidence_record_as_model_proposal"
+      },
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      }
+    },
+    {
+      "atom_id": "E0B-A31",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Snapshot field 2 presented Sol-generated architecture proposals as if jointly settled (\"решили\").",
+      "prior_notes": "MODEL Snapshot wording failure observed in human audit.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-m-commitment-promotion",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "attribution": "evidence_record_observation"
+      },
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      }
+    },
+    {
+      "atom_id": "E0B-A32",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "User's compact-linked-model observation was replaced by a more formal architecture-like synthesis.",
+      "prior_notes": "MODEL substitution failure observed in audit.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-m-synthesis-sub",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "attribution": "evidence_record_observation"
+      },
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      }
+    },
+    {
+      "atom_id": "E0B-A33",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "First-person thinking-language was rewritten into specification-style language (\"for MVP…\", \"useful to separate…\").",
+      "prior_notes": "MODEL register/genre promotion observed.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-m-register-promo",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "attribution": "evidence_record_observation"
+      },
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      }
+    },
+    {
+      "atom_id": "E0B-A34",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "SEMANTIC CONTINUITY: STRONG",
+      "prior_notes": "Human audit verdict recorded in evidence (EXTERNAL meta).",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-ext-audit-sc",
+      "speaker_source_metadata": {
+        "role": "EXTERNAL",
+        "attribution": "evidence_record_audit_verdict"
+      },
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      }
+    },
+    {
+      "atom_id": "E0B-A35",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "STATE FIDELITY: MATERIAL FAILURE",
+      "prior_notes": "Human audit verdict (EXTERNAL meta).",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-ext-audit-sf",
+      "speaker_source_metadata": {
+        "role": "EXTERNAL",
+        "attribution": "evidence_record_audit_verdict"
+      },
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      }
+    },
+    {
+      "atom_id": "E0B-A36",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "MODEL PROPOSAL ≠ USER DECISION",
+      "prior_notes": "Research posture invariant from LIVE-01 evidence.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-inv-01",
+      "speaker_source_metadata": {
+        "role": "EXTERNAL",
+        "attribution": "evidence_record_invariant"
+      },
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      }
+    },
+    {
+      "atom_id": "E0B-A37",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "MODEL SYNTHESIS ≠ USER POSITION",
+      "prior_notes": "Research posture invariant from LIVE-01 evidence.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-inv-02",
+      "speaker_source_metadata": {
+        "role": "EXTERNAL",
+        "attribution": "evidence_record_invariant"
+      },
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      }
+    },
+    {
+      "atom_id": "E0B-A38",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "GOOD RESUME ≠ GOOD CAPTURE",
+      "prior_notes": "Research posture invariant from LIVE-01 evidence.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-inv-03",
+      "speaker_source_metadata": {
+        "role": "EXTERNAL",
+        "attribution": "evidence_record_invariant"
+      },
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      }
+    },
+    {
+      "atom_id": "E0B-A39",
+      "source_id": "LAB-E0A-FIXTURE",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "Text not present as event/seed content in fixture.json; originated from e0a composition/resume projector (lab_composition/.../resume.py / RESULTS.md), not verbatim fixture event.",
+      "prior_raw_text": "Resolve open authorization question before treating any RESEARCH_CLAIM as production authority.",
+      "prior_notes": "Lab composition/resume projector output text (EXTERNAL system message), not USER.",
+      "prior_excerpt_ref": "provenance_excerpts/LAB-E0A-FIXTURE_copy.json",
+      "message_id": "e0a-next-action",
+      "speaker_source_metadata": {
+        "role": "EXTERNAL",
+        "field": "resume.next_action",
+        "provenance": "e0a RESULTS.md / composition"
+      },
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      }
+    },
+    {
+      "atom_id": "E0B-A40",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "OPEN OPTION SET ≠ USER COMMITMENT",
+      "prior_notes": "Research invariant (EXTERNAL).",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-inv-04",
+      "speaker_source_metadata": {
+        "role": "EXTERNAL",
+        "attribution": "evidence_record_invariant"
+      },
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      }
+    },
+    {
+      "atom_id": "E0B-A41",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "NOT_SELECTED ≠ NO_OPEN_STATE",
+      "prior_notes": "Research invariant (EXTERNAL).",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-inv-05",
+      "speaker_source_metadata": {
+        "role": "EXTERNAL",
+        "attribution": "evidence_record_invariant"
+      },
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      }
+    },
+    {
+      "atom_id": "E0B-A42",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Field 3 mixed genuine user concerns with model recommendations and model-proposed deferrals into a single \"rejected\" genre.",
+      "prior_notes": "MODEL Snapshot status-mixing observation.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-m-rej-mix",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "attribution": "evidence_record_observation"
+      },
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      }
+    },
+    {
+      "atom_id": "E0B-A43",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Some open questions in field 4 were downstream of Sol's own framing rather than clearly user-originated open questions.",
+      "prior_notes": "MODEL proposal→open-research-state observation.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-m-open-from-model",
+      "speaker_source_metadata": {
+        "role": "MODEL",
+        "attribution": "evidence_record_observation"
+      },
+      "auto_structural": {
+        "SOURCE": "MODEL"
+      }
+    },
+    {
+      "atom_id": "E0B-A44",
+      "source_id": "SLOT-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "SLOT-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "Frozen source SOURCE_SHA256 = d1e9cb984c8b86e329a0008d2f7b12feefddb1b0b5785fe2db0283d6b778332d (file body MISSING locally).",
+      "prior_notes": "Hash pointer only; establishes MISSING verbatim body.",
+      "prior_excerpt_ref": "provenance_excerpts/SLOT-01_evidence_excerpt.md",
+      "message_id": "slot01-hash-ref",
+      "speaker_source_metadata": {
+        "role": "EXTERNAL",
+        "attribution": "evidence_hash_record"
+      },
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      }
+    },
+    {
+      "atom_id": "E0B-A45",
+      "source_id": "LIVE-01",
+      "exclusion_code": "EXCLUDE_SOURCE_NOT_VERBATIM",
+      "exclusion_detail": "LIVE-01 verbatim frozen transcript MISSING on box/Lab/org/Notion/Drive; prior atom was evidence paraphrase / snapshot observation / research invariant / hash pointer — not character-accurate dialog excerpt.",
+      "prior_raw_text": "LIVE-01 SOURCE_SHA256 = e0e21160157b464c536e4e537cab4dd27cb625af4f901509adb7efdb45300fb5 (file body MISSING locally).",
+      "prior_notes": "Hash pointer only; establishes MISSING verbatim body.",
+      "prior_excerpt_ref": "provenance_excerpts/LIVE-01_evidence_excerpt.md",
+      "message_id": "live01-hash-ref",
+      "speaker_source_metadata": {
+        "role": "EXTERNAL",
+        "attribution": "evidence_hash_record"
+      },
+      "auto_structural": {
+        "SOURCE": "EXTERNAL"
+      }
+    }
+  ]
+}

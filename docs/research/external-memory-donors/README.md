@@ -26,6 +26,10 @@ The purpose of this directory is to preserve commit-pinned / source-grounded don
 | Daily-Nerd Scout | research-intake donor | discovery, candidates.jsonl, triage | discovery != validation |
 | Daily-Nerd Scar | negative-memory donor | dead ends, fences, landmines, failure reasons | past failure != impossible forever |
 
+## Verification limits
+
+The registry preserves prior donor triage. `REVIEWED` and `STRONG_DONOR` are historical research labels, not reproduced implementation findings, confidence scores, or validation. Except for explicitly named releases, URLs are mutable and no immutable commit audit is recorded here. A later technical adoption review must pin source revisions and inspect code/tests before relying on a mechanism claim.
+
 ## Sources
 
 - https://github.com/Blooshoo/BlooRecall
